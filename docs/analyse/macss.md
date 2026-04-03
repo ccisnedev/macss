@@ -84,6 +84,56 @@ Funcionalidades transversales que no pertenecen a un módulo de negocio específ
 Estos concerns se implementan como middlewares (server) e interceptores (client), no como módulos de negocio.
 
 ---
+## CQRS — Command Query Responsibility Segregation
+---
+
+MACSS adopta CQRS como principio arquitectónico estructural. No es una guía de estilo — es una restricción que el framework enforza a través de protocolos distintos:
+
+| Tipo | Transporte | Descripción |
+|------|-----------|-------------|
+| **Command** (escritura) | REST / HTTP | POST, PUT, PATCH, DELETE. Cada endpoint mapea a un UseCase que muta estado. Validación estricta via `validate()` + Input DTO. |
+| **Query** (lectura) | GraphQL | El cliente solicita exactamente los campos que necesita. Sin over-fetching. GraphQL se genera automáticamente desde los UseCases GET. |
+
+```mermaid
+sequenceDiagram
+		actor U as Usuario
+		box client
+		participant UI as Interfaz
+		participant C as Controller
+		participant SC as Service (Command)
+		participant SQ as Service (Query)
+		end
+		box server
+		participant API as API REST
+		participant GQL as GraphQL
+		participant UC as UseCase
+		end
+
+		U-->>UI: Acción de escritura
+		UI->>C: Evento
+		C->>SC: Command
+		SC-->>API: POST /api/modulo/comando
+		API->>UC: execute()
+		UC-->>API: Output DTO
+		API-->>SC: HTTP Response
+
+		U-->>UI: Consulta datos
+		UI->>C: Evento
+		C->>SQ: Query
+		SQ-->>GQL: GraphQL query
+		GQL->>UC: execute() (GET UseCase)
+		UC-->>GQL: Output DTO
+		GQL-->>SQ: Campos solicitados
+```
+
+**Reglas**:
+- Los UseCases GET son queries puras — no mutan estado.
+- Los UseCases POST/PUT/PATCH/DELETE son commands.
+- El plugin GraphQL solo monta los UseCases GET como resolvers.
+- Toda lógica pasa por UseCase, sea REST o GraphQL — un solo punto de auditoría.
+- El contrato entre server y client es: OpenAPI para commands, GraphQL Schema para queries.
+
+---
 ## Flujos asíncronos
 ---
 

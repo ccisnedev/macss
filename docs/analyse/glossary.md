@@ -34,9 +34,9 @@ Gestiona el estado de una vista y orquesta las llamadas entre la Interfaz y los 
 
 ### Service (Client)
 
-**Capa**: Client — comunicación HTTP.
+**Capa**: Client — comunicación con el servidor.
 
-Clase que encapsula las llamadas HTTP al API del servidor. Existe uno por módulo (ej. `ClienteService`, `VentaService`). Usa `httpClient()` como abstracción de transporte.
+Clase que encapsula las llamadas al servidor. Existe uno por módulo (ej. `ClienteService`, `VentaService`). Usa `ServiceClient` como abstracción de transporte — actualmente `HttpServiceClient` para commands (REST), futuro `GraphQLClient` para queries.
 
 **Reglas**:
 - No hay llamadas directas a APIs externas desde el cliente. Todo se canaliza a través de `api/`.
@@ -152,7 +152,9 @@ Enfoque declarativo para gestionar esquemas de base de datos mediante scripts DD
 
 **Capa**: Transversal — azúcar sintáctico.
 
-Referencia abreviada a la clase Service que encapsula comunicación HTTP. No es una abstracción independiente — es el Service client en sí. Cuando la documentación dice "usa `httpClient()`", significa "usa la clase Service correspondiente para hacer la llamada HTTP".
+Función de conveniencia para llamadas HTTP de un solo uso (one-shot). Internamente crea un `ServiceClient` temporal, envía el request y cierra la conexión. Es azúcar sintáctico sobre la clase `ServiceClient` del package `service_client`.
+
+Cuando la documentación dice "usa `httpClient()`", significa "usa el service client para hacer la llamada HTTP". La implementación real vive en el package `service_client` (actualmente Dart, futuro TS y Python).
 
 ---
 
@@ -191,3 +193,51 @@ Puede ser in-process (mismo servidor) o distribuido (RabbitMQ, Kafka, etc.).
 Punto de verificación automática que debe pasar antes de considerar un cambio como completo. Incluye: tests (unit, contract, integration, e2e), lint, format, typecheck, seguridad, performance.
 
 **En MACSS**: los gates son el "sensor" del lazo cerrado. La AI itera hasta que todos los gates pasen.
+
+---
+
+### CQRS (Command Query Responsibility Segregation)
+
+**Capa**: Transversal — principio arquitectónico.
+
+Separación estructural entre operaciones de escritura (Commands) y operaciones de lectura (Queries). En MACSS, la separación no es convencional sino de protocolo:
+
+- **Commands** → REST/HTTP (POST, PUT, PATCH, DELETE). Cada endpoint es un UseCase que muta estado.
+- **Queries** → GraphQL. El cliente solicita exactamente los campos que necesita. Los resolvers son UseCases GET.
+
+**Origen**: Greg Young formalizó CQRS como patrón en 2010, separando los modelos de lectura y escritura. MACSS lo adopta a nivel de transporte: commands y queries fluyen por protocolos distintos, con validaciones distintas y contratos distintos (OpenAPI vs GraphQL Schema).
+
+---
+
+### Command
+
+**Capa**: Server — operación de escritura.
+
+Un UseCase que muta estado. Se expone como endpoint REST (POST, PUT, PATCH, DELETE). Tiene validación estricta via `validate()` + Input DTO. Retorna un Output DTO con el resultado de la operación.
+
+En el contexto CQRS de MACSS, los Commands son la mitad de escritura del sistema.
+
+---
+
+### Query
+
+**Capa**: Server — operación de lectura.
+
+Un UseCase GET que lee datos sin mutar estado. Se expone tanto como endpoint REST como resolver GraphQL (via plugin). El plugin GraphQL solo monta UseCases GET — nunca commands.
+
+En el contexto CQRS de MACSS, las Queries son la mitad de lectura del sistema. GraphQL permite al cliente solicitar exactamente los campos que necesita.
+
+---
+
+### GraphQL (en MACSS)
+
+**Capa**: Server — transporte de lectura.
+
+Capa de lectura auto-generada por el plugin `modular_api_graphql`. No se escribe manualmente — el plugin detecta los UseCases GET registrados, genera un tipo GraphQL por cada Output, y los expone como queries.
+
+**Reglas**:
+- GraphQL solo sirve queries (lectura). Las mutaciones no existen en MACSS — los commands usan REST.
+- Los resolvers llaman al UseCase internamente, respetando `validate()`, logging y métricas.
+- El schema se genera automáticamente desde los DTOs, igual que OpenAPI.
+
+**En el cliente**: el `ServiceClient` tendrá un `GraphQLClient` que envía queries como HTTP POST a `/graphql` con `{ "query": "...", "variables": {...} }`. No requiere librerías GraphQL pesadas.
