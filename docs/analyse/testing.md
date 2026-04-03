@@ -112,27 +112,6 @@ En lugar de migraciones incrementales, se usa un enfoque declarativo:
   - ✅ Rollback más predecible
   - ✅ Auditoría clara del estado deseado
 
-### Principio Insert-Only
-
-Las operaciones de modificación se implementan mediante inserciones:
-
-- **No hay UPDATE ni DELETE** en tablas de datos de negocio
-- Cada cambio genera un nuevo registro
-- **Beneficios**:
-  - ✅ Auditoría completa (quién, qué, cuándo)
-  - ✅ Trazabilidad histórica total
-  - ✅ Simplificación de concurrencia
-  - ✅ Facilita análisis temporal y rollback
-
-### Contratos compartidos (`domain/`)
-
-El package `domain/` actúa como fuente única de verdad:
-
-- Usado tanto por `api/` como por `app/`
-- Garantiza consistencia en los contratos
-- Facilita versionado de API (agregar campos vs. breaking changes)
-- Reduce duplicación y riesgo de desincronización
-
 ### Comunicación externa centralizada
 
 - **Todas las llamadas a APIs externas** se hacen desde `api/`, nunca desde `app/`

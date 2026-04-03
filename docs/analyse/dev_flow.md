@@ -9,9 +9,7 @@ El desarrollo de funcionalidades sigue un enfoque **bottom-up** con Test-Driven 
 **Actividades**:
 
 1. **Esquema de base de datos** (`db/`)
-    - Diseñar tablas siguiendo el principio **insert-only**
-    cada entidad tiene: hub, satelite (para cambio de estado) y vista (para consulta)
-    - Definir scripts DDL de creación (DB, esquemas, tablas)
+    - Diseñar tablas y definir scripts DDL de creación (DB, esquemas, tablas)
     - Establecer relaciones, constraints e índices
 2. **Contratos DTO**
     - Definir DTOs de Input y Output para cada caso de uso
@@ -23,9 +21,9 @@ El desarrollo de funcionalidades sigue un enfoque **bottom-up** con Test-Driven 
 **Entregables**:
 
 - Scripts DDL en `db/`
-- Maquinas de estados finitos de los flujos `domain/flows/<flow>`
-- Interfaces de UseCases en `domain/flows/<flow>/usecases/`
-- Contratos DTO en `domain/flows/<flow>/usecases/<usecase>/dto/`
+- Contrato OpenAPI del módulo
+- Máquinas de estados finitos de los flujos
+- Interfaces de UseCases con firma de `execute()` y DTOs (Input/Output)
 
 ---
 

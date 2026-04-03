@@ -19,8 +19,7 @@ Implementa el enfoque **Database as Code** (sin migraciones tradicionales):
 - **Scripts de creación**: Base de datos, esquemas y tablas
 - **Herramientas por motor**:
     - **SQL Server**: `sqlpackage` para despliegue declarativo
-    - **PostgreSQL**: `pg_schema` para gestión de esquemas
-- **Principio**: Insert-only (inmutabilidad, auditoría, trazabilidad)
+    - **PostgreSQL**: `pgschema` para gestión de esquemas
 
 ### `api/`
 
