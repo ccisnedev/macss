@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MACSS — bend all four</title>
+  <meta name="description" content="Modular Architecture for Comprehensive Software Solutions. A full-stack methodology for developers who own db, api, ui and infra.">
+  <meta name="theme-color" content="#0a0e1a">
+
+  <meta property="og:title" content="MACSS — bend all four">
+  <meta property="og:description" content="Modular Architecture for Comprehensive Software Solutions. A full-stack methodology for developers who own db, api, ui and infra.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://macss.ccisne.dev/">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="MACSS — bend all four">
+  <meta name="twitter:description" content="Modular Architecture for Comprehensive Software Solutions. A full-stack methodology for developers who own db, api, ui and infra.">
+
+  <link rel="icon" type="image/svg+xml" href="img/favicon.svg">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="css/shared.css">
+  <link rel="stylesheet" href="css/landing.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+
+      <pre class="logo-ascii" aria-label="MACSS logo"><span class="logo-corner">█▀   ▀█</span>
+   <span class="logo-dot">•</span>
+<span class="logo-corner">█▄   ▄█</span></pre>
+
+      <h1><span class="brand">macss</span></h1>
+      <p class="primary-tagline">bend all four</p>
+      <p class="secondary-tagline">Modular Architecture for Comprehensive Software Solutions</p>
+      <span class="badge">v0.0.1</span>
+
+      <div class="hero-install" id="install">
+        <div class="os-tabs" role="tablist" aria-label="Operating system">
+          <button class="os-tab" role="tab" aria-selected="true"  aria-controls="panel-windows" id="tab-windows" onclick="switchTab('windows')">Windows</button>
+          <button class="os-tab" role="tab" aria-selected="false" aria-controls="panel-linux"   id="tab-linux"   onclick="switchTab('linux')">Linux</button>
+          <button class="os-tab" role="tab" disabled title="Coming soon">macOS<span class="soon-tag">soon</span></button>
+        </div>
+
+        <div id="panel-windows" class="os-panel" role="tabpanel" aria-labelledby="tab-windows">
+          <div class="install-block">
+            <span class="label">PowerShell</span>
+            <button class="copy-btn" onclick="copy(this)" aria-label="Copy install command">Copy</button>
+            <code>irm https://macss.ccisne.dev/install.ps1 | iex</code>
+          </div>
+          <p class="install-note">Installs to <code>%LOCALAPPDATA%\macss\</code>, adds <code>macss</code> and alias <code>ma</code> to <code>PATH</code>.</p>
+        </div>
+
+        <div id="panel-linux" class="os-panel" role="tabpanel" aria-labelledby="tab-linux" hidden>
+          <div class="install-block">
+            <span class="label">Bash</span>
+            <button class="copy-btn" onclick="copy(this)" aria-label="Copy install command">Copy</button>
+            <code>curl -fsSL https://macss.ccisne.dev/install.sh | bash</code>
+          </div>
+          <p class="install-note">Installs to <code>~/.macss/</code>, adds <code>macss</code> and alias <code>ma</code> to <code>PATH</code>.</p>
+        </div>
+      </div>
+
+      <div class="hero-links">
+        <a href="https://github.com/ccisnedev/macss" class="hero-link">GitHub →</a>
+      </div>
+
+    </header>
+
+    <p class="intro">
+      MACSS structures a software project as <strong>vertical modules</strong> that each own their full stack slice — database, API, UI and infrastructure. A single developer holds <strong>complete context</strong>: no hand-offs, no layer silos. Every module can be extracted as a microservice without changing its internal architecture. The bet is <strong>ownership over specialization</strong>.
+    </p>
+
+    <section id="elements">
+      <h2>The four elements</h2>
+      <p>Every MACSS module spans all four layers. <code>macss create &lt;path&gt;</code> scaffolds them instantly.</p>
+      <div class="elements-grid">
+        <div class="element-card">
+          <div class="element-header">
+            <span class="element-symbol">db</span>
+            <span class="element-name">Earth</span>
+          </div>
+          <p>Persistence layer. SQL schemas, DDL scripts, repositories. Managed as <em>Database as Code</em> — no ORMs, no incremental migrations.</p>
+        </div>
+        <div class="element-card">
+          <div class="element-header">
+            <span class="element-symbol">api</span>
+            <span class="element-name">Air</span>
+          </div>
+          <p>Business logic layer. Use cases, CQRS split: REST for commands, GraphQL for queries. Every operation goes through a typed UseCase.</p>
+        </div>
+        <div class="element-card">
+          <div class="element-header">
+            <span class="element-symbol">ui</span>
+            <span class="element-name">Water</span>
+          </div>
+          <p>Presentation layer. Controllers, services, views. Adapts to the container — CLI, web or mobile — without touching business logic.</p>
+        </div>
+        <div class="element-card">
+          <div class="element-header">
+            <span class="element-symbol">infra</span>
+            <span class="element-name">Fire</span>
+          </div>
+          <p>Deployment and operations. CI pipelines, Docker, environment config. The layer that builds, ships and destroys on demand.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="commands">
+      <h2>CLI commands</h2>
+      <div class="commands">
+        <div class="cmd-row">
+          <code>macss</code>
+          <p>Display the banner, version and available commands.</p>
+        </div>
+        <div class="cmd-row">
+          <code>macss create &lt;path&gt;</code>
+          <p>Scaffold a new MACSS project at <code>&lt;path&gt;</code> — creates <code>code/{db,api,ui,infra}</code> and doc templates.</p>
+        </div>
+        <div class="cmd-row">
+          <code>macss doctor</code>
+          <p>Verify local installation and asset integrity.</p>
+        </div>
+        <div class="cmd-row">
+          <code>macss upgrade</code>
+          <p>Download and apply the latest release from GitHub.</p>
+        </div>
+        <div class="cmd-row">
+          <code>macss uninstall</code>
+          <p>Remove MACSS CLI from the system and clean PATH.</p>
+        </div>
+        <div class="cmd-row">
+          <code>macss version</code>
+          <p>Print the current CLI version.</p>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <span>macss v0.0.1</span>
+      <span><a href="https://github.com/ccisnedev/macss">github.com/ccisnedev/macss</a></span>
+    </footer>
+  </div>
+
+  <script src="js/main.js"></script>
+</body>
+</html>
