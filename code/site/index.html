@@ -3,18 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MACSS — bend all four</title>
-  <meta name="description" content="Modular Architecture for Comprehensive Software Solutions. A methodology for developers who own the full stack: db, api, ui and infra.">
+  <title>MACSS — Modular Architecture for Comprehensive Software Solutions</title>
+  <meta name="description" content="MACSS is a software architecture methodology that structures projects as vertical modules. Each module owns persistence, business logic, presentation, and infrastructure.">
   <meta name="theme-color" content="#0a0e1a">
 
-  <meta property="og:title" content="MACSS — bend all four">
-  <meta property="og:description" content="Modular Architecture for Comprehensive Software Solutions. A methodology for developers who own the full stack: db, api, ui and infra.">
+  <meta property="og:title" content="MACSS — Modular Architecture for Comprehensive Software Solutions">
+  <meta property="og:description" content="MACSS is a software architecture methodology that structures projects as vertical modules. Each module owns persistence, business logic, presentation, and infrastructure.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://macss.ccisne.dev/">
 
   <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="MACSS — bend all four">
-  <meta name="twitter:description" content="Modular Architecture for Comprehensive Software Solutions. A methodology for developers who own the full stack: db, api, ui and infra.">
+  <meta name="twitter:title" content="MACSS — Modular Architecture for Comprehensive Software Solutions">
+  <meta name="twitter:description" content="MACSS is a software architecture methodology that structures projects as vertical modules. Each module owns persistence, business logic, presentation, and infrastructure.">
 
   <link rel="icon" type="image/svg+xml" href="img/favicon.svg">
 
@@ -28,63 +28,52 @@
 <body>
   <div class="container">
     <header>
-
-      <pre class="logo-ascii" aria-label="MACSS logo"><span class="logo-corner">█▀   ▀█</span>
-   <span class="logo-dot">•</span>
-<span class="logo-corner">█▄   ▄█</span></pre>
-
       <h1><span class="brand">macss</span></h1>
-      <p class="primary-tagline">bend all four</p>
       <p class="secondary-tagline">Modular Architecture for Comprehensive Software Solutions</p>
 
       <div class="hero-links">
         <a href="https://github.com/ccisnedev/macss" class="hero-link">GitHub →</a>
         <a href="#cli" class="hero-link">Install CLI →</a>
       </div>
-
     </header>
 
     <p class="intro">
-      MACSS is a development methodology based on three principles: <strong>modular architecture</strong>, <strong>executable specification</strong> (tests and contracts as the source of truth), and <strong>closed loop</strong> (automated verification as the error sensor). A single developer holds complete context over every layer — no hand-offs, no silos. Every module can be extracted as a microservice without changing its internal architecture.
+      MACSS is a software architecture methodology. It structures projects as vertical modules where each module owns all four layers: persistence, business logic, presentation, and infrastructure. Three principles govern the approach: <strong>modular architecture</strong> (explicit boundaries between modules), <strong>executable specification</strong> (tests and contracts define the system), and <strong>closed-loop verification</strong> (automated checks validate every change). A single developer maintains full context across all layers. Any module can be extracted as an independent service without modifying its internal structure.
     </p>
 
-    <section id="elements">
-      <h2>The four elements</h2>
-      <p>Every MACSS module is a vertical slice that owns all four layers. The module boundary is explicit; its dependencies on other modules are declared.</p>
+    <section id="layers">
+      <h2>Layers</h2>
+      <p>Every MACSS module is a vertical slice that owns all four layers. The module boundary is explicit and its dependencies on other modules are declared.</p>
       <div class="elements-grid">
 
         <div class="element-card">
           <div class="element-header">
             <span class="element-symbol">db</span>
-            <span class="element-name">Earth</span>
           </div>
-          <p>Persistence layer. SQL schemas and DDL scripts managed as <em>Database as Code</em> — no ORMs, no incremental migrations. The schema is the contract.</p>
+          <p>Persistence. SQL schemas and DDL scripts managed as code. No ORMs, no incremental migrations. The schema is the contract.</p>
         </div>
 
         <div class="element-card element-card--linked">
           <div class="element-header">
             <span class="element-symbol">api</span>
-            <span class="element-name">Air</span>
           </div>
-          <p>Business logic layer. Use cases with typed <code>Input</code> / <code>Output</code> DTOs and a <code>validate()</code> + <code>execute()</code> lifecycle. CQRS split: REST for commands, GraphQL for queries.</p>
+          <p>Business logic. Use cases with typed <code>Input</code> / <code>Output</code> DTOs and a <code>validate()</code> + <code>execute()</code> lifecycle. CQRS: REST for commands, GraphQL for queries.</p>
           <a href="modular-api.html" class="element-link">modular_api →</a>
         </div>
 
         <div class="element-card element-card--linked">
           <div class="element-header">
             <span class="element-symbol">ui</span>
-            <span class="element-name">Water</span>
           </div>
-          <p>Presentation layer. Controllers, services, views. Consumes the API through a transport-agnostic client with the Result pattern — no raw HTTP in the UI.</p>
+          <p>Presentation. Controllers, services, views. Consumes the API through a transport-agnostic client with the Result pattern. No raw HTTP in the presentation layer.</p>
           <a href="service-client.html" class="element-link">service_client →</a>
         </div>
 
         <div class="element-card">
           <div class="element-header">
             <span class="element-symbol">infra</span>
-            <span class="element-name">Fire</span>
           </div>
-          <p>Deployment and operations. CI pipelines, containers, environment config. The layer that builds, ships and destroys on demand.</p>
+          <p>Infrastructure. CI pipelines, containers, environment configuration. Handles build, deployment, and teardown.</p>
         </div>
 
       </div>
@@ -98,17 +87,17 @@
 ├── api/   → use cases, endpoints
 ├── ui/    → service, controller, views
 └── infra/ → module-specific config</pre>
-      <p style="margin-top:1rem;">If a module grows large enough, it can be extracted as a microservice — the internal architecture does not change. The boundary was always there.</p>
+      <p style="margin-top:1rem;">When a module needs to scale independently, it can be extracted as a separate service. The internal architecture remains unchanged because the boundary is already explicit.</p>
     </section>
 
     <section id="cli">
       <h2>CLI</h2>
-      <p><code>macss</code> scaffolds the structure so you can focus on the domain. Install once, create projects instantly.</p>
+      <p>The <code>macss</code> CLI scaffolds the standard project structure from templates.</p>
 
-      <div class="hero-install" style="margin-top:1rem;">
+      <div class="hero-install" id="install">
         <div class="os-tabs" role="tablist" aria-label="Operating system">
-          <button class="os-tab" role="tab" aria-selected="true"  aria-controls="panel-windows" id="tab-windows" onclick="switchTab('windows')">Windows</button>
-          <button class="os-tab" role="tab" aria-selected="false" aria-controls="panel-linux"   id="tab-linux"   onclick="switchTab('linux')">Linux</button>
+          <button class="os-tab" role="tab" aria-selected="true" aria-controls="panel-windows" id="tab-windows" onclick="switchTab('windows')">Windows</button>
+          <button class="os-tab" role="tab" aria-selected="false" aria-controls="panel-linux" id="tab-linux" onclick="switchTab('linux')">Linux</button>
           <button class="os-tab" role="tab" disabled title="Coming soon">macOS<span class="soon-tag">soon</span></button>
         </div>
         <div id="panel-windows" class="os-panel" role="tabpanel" aria-labelledby="tab-windows">
@@ -129,22 +118,22 @@
         </div>
       </div>
 
-      <div class="commands" style="margin-top:1.25rem;">
+      <div class="commands">
         <div class="cmd-row">
           <code>macss create &lt;path&gt;</code>
-          <p>Scaffold a new MACSS project — creates <code>code/{db,api,ui,infra}</code> and doc templates.</p>
+          <p>Scaffold a new project with <code>code/{db,api,ui,infra}</code> and documentation templates.</p>
         </div>
         <div class="cmd-row">
           <code>macss doctor</code>
-          <p>Verify local installation and asset integrity.</p>
+          <p>Verify installation integrity.</p>
         </div>
         <div class="cmd-row">
           <code>macss upgrade</code>
-          <p>Download and apply the latest release from GitHub.</p>
+          <p>Download and apply the latest release.</p>
         </div>
         <div class="cmd-row">
           <code>macss version</code>
-          <p>Print the current CLI version.</p>
+          <p>Print the installed version.</p>
         </div>
       </div>
     </section>
@@ -172,7 +161,7 @@
         </div>
         <div class="eco-row">
           <div class="eco-name"><span class="eco-name-dim">macss CLI</span></div>
-          <div class="eco-desc">Project scaffolding and lifecycle management. Creates the four-element structure from templates.</div>
+          <div class="eco-desc">Project scaffolding. Creates the standard four-layer structure from templates.</div>
           <div class="eco-badges">
             <a class="eco-badge" href="https://github.com/ccisnedev/macss">GitHub</a>
           </div>
@@ -181,7 +170,6 @@
     </section>
 
     <footer>
-      <span>macss — Modular Architecture for Comprehensive Software Solutions</span>
       <span><a href="https://github.com/ccisnedev/macss">github.com/ccisnedev/macss</a></span>
     </footer>
   </div>
