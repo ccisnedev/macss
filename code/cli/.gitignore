@@ -1,0 +1,16 @@
+# Dart
+.dart_tool/
+.packages
+pubspec.lock
+build/
+
+# Compiled binaries
+bin/macss
+bin/macss.exe
+bin/*.bak
+
+# Build output
+dist/
+
+# Test coverage
+coverage/

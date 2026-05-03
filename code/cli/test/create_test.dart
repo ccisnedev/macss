@@ -1,0 +1,143 @@
+import 'dart:io';
+
+import 'package:path/path.dart' as p;
+import 'package:test/test.dart';
+
+import 'package:macss_cli/assets.dart';
+import 'package:macss_cli/modules/global/commands/create.dart';
+
+void main() {
+  late Directory tempRoot;
+  late Directory assetsDir;
+  late Assets assets;
+
+  setUp(() {
+    tempRoot = Directory.systemTemp.createTempSync('macss_create_test_');
+
+    // Build a minimal assets tree in a sibling dir
+    assetsDir = Directory(p.join(tempRoot.path, '_assets'))
+      ..createSync(recursive: true);
+    assets = Assets(root: assetsDir.path);
+
+    // Create fake templates
+    final tplBase = p.join(
+      assetsDir.path,
+      'assets',
+      'templates',
+      'project-base',
+    );
+    _writeFile(
+      p.join(tplBase, 'docs', 'adr', '0001-record-architecture-decisions.md'),
+      '# ADR 0001',
+    );
+    _writeFile(p.join(tplBase, 'docs', 'architecture.md'), '# Architecture');
+    _writeFile(p.join(tplBase, 'docs', 'roadmap.md'), '# Roadmap');
+  });
+
+  tearDown(() {
+    if (tempRoot.existsSync()) tempRoot.deleteSync(recursive: true);
+  });
+
+  CreateCommand makeCmd(String resolvedPath) => CreateCommand(
+    CreateInput(
+      resolvedPath: resolvedPath,
+      workingDirectory: tempRoot.path,
+    ),
+    assets: assets,
+  );
+
+  group('macss create', () {
+    test('validate returns error when path is null', () {
+      final cmd = CreateCommand(
+        CreateInput(resolvedPath: null, workingDirectory: tempRoot.path),
+        assets: assets,
+      );
+      expect(cmd.validate(), isNotNull);
+    });
+
+    test('creates root directory when it does not exist', () async {
+      final dest = p.join(tempRoot.path, 'my-project');
+      final output = await makeCmd(dest).execute();
+
+      expect(Directory(dest).existsSync(), isTrue);
+      expect(output.exitCode, 0);
+      expect(output.created, isTrue);
+    });
+
+    test('creates code/db, code/api, code/ui', () async {
+      final dest = p.join(tempRoot.path, 'proj');
+      await makeCmd(dest).execute();
+
+      expect(Directory(p.join(dest, 'code', 'db')).existsSync(), isTrue);
+      expect(Directory(p.join(dest, 'code', 'api')).existsSync(), isTrue);
+      expect(Directory(p.join(dest, 'code', 'ui')).existsSync(), isTrue);
+    });
+
+    test('creates doc files from templates', () async {
+      final dest = p.join(tempRoot.path, 'proj2');
+      await makeCmd(dest).execute();
+
+      final adr = File(
+        p.join(dest, 'docs', 'adr', '0001-record-architecture-decisions.md'),
+      );
+      final arch = File(p.join(dest, 'docs', 'architecture.md'));
+      final road = File(p.join(dest, 'docs', 'roadmap.md'));
+
+      expect(adr.existsSync(), isTrue);
+      expect(arch.existsSync(), isTrue);
+      expect(road.existsSync(), isTrue);
+    });
+
+    test('doc file content matches template', () async {
+      final dest = p.join(tempRoot.path, 'proj3');
+      await makeCmd(dest).execute();
+
+      final arch = File(p.join(dest, 'docs', 'architecture.md'));
+      expect(arch.readAsStringSync(), '# Architecture');
+    });
+
+    test('does not overwrite existing files', () async {
+      final dest = p.join(tempRoot.path, 'proj4');
+      await makeCmd(dest).execute();
+
+      // Modify a file manually
+      final arch = File(p.join(dest, 'docs', 'architecture.md'));
+      arch.writeAsStringSync('# My custom content');
+
+      // Run again
+      await makeCmd(dest).execute();
+
+      expect(arch.readAsStringSync(), '# My custom content');
+    });
+
+    test('second run is idempotent and reports exists', () async {
+      final dest = p.join(tempRoot.path, 'proj5');
+      await makeCmd(dest).execute();
+      final output2 = await makeCmd(dest).execute();
+
+      expect(output2.exitCode, 0);
+      expect(output2.message, contains('already initialized'));
+    });
+
+    test('fails with exitCode 2 when path is an existing file', () async {
+      final filePath = p.join(tempRoot.path, 'not-a-dir.txt');
+      File(filePath).writeAsStringSync('I am a file');
+
+      final output = await makeCmd(filePath).execute();
+      expect(output.exitCode, 2);
+      expect(output.created, isFalse);
+    });
+
+    test('works with absolute path', () async {
+      final dest = p.join(tempRoot.path, 'abs-proj');
+      final output = await makeCmd(dest).execute();
+      expect(output.exitCode, 0);
+      expect(Directory(dest).existsSync(), isTrue);
+    });
+  });
+}
+
+void _writeFile(String path, String content) {
+  Directory(p.dirname(path)).createSync(recursive: true);
+  File(path).writeAsStringSync(content);
+}
