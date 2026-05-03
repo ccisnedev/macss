@@ -86,7 +86,7 @@ const _wht = '\x1B[97m';
 String _buildBanner(String version) {
   final logo =
       '\n$_wht   █▀   ▀█$_r'
-      '\n$_grn      •   $_r    $_b${_blu}macss$_r v$version'
+      '\n$_grn      ●   $_r    $_b${_blu}macss$_r v$version'
       '\n$_wht   █▄   ▄█$_r    ${_d}Modular Architecture for Comprehensive Software Solutions$_r'
   ;
 
