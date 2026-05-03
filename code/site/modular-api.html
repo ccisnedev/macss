@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>modular_api — MACSS</title>
+  <meta name="description" content="Modular API framework for the api layer of MACSS. Use cases, CQRS, OpenAPI, health and metrics out of the box. Available in Dart, TypeScript and Python.">
+  <meta name="theme-color" content="#0a0e1a">
+  <link rel="icon" type="image/svg+xml" href="img/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/shared.css">
+  <link rel="stylesheet" href="css/landing.css">
+</head>
+<body>
+  <div class="container">
+
+    <nav class="back-nav">
+      <a href="index.html">← macss</a>
+      <span class="back-sep">/</span>
+      <span>modular_api</span>
+    </nav>
+
+    <header>
+      <div class="element-pill"><span class="element-symbol">api</span><span class="element-name">Air</span></div>
+      <h1><span class="brand">modular_api</span></h1>
+      <p class="primary-tagline">The api layer of MACSS</p>
+      <p class="secondary-tagline">Build modular, contract-first APIs — server side</p>
+
+      <div class="registry-links">
+        <a class="eco-badge eco-badge--lg" href="https://pub.dev/packages/modular_api">pub.dev</a>
+        <a class="eco-badge eco-badge--lg" href="https://www.npmjs.com/package/@macss/modular-api">npm</a>
+        <a class="eco-badge eco-badge--lg" href="https://pypi.org/project/macss-modular-api/">PyPI</a>
+        <a class="eco-badge eco-badge--lg" href="https://github.com/ccisnedev/modular_api">GitHub</a>
+      </div>
+    </header>
+
+    <p class="intro">
+      <code>modular_api</code> implements the <code>api</code> element of MACSS. It is simultaneously a <strong>methodology</strong> (contract-first, use-case driven), a <strong>specification</strong> (conventions that define how modules, DTOs, repositories and use cases relate), and a <strong>set of SDKs</strong> in three languages that produce structurally identical <code>openapi.json</code> outputs from the same conceptual model.
+    </p>
+
+    <section id="philosophy">
+      <h2>Philosophy</h2>
+      <p>Every operation is a <strong>UseCase</strong> — a unit with typed <code>Input</code>, typed <code>Output</code>, a <code>validate()</code> step and an <code>execute()</code> step. There are no controllers that mix validation, business logic and HTTP concerns. The framework enforces the separation.</p>
+      <p style="margin-top:0.75rem;">CQRS is structural, not optional: commands travel over REST, queries over GraphQL. The OpenAPI spec and the GraphQL schema are generated automatically — they are a consequence of the use cases, not a document you maintain separately.</p>
+      <p style="margin-top:0.75rem;">Every server ships four endpoints with zero configuration: <code>/docs</code>, <code>/health</code>, <code>/openapi.json</code>, <code>/openapi.yaml</code>. Metrics at <code>/metrics</code> are opt-in.</p>
+    </section>
+
+    <section id="quickstart">
+      <h2>Quick start <span class="lang-note">Dart · also available in <a href="https://www.npmjs.com/package/@macss/modular-api">TS</a> and <a href="https://pypi.org/project/macss-modular-api/">Python</a></span></h2>
+      <pre class="code-block"><span class="c">// pubspec.yaml</span>
+dependencies:
+  modular_api: ^1.0.0</pre>
+
+      <pre class="code-block" style="margin-top:0.75rem;"><span class="c">// bin/server.dart</span>
+import 'package:modular_api/modular_api.dart';
+
+Future&lt;void&gt; main() async {
+  final api = ModularApi(
+    basePath: '/api',
+    title: 'My App',
+    version: '1.0.0',
+  );
+
+  api.module('clients', (m) {
+    m.usecase('create', CreateClient.fromJson);
+    m.usecase('list',   ListClients.fromJson);
+  });
+
+  await api.serve(port: 8080);
+}</pre>
+
+      <pre class="code-block" style="margin-top:0.75rem;"><span class="c"># Commands → REST</span>
+curl -X POST http://localhost:8080/api/clients/create \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Acme"}'
+
+<span class="c"># Queries → GraphQL (auto-generated)</span>
+<span class="c"># Docs → http://localhost:8080/docs</span>
+<span class="c"># Spec → http://localhost:8080/openapi.json</span></pre>
+    </section>
+
+    <section id="use-case">
+      <h2>UseCase structure</h2>
+      <p>Every use case follows the same lifecycle — regardless of language:</p>
+      <pre class="code-block"><span class="c">// Input: validated before execute() is called</span>
+class CreateClientInput extends Input {
+  final String name;
+  CreateClientInput({required this.name});
+
+  @override
+  String? validate() {
+    if (name.isEmpty) return 'name is required';
+    return null;
+  }
+
+  factory CreateClientInput.fromJson(Map&lt;String, dynamic&gt; j) =&gt;
+      CreateClientInput(name: j['name'] as String);
+}
+
+<span class="c">// Output: serialized as the HTTP response</span>
+class CreateClientOutput extends Output {
+  final String id;
+  final String name;
+  CreateClientOutput({required this.id, required this.name});
+
+  @override
+  Map&lt;String, dynamic&gt; toJson() =&gt; {'id': id, 'name': name};
+}
+
+<span class="c">// UseCase: pure business logic</span>
+class CreateClient implements UseCase&lt;CreateClientInput, CreateClientOutput&gt; {
+  @override
+  Future&lt;CreateClientOutput&gt; execute(CreateClientInput input) async {
+    final id = await repository.insert(input.name);
+    return CreateClientOutput(id: id, name: input.name);
+  }
+}</pre>
+    </section>
+
+    <footer>
+      <span><a href="index.html">← macss.ccisne.dev</a></span>
+      <span><a href="https://github.com/ccisnedev/modular_api">github.com/ccisnedev/modular_api</a></span>
+    </footer>
+  </div>
+  <script src="js/main.js"></script>
+</body>
+</html>

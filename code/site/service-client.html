@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>service_client — MACSS</title>
+  <meta name="description" content="Transport-agnostic service client for the ui layer of MACSS. HTTP implementation with the Result pattern. Available in Dart, TypeScript and Python.">
+  <meta name="theme-color" content="#0a0e1a">
+  <link rel="icon" type="image/svg+xml" href="img/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/shared.css">
+  <link rel="stylesheet" href="css/landing.css">
+</head>
+<body>
+  <div class="container">
+
+    <nav class="back-nav">
+      <a href="index.html">← macss</a>
+      <span class="back-sep">/</span>
+      <span>service_client</span>
+    </nav>
+
+    <header>
+      <div class="element-pill"><span class="element-symbol">ui</span><span class="element-name">Water</span></div>
+      <h1><span class="brand">service_client</span></h1>
+      <p class="primary-tagline">The ui layer of MACSS</p>
+      <p class="secondary-tagline">Transport-agnostic service client with the Result pattern</p>
+
+      <div class="registry-links">
+        <a class="eco-badge eco-badge--lg" href="https://pub.dev/packages/service_client">pub.dev</a>
+        <a class="eco-badge eco-badge--lg" href="https://www.npmjs.com/package/@macss/service-client">npm</a>
+        <a class="eco-badge eco-badge--lg" href="https://pypi.org/project/macss-service-client/">PyPI</a>
+        <a class="eco-badge eco-badge--lg" href="https://github.com/ccisnedev/service_client">GitHub</a>
+      </div>
+    </header>
+
+    <p class="intro">
+      <code>service_client</code> implements the <code>ui</code> element of MACSS. It sits between the presentation layer and the API — abstracting transport so controllers never import <code>http</code>, never catch raw exceptions, and never parse JSON manually. The contract is a typed <strong>Result</strong>: either a value or a structured error.
+    </p>
+
+    <section id="philosophy">
+      <h2>Philosophy</h2>
+      <p>In MACSS the UI layer is <em>water</em> — it adapts to its container (Flutter app, React SPA, CLI, another API) without changing shape. What must not change is how it communicates with the API: always through a service class, always receiving a <code>Result</code>, never crashing on network failure.</p>
+      <p style="margin-top:0.75rem;">The Result pattern eliminates the <code>try / catch</code> noise from controllers. A <code>Result&lt;T&gt;</code> is either <code>Ok(value)</code> or <code>Err(error)</code> — exhaustively handled at the call site. The controller decides what to show; the service client decides nothing about presentation.</p>
+      <p style="margin-top:0.75rem;">The interface is transport-agnostic. The default implementation uses HTTP, but any transport can be plugged in — useful for testing, for mocking, or for communicating between modules in-process.</p>
+    </section>
+
+    <section id="quickstart">
+      <h2>Quick start <span class="lang-note">Dart · also available in <a href="https://www.npmjs.com/package/@macss/service-client">TS</a> and <a href="https://pypi.org/project/macss-service-client/">Python</a></span></h2>
+      <pre class="code-block"><span class="c">// pubspec.yaml</span>
+dependencies:
+  service_client: ^0.2.1</pre>
+
+      <pre class="code-block" style="margin-top:0.75rem;"><span class="c">// lib/clients/service.dart</span>
+import 'package:service_client/service_client.dart';
+
+class ClientsService {
+  final ServiceClient _client;
+  ClientsService(this._client);
+
+  Future&lt;Result&lt;CreateClientOutput&gt;&gt; create(String name) =&gt;
+      _client.post(
+        '/api/clients/create',
+        body: {'name': name},
+        fromJson: CreateClientOutput.fromJson,
+      );
+}</pre>
+
+      <pre class="code-block" style="margin-top:0.75rem;"><span class="c">// lib/clients/controller.dart</span>
+final result = await service.create(nameInput);
+
+switch (result) {
+  case Ok(:final value):
+    <span class="c">// update UI state with value</span>
+    state = ClientCreated(value);
+  case Err(:final error):
+    <span class="c">// show error — no try/catch needed</span>
+    state = ClientError(error.message);
+}</pre>
+    </section>
+
+    <section id="setup">
+      <h2>Wiring it up</h2>
+      <pre class="code-block"><span class="c">// main.dart — inject once, use everywhere</span>
+final client = HttpServiceClient(
+  baseUrl: 'http://localhost:8080',
+  headers: {'Authorization': 'Bearer $token'},
+);
+
+final clientsService = ClientsService(client);
+final clientsController = ClientsController(clientsService);</pre>
+      <p style="margin-top:0.75rem;">For tests, replace <code>HttpServiceClient</code> with a <code>MockServiceClient</code> — no HTTP calls, no test server needed. The controller code does not change.</p>
+    </section>
+
+    <footer>
+      <span><a href="index.html">← macss.ccisne.dev</a></span>
+      <span><a href="https://github.com/ccisnedev/service_client">github.com/ccisnedev/service_client</a></span>
+    </footer>
+  </div>
+  <script src="js/main.js"></script>
+</body>
+</html>
