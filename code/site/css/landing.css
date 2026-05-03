@@ -1,5 +1,75 @@
 /* landing.css — Header, hero, sections specific to index.html and subpages */
 
+/* ----- Why list ----- */
+.why-list {
+  list-style: none;
+  padding: 0;
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.why-list li {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--fg-dim);
+  padding-left: 1.25rem;
+  position: relative;
+}
+
+.why-list li::before {
+  content: '—';
+  position: absolute;
+  left: 0;
+  color: var(--primary);
+}
+
+.why-list li strong { color: var(--fg); }
+
+/* ----- Architecture diagram ----- */
+.architecture-diagram {
+  margin: 1.5rem 0;
+  text-align: center;
+  overflow-x: auto;
+}
+
+.architecture-diagram img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ----- Layer descriptions ----- */
+.layer-descriptions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 1.25rem;
+}
+
+.layer-row {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 0.75rem;
+  align-items: baseline;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+}
+
+.layer-row:nth-child(odd) { background: rgba(255,255,255,0.02); }
+
+.layer-row code {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.layer-row span {
+  font-size: 0.85rem;
+  color: var(--fg-dim);
+  line-height: 1.5;
+}
+
 /* ----- Logo ----- */
 .logo-ascii {
   font-family: var(--mono);

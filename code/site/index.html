@@ -38,26 +38,43 @@
     </header>
 
     <p class="intro">
-      MACSS is a software architecture methodology. It structures projects as vertical modules where each module owns all four layers: persistence, business logic, presentation, and infrastructure. Three principles govern the approach: <strong>modular architecture</strong> (explicit boundaries between modules), <strong>executable specification</strong> (tests and contracts define the system), and <strong>closed-loop verification</strong> (automated checks validate every change). A single developer maintains full context across all layers. Any module can be extracted as an independent service without modifying its internal structure.
+      MACSS is a software architecture methodology designed for AI-assisted development. It defines a layered architecture with single-responsibility components and a monorepo structure that gives both the developer and the AI agent complete, unambiguous context over the entire system. The result: a developer with an AI copilot operates as a true full-stack team.
     </p>
 
-    <section id="layers">
-      <h2>Layers</h2>
-      <p>Every MACSS module is a vertical slice that owns all four layers. The module boundary is explicit and its dependencies on other modules are declared.</p>
-      <div class="elements-grid">
+    <section id="why">
+      <h2>Why MACSS exists</h2>
+      <p>AI agents perform best when they can reason about a codebase with clear boundaries, predictable structure, and explicit contracts. MACSS provides exactly that:</p>
+      <ul class="why-list">
+        <li><strong>Single-responsibility layers</strong> — each component has one job. The agent knows where to look and what to change.</li>
+        <li><strong>Monorepo with canonical structure</strong> — all code, documentation, and infrastructure live together. The agent sees the full picture in one repository.</li>
+        <li><strong>Executable specification</strong> — tests and contracts define the system. The agent validates its own changes automatically.</li>
+      </ul>
+    </section>
 
-        <div class="element-card">
-          <div class="element-header">
-            <span class="element-symbol">db</span>
-          </div>
-          <p>Persistence. SQL schemas and DDL scripts managed as code. No ORMs, no incremental migrations. The schema is the contract.</p>
-        </div>
+    <section id="architecture">
+      <h2>Layer architecture</h2>
+      <p>Every request flows through layers with a single responsibility. The architecture enforces separation: UI never touches the database, business logic never knows about HTTP, persistence never formats responses.</p>
 
+      <figure class="architecture-diagram">
+        <img src="img/architecture.svg" alt="Sequence diagram showing the request flow: User → Interface → Controller → Service → API → UseCase → Repository → DB, and the response path back.">
+      </figure>
+
+      <div class="layer-descriptions">
+        <div class="layer-row"><code>Interface</code><span>Presents information and captures user interactions. UI or CLI.</span></div>
+        <div class="layer-row"><code>Controller</code><span>Manages application state. Orchestrates calls between interface and services.</span></div>
+        <div class="layer-row"><code>Service</code><span>HTTP communication layer between client and server. Abstracts transport.</span></div>
+        <div class="layer-row"><code>API</code><span>Server that exposes endpoints and routes requests to use cases.</span></div>
+        <div class="layer-row"><code>UseCase</code><span>Business logic. Typed Input/Output, <code>validate()</code> + <code>execute()</code> lifecycle.</span></div>
+        <div class="layer-row"><code>Repository</code><span>Data access. Executes SQL queries and commands.</span></div>
+        <div class="layer-row"><code>DB</code><span>Persistence. Managed as Database as Code — DDL scripts, no ORMs.</span></div>
+      </div>
+
+      <div class="elements-grid" style="margin-top:1.5rem;">
         <div class="element-card element-card--linked">
           <div class="element-header">
             <span class="element-symbol">api</span>
           </div>
-          <p>Business logic. Use cases with typed <code>Input</code> / <code>Output</code> DTOs and a <code>validate()</code> + <code>execute()</code> lifecycle. CQRS: REST for commands, GraphQL for queries.</p>
+          <p>Server-side SDK. Implements the UseCase lifecycle, CQRS routing, OpenAPI generation, health and metrics.</p>
           <a href="modular-api.html" class="element-link">modular_api →</a>
         </div>
 
@@ -65,29 +82,36 @@
           <div class="element-header">
             <span class="element-symbol">ui</span>
           </div>
-          <p>Presentation. Controllers, services, views. Consumes the API through a transport-agnostic client with the Result pattern. No raw HTTP in the presentation layer.</p>
+          <p>Client-side SDK. Transport-agnostic service client with the Result pattern. No raw HTTP in the presentation layer.</p>
           <a href="service-client.html" class="element-link">service_client →</a>
         </div>
-
-        <div class="element-card">
-          <div class="element-header">
-            <span class="element-symbol">infra</span>
-          </div>
-          <p>Infrastructure. CI pipelines, containers, environment configuration. Handles build, deployment, and teardown.</p>
-        </div>
-
       </div>
     </section>
 
-    <section id="modules">
-      <h2>Modules</h2>
-      <p>A module groups related use cases from the same business domain — <em>clients</em>, <em>billing</em>, <em>inventory</em>. Each module is a vertical cut across all four layers:</p>
-      <pre class="code-block">module clients/
-├── db/    → DDL scripts, repositories
-├── api/   → use cases, endpoints
-├── ui/    → service, controller, views
-└── infra/ → module-specific config</pre>
-      <p style="margin-top:1rem;">When a module needs to scale independently, it can be extracted as a separate service. The internal architecture remains unchanged because the boundary is already explicit.</p>
+    <section id="monorepo">
+      <h2>Monorepo structure</h2>
+      <p>Every MACSS project is a single repository with a canonical layout. The AI agent — and the developer — find everything in a predictable location.</p>
+
+      <pre class="code-block">project/
+├── code/
+│   ├── db/    → SQL schemas, DDL scripts, repositories
+│   ├── api/   → use cases, endpoints, server
+│   ├── ui/    → services, controllers, views
+│   └── infra/ → CI, containers, environment config
+├── docs/
+│   ├── adr/          → architecture decision records
+│   ├── architecture.md
+│   └── roadmap.md
+└── README.md</pre>
+
+      <p style="margin-top:1rem;">Within <code>code/</code>, business logic is organized as <strong>modules</strong> — vertical slices that group related use cases from the same domain:</p>
+
+      <pre class="code-block">code/api/modules/
+├── clients/   → create, list, get, update, delete
+├── billing/   → invoice, payment, refund
+└── inventory/ → stock, transfer, adjustment</pre>
+
+      <p style="margin-top:1rem;">Each module has explicit boundaries and declared dependencies. When a module needs to scale independently, it can be extracted as a separate service without modifying its internal structure.</p>
     </section>
 
     <section id="cli">
