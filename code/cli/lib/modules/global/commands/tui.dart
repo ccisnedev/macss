@@ -7,11 +7,6 @@ import 'package:modular_cli_sdk/modular_cli_sdk.dart';
 import '../../../src/version.dart';
 import '../../../src/version_check.dart';
 
-// ─── Types ───────────────────────────────────────────────────────────────────
-
-typedef VersionChecker =
-    Future<VersionCheckResult> Function({required String currentVersion});
-
 // ─── Input ──────────────────────────────────────────────────────────────────
 
 class TuiInput extends Input {
@@ -46,53 +41,67 @@ class TuiOutput extends Output {
 class TuiCommand implements Command<TuiInput, TuiOutput> {
   @override
   final TuiInput input;
+  final Future<VersionCheckResult> Function({required String currentVersion})?
+      _versionChecker;
 
-  final VersionChecker _versionChecker;
-
-  TuiCommand(
-    this.input, {
-    VersionChecker? versionChecker,
-  }) : _versionChecker = versionChecker ??
-            (({required String currentVersion}) =>
-                checkLatestVersion(currentVersion: currentVersion));
+  TuiCommand(this.input, {
+    Future<VersionCheckResult> Function({required String currentVersion})?
+        versionChecker,
+  }) : _versionChecker = versionChecker;
 
   @override
   String? validate() => null;
 
   @override
   Future<TuiOutput> execute() async {
-    final updateResult = await _versionChecker(currentVersion: macssVersion);
-    final banner = _buildBanner(updateResult);
+    var banner = _buildBanner(macssVersion);
+
+    try {
+      final checker = _versionChecker ??
+          ({required String currentVersion}) =>
+              checkLatestVersion(currentVersion: currentVersion);
+      final result = await checker(currentVersion: macssVersion);
+      if (result.updateAvailable && result.latestVersion != null) {
+        banner += "\n  Update available: $macssVersion → ${result.latestVersion}"
+            " — run 'macss upgrade'";
+      }
+    } catch (_) {
+      // Silent on failure
+    }
+
     return TuiOutput(version: macssVersion, banner: banner);
   }
+}
 
-  String _buildBanner(VersionCheckResult update) {
-    const grn = '\x1B[32m';
-    const wht = '\x1B[97m';
-    const dim = '\x1B[2m';
-    const rst = '\x1B[0m';
-    const cyn = '\x1B[36m';
+// ─── Helpers ────────────────────────────────────────────────────────────────
 
-    final updateLine = update.updateAvailable
-        ? '\n  ${grn}New version available: ${update.latestVersion}  '
-            'Run: macss upgrade$rst'
-        : '';
+const _r = '\x1B[0m';
+const _b = '\x1B[1m';
+const _d = '\x1B[2m';
+const _grn = '\x1B[32m';
+const _blu = '\x1B[34m';
+const _cyn = '\x1B[36m';
+const _wht = '\x1B[97m';
 
-// $grn  ██  ██▄▄▄██   ▀▀▀  ▀▀▀  ▀▀▀$rst
-    return '''
-$wht   █▀   ▀█ $rst
-$grn      •   $rst
-$wht   █▄   ▄█$rst
-$wht  macss$rst  ${dim}v$macssVersion$rst  ${dim}Modular Architecture for Comprehensive Software Solutions$rst  ${dim}alias: ma$rst$updateLine
+String _buildBanner(String version) {
+  final logo =
+      '\n$_wht   █▀   ▀█$_r'
+      '\n$_grn      •   $_r    $_b${_blu}macss$_r v$version'
+      '\n$_wht   █▄   ▄█$_r    ${_d}Modular Architecture for Comprehensive Software Solutions$_r'
+  ;
 
-  ${dim}Commands:$rst
-    ${cyn}create$rst $dim<path>$rst    scaffold a MACSS project
-    ${cyn}doctor$rst            verify local installation
-    ${cyn}upgrade$rst           update to latest version
-    ${cyn}uninstall$rst         remove MACSS CLI
-    ${cyn}version$rst           print version
+  final commands =
+      '  ${_d}Commands:$_r\n'
+      '    ${_cyn}create$_r $_d<path>$_r    scaffold a MACSS project\n'
+      '    ${_cyn}doctor$_r            verify local installation\n'
+      '    ${_cyn}upgrade$_r           update to latest version\n'
+      '    ${_cyn}uninstall$_r         remove MACSS CLI\n'
+      '    ${_cyn}version$_r           print version'
+  ;
 
-  ${dim}Quickstart:$rst  macss create mi-proyecto
-''';
-  }
+  final footer =
+      '  ${_d}Quickstart:$_r  macss create my-project'
+  ;
+
+  return '$logo\n\n$commands\n\n$footer';
 }

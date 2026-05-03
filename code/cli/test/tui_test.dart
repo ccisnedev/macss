@@ -35,9 +35,9 @@ void main() {
       expect(output.banner, contains('version'));
     });
 
-    test('TuiOutput.banner contains alias ma', () async {
+    test('TuiOutput.banner contains quickstart hint', () async {
       final output = await _makeTui().execute();
-      expect(output.banner, contains('ma'));
+      expect(output.banner, contains('macss create'));
     });
 
     test('TuiOutput.exitCode is 0', () async {
