@@ -32,6 +32,9 @@ void main() {
     );
     _writeFile(p.join(tplBase, 'docs', 'architecture.md'), '# Architecture');
     _writeFile(p.join(tplBase, 'docs', 'roadmap.md'), '# Roadmap');
+    _writeFile(p.join(assetsDir.path, 'assets', 'templates', 'project-base', 'README.md'), '# Project Name\n');
+    _writeFile(p.join(assetsDir.path, 'assets', 'templates', 'project-base', '.gitignore'), '.dart_tool/\nbuild/\n');
+    _writeFile(p.join(assetsDir.path, 'assets', 'templates', 'project-base', '.gitattributes'), '* text=auto eol=lf\n');
   });
 
   tearDown(() {
@@ -133,6 +136,44 @@ void main() {
       final output = await makeCmd(dest).execute();
       expect(output.exitCode, 0);
       expect(Directory(dest).existsSync(), isTrue);
+    });
+
+    test('creates README.md from template', () async {
+      final dest = p.join(tempRoot.path, 'proj-readme');
+      await makeCmd(dest).execute();
+
+      final readme = File(p.join(dest, 'README.md'));
+      expect(readme.existsSync(), isTrue);
+      expect(readme.readAsStringSync(), contains('# '));
+    });
+
+    test('creates .gitignore from template', () async {
+      final dest = p.join(tempRoot.path, 'proj-gi');
+      await makeCmd(dest).execute();
+
+      final gitignore = File(p.join(dest, '.gitignore'));
+      expect(gitignore.existsSync(), isTrue);
+      expect(gitignore.readAsStringSync(), isNotEmpty);
+    });
+
+    test('creates .gitattributes from template', () async {
+      final dest = p.join(tempRoot.path, 'proj-ga');
+      await makeCmd(dest).execute();
+
+      final gitattributes = File(p.join(dest, '.gitattributes'));
+      expect(gitattributes.existsSync(), isTrue);
+      expect(gitattributes.readAsStringSync(), contains('eol'));
+    });
+
+    test('does not overwrite existing README.md', () async {
+      final dest = p.join(tempRoot.path, 'proj-no-overwrite');
+      await makeCmd(dest).execute();
+
+      final readme = File(p.join(dest, 'README.md'));
+      readme.writeAsStringSync('# Custom');
+
+      await makeCmd(dest).execute();
+      expect(readme.readAsStringSync(), '# Custom');
     });
   });
 }

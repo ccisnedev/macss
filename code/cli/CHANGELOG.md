@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.0.3]
+
+### Added
+- `macss create` now generates `README.md` from template
+- `macss create` now generates `.gitignore` with common exclusions
+- `macss create` now generates `.gitattributes` for cross-platform line endings (LF default)
+
 ## [0.0.2]
 
 ### Changed
