@@ -130,6 +130,22 @@ class CreateCommand implements Command<CreateInput, CreateOutput> {
       );
     }
 
+    // 4. Root files from templates
+    final rootFiles = {
+      'README.md': 'templates/project-base/README.md',
+      '.gitignore': 'templates/project-base/.gitignore',
+      '.gitattributes': 'templates/project-base/.gitattributes',
+    };
+
+    for (final entry in rootFiles.entries) {
+      _ensureFileFromTemplate(
+        p.join(root, entry.key),
+        entry.value,
+        entry.key,
+        steps,
+      );
+    }
+
     if (steps.every((s) => s.startsWith('exists'))) {
       return CreateOutput(
         message: 'Project already initialized at $root\n${steps.join('\n')}',
