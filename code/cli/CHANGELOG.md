@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.0.2]
+
+### Changed
+- `macss create` now uses `--path` flag instead of positional argument
+  - Usage: `macss create --path=.` or `macss create -p <dir>`
+
 ## [0.0.1]
 
 ### Added
