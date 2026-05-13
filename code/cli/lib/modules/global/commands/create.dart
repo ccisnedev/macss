@@ -18,7 +18,7 @@ class CreateInput extends Input {
   CreateInput({required this.resolvedPath, required this.workingDirectory});
 
   factory CreateInput.fromCliRequest(CliRequest req) {
-    final rawPath = req.positionals.isEmpty ? null : req.positionals.first;
+    final rawPath = req.flagString('path', aliases: const ['p']);
     final workingDirectory = Directory.current.path;
 
     if (rawPath == null) {
@@ -80,7 +80,7 @@ class CreateCommand implements Command<CreateInput, CreateOutput> {
   @override
   String? validate() {
     if (input.resolvedPath == null || input.resolvedPath!.isEmpty) {
-      return 'path is required. Usage: macss create <path>';
+      return '--path is required. Usage: macss create --path=<dir>';
     }
     return null;
   }
