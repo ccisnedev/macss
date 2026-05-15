@@ -89,4 +89,79 @@ Cuatro esquinas. Un punto. Nada más.
 
 ---
 
+## Identidad de marca: Layer Cake Architecture
+
+> "Where you serve vertical slices."
+
+El símbolo de las cuatro esquinas evoluciona hacia el **pastel de capas** como identidad visual principal. La arquitectura se comunica directamente: un pastel de 3 capas sobre un plato, con una rebanada cortada que atraviesa todo — incluyendo el plato.
+
+### El pastel
+
+```
+              🍒  ← cereza verde
+        ┌─────────────────┐
+  app   │ ░░░░░░░░░░░░░░░ │  frosting (glaseado)
+        ├─────────────────┤
+  api   │ ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓ │  filling (relleno)
+        ├─────────────────┤
+  db    │ █████████████████ │  sponge (bizcocho)
+        ╞═════════════════╡
+  infra │ ▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪ │  plate (plato)
+        └─────────────────┘
+```
+
+### Mapeo capa → elemento
+
+| Elemento | Capa | Por qué funciona como metáfora |
+|----------|------|-------------------------------|
+| **Plate** (plato) | `infra/` | Soporte rígido. No se come. Sin él, el pastel no se sostiene. |
+| **Sponge** (bizcocho) | `db/` | Base porosa que absorbe y retiene. Estructura interna del pastel. |
+| **Filling** (relleno) | `api/` | El núcleo rico — la razón por la que comes el pastel. Lógica de negocio. |
+| **Frosting** (glaseado) | `app/` | Lo primero que ves y tocas. La presentación. |
+
+### Capas adicionales (toppings)
+
+El pastel es extensible. Nuevas capas opcionales se apilan como decoraciones:
+
+- `cli/` — interfaz textual
+- `site/` — documentación pública
+- `book/` — documentación extendida
+
+### El corte vertical (slice)
+
+Una rebanada corta **todas las capas incluyendo el plato**:
+
+```
+    ┌───────────────┐         ┌───┐
+    │ ░░░░░░░░░░░░░ │         │░░░│  ← app/modules/orders/
+    ├───────────────┤         ├───┤
+    │ ▓▓▓▓▓▓▓▓▓▓▓▓▓ │    →    │▓▓▓│  ← api/modules/orders/
+    ├───────────────┤         ├───┤
+    │ █████████████ │         │███│  ← db/modules/orders/
+    ╞═══════════════╡         ╞═══╡
+    │ ▪▪▪▪▪▪▪▪▪▪▪▪▪ │         │▪▪▪│  ← infra/ (pipeline, env)
+    └───────────────┘         └───┘
+     pastel completo       slice "orders"
+```
+
+El plato se corta porque un slice necesita su infraestructura: su Dockerfile, su pipeline de CI, su configuración de ambiente.
+
+### La cereza verde
+
+La cereza verde en la cima del pastel preserva el significado del punto verde original:
+
+- **Símbolo abstracto**: punto verde = quintaesencia, lo que emerge cuando los cuatro dominios están en equilibrio
+- **Layer Cake**: cereza verde = la calidad del software en producción — el resultado visible cuando todas las capas están correctamente integradas
+- **Referencia literaria**: la luz verde de Gatsby — el ideal que organiza todo el esfuerzo, visible pero nunca definitivamente alcanzado
+
+### Coexistencia de representaciones
+
+| Contexto | Representación |
+|----------|---------------|
+| Favicon, terminal, marca minimal | Símbolo abstracto (`█▀ ▀█ / • / █▄ ▄█`) |
+| Documentación, arquitectura, onboarding | Layer Cake con slice |
+| Comunicación verbal | "Layer Cake Architecture — where you serve vertical slices" |
+
+---
+
 *Identidad definida. Mayo 2026.*

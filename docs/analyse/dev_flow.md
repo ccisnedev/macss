@@ -1,6 +1,32 @@
 ## Flujo de desarrollo vertical (TDD)
 
-El desarrollo de funcionalidades sigue un enfoque **bottom-up** con Test-Driven Development (TDD) en cada etapa. Este proceso garantiza la calidad y correctitud desde la base de datos hasta la interfaz de usuario.
+El desarrollo de funcionalidades sigue un enfoque **bottom-up** con Test-Driven Development (TDD) en cada etapa. El flujo construye un **slice** (rebanada vertical) completo: desde la base de datos hasta la interfaz de usuario.
+
+### El slice como unidad de entrega
+
+Un slice se desarrolla capa por capa, de abajo hacia arriba:
+
+```
+db → api → app/cli
+```
+
+Cada etapa del flujo construye el módulo correspondiente dentro de una capa. Al completar todas las etapas, el slice queda funcionalmente completo.
+
+```
+        ┌───────────────────┐
+  app   │  ⑤ UI + E2E       │  ← Etapa 5
+        │  ④ Service+Ctrl   │  ← Etapa 4
+        ├───────────────────┤
+  api   │  ③ HTTP + integr. │  ← Etapa 3
+        │  ② UseCase        │  ← Etapa 2
+        ├───────────────────┤
+  db    │  ① Repository     │  ← Etapa 1
+        │  ⓪ DDL + DTOs     │  ← Etapa 0
+        └───────────────────┘
+        ◄──── slice ────────►
+```
+
+Este proceso garantiza la calidad y correctitud desde la base de datos hasta la interfaz de usuario. Al finalizar, el slice puede desplegarse y verificarse de forma independiente.
 
 ### Etapa 0: Diseño y contratos
 
