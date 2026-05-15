@@ -50,23 +50,51 @@ sequenceDiagram
 - **DB**: Sistema de persistencia (SQL). Se gestiona como **Database as Code** (scripts DDL declarativos, sin ORMs ni migraciones incrementales).
 
 ---
-## Módulos
+## Módulos y Slices
 ---
 
-Un **módulo** agrupa varios casos de uso relacionados que pertenecen al mismo dominio de negocio. El diagrama de capas muestra el flujo de *un* caso de uso; un módulo contiene varios de estos flujos.
+### Módulo
 
-Ejemplos: módulo de Clientes, módulo de Ventas, módulo de Inventario.
-
-Cada módulo atraviesa todas las capas (corte vertical):
+Un **módulo** agrupa varios casos de uso relacionados que pertenecen al mismo dominio de negocio, **dentro de una capa**. Cada capa (db, api, app, cli) organiza su código internamente en módulos.
 
 ```
-módulo Clientes/
-├── db/          → tablas y scripts DDL del dominio
-├── api/         → usecases, repositories, endpoints
-└── ui/          → services, controllers, vistas
+api/
+  modules/
+    customers/     → usecases, repositories, endpoints del dominio Clientes
+    sales/         → usecases, repositories, endpoints del dominio Ventas
+    inventory/     → usecases, repositories, endpoints del dominio Inventario
 ```
 
-**Regla clave**: un módulo tiene fronteras explícitas y dependencias declaradas con otros módulos. Si un módulo crece lo suficiente, puede extraerse como microservicio sin cambiar la arquitectura interna.
+Un módulo es la unidad organizativa dentro de una capa. Tiene fronteras explícitas y dependencias declaradas con otros módulos de la misma capa.
+
+### Slice (rebanada)
+
+Un **slice** es la unión lógica de los módulos homónimos a través de todas las capas. No es una carpeta — es un concepto mental y una restricción de coherencia.
+
+```
+slice "Customers" = db/modules/customers
+                  + api/modules/customers
+                  + app/modules/customers
+                  + cli/modules/customers  (opcional)
+```
+
+La metáfora: la solución integral es un **pastel de capas**. Cada capa (db, api, app, cli) es un estrato horizontal. Un **slice** es una rebanada vertical que corta transversalmente todas las capas, ofreciendo la experiencia funcional completa de un dominio de negocio.
+
+```
+        ┌─────────────────────────────────────┐
+  app   │  customers  │   sales   │ inventory │  ← capa (presentación)
+        ├─────────────┼───────────┼───────────┤
+  api   │  customers  │   sales   │ inventory │  ← capa (lógica)
+        ├─────────────┼───────────┼───────────┤
+  db    │  customers  │   sales   │ inventory │  ← capa (datos)
+        └─────────────┴───────────┴───────────┘
+        ◄── slice ───►
+```
+
+**Reglas clave**:
+- Si existe `api/modules/X/`, debe existir `db/modules/X/`.
+- Cada slice tiene fronteras explícitas y dependencias declaradas con otros slices.
+- Si un slice crece lo suficiente, puede extraerse como microservicio sin cambiar la arquitectura interna — se toma la rebanada completa y se despliega aparte.
 
 ---
 ## Cross-cutting concerns

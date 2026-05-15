@@ -114,13 +114,33 @@ Clase que ejecuta queries SQL contra la base de datos y mapea resultados a entid
 
 ### Módulo
 
-**Capa**: Transversal — organización vertical.
+**Capa**: Interna a cada capa — organización por dominio.
 
-Agrupación de casos de uso relacionados que pertenecen al mismo dominio de negocio. Un módulo atraviesa todas las capas (db, api, ui).
+Agrupación de casos de uso relacionados que pertenecen al mismo dominio de negocio, **dentro de una capa específica**. Cada capa (db, api, app, cli) organiza su código en módulos.
 
-Ejemplos: módulo de Clientes, módulo de Ventas, módulo de Inventario.
+Ejemplos: `api/modules/customers/`, `db/modules/customers/`, `app/modules/customers/`.
 
-**Regla clave**: fronteras explícitas y dependencias declaradas. Un módulo puede extraerse como microservicio sin cambiar su arquitectura interna.
+**Regla clave**: fronteras explícitas y dependencias declaradas con otros módulos de la misma capa. Un módulo no es cross-layer — es la unidad organizativa *dentro* de una capa.
+
+**Relación con Slice**: los módulos homónimos de distintas capas forman un slice.
+
+---
+
+### Slice (rebanada)
+
+**Capa**: Transversal — concepto mental, no artefacto físico.
+
+La unión lógica de los módulos que comparten un dominio de negocio a través de todas las capas. Un slice corta transversalmente el sistema como una rebanada corta un pastel de capas.
+
+```
+slice "payments" = db/modules/payments + api/modules/payments + app/modules/payments
+```
+
+**No es una carpeta.** Es una restricción de coherencia: si existe un módulo `X` en `api/`, debe existir su contraparte en `db/`. La convención de nombres iguales es lo que materializa el slice.
+
+**Propiedad clave**: un slice puede extraerse como microservicio sin cambiar su arquitectura interna — se toma la rebanada completa (todos los módulos homónimos) y se despliega de forma independiente.
+
+**Metáfora**: Le Corbusier llamó *cellule* a la unidad mínima habitable de la Unité d'Habitation. En MACSS, el slice es la *cellule* — la unidad mínima funcional completa de una solución integral de software.
 
 ---
 

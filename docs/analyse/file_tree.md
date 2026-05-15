@@ -1,16 +1,78 @@
 ## Estructura de carpetas
 
-La aplicación se organiza en cuatro directorios principales que separan claramente las responsabilidades:
+Un monorepo MACSS organiza una solución integral de software en capas horizontales. Cada capa contiene módulos por dominio de negocio. La unión de módulos homónimos a través de las capas forma un **slice** (rebanada vertical).
 
 ```
-/docs/
-/code
-├── infra/
-├── db/
-├── api/
-└── ui/
-README.md
+<monorepo>/
+├── code/
+│   ├── infra/               ← infraestructura (IaC, Docker, CI/CD)
+│   ├── db/                  ← capa de datos
+│   │   └── modules/
+│   │       ├── customers/   ← schema, seeds del dominio Clientes
+│   │       ├── sales/
+│   │       └── inventory/
+│   ├── api/                 ← capa de lógica de negocio
+│   │   └── modules/
+│   │       ├── customers/   ← usecases, repositories, endpoints
+│   │       ├── sales/
+│   │       └── inventory/
+│   ├── app/                 ← capa de presentación (UI)
+│   │   └── modules/
+│   │       ├── customers/   ← services, controllers, vistas
+│   │       ├── sales/
+│   │       └── inventory/
+│   └── cli/                 ← capa de presentación (CLI)
+│       └── modules/
+│           ├── customers/
+│           └── sales/
+├── docs/
+│   ├── adr/                 ← Architecture Decision Records
+│   ├── architecture.md
+│   └── roadmap.md
+├── .gitignore
+└── README.md
 ```
+
+### Capas (horizontales del pastel)
+
+| Capa | Responsabilidad |
+|------|----------------|
+| `infra/` | Infraestructura como código: Docker, Terraform, pipelines CI/CD, configuración de ambientes |
+| `db/` | Database as Code: scripts DDL declarativos, seeds, sin ORMs ni migraciones incrementales |
+| `api/` | Backend: UseCases, Repositories, Services, endpoints HTTP. Framework: `modular_api` |
+| `app/` | Cliente UI: Services (HTTP), Controllers (estado), Interfaces (vistas). Patrón MVC |
+| `cli/` | Cliente CLI: mismo patrón que app/ pero con interfaz textual |
+
+### Módulos (dentro de cada capa)
+
+Cada capa organiza su código en `modules/`, un directorio por dominio de negocio:
+
+- `modules/customers/` — todo lo relativo a Clientes dentro de esa capa
+- `modules/sales/` — todo lo relativo a Ventas dentro de esa capa
+
+### Slices (concepto transversal)
+
+Un slice **no es una carpeta** — es la unión lógica de módulos homónimos:
+
+```
+slice "customers" = db/modules/customers
+                  + api/modules/customers
+                  + app/modules/customers
+                  + cli/modules/customers (opcional)
+```
+
+**Invariante**: si existe `api/modules/X/`, debe existir `db/modules/X/`.
+
+---
+
+### `infra/`
+
+Infraestructura como código:
+
+- **Docker**: Dockerfiles, docker-compose para desarrollo local
+- **IaC**: Terraform, Pulumi o scripts de provisioning
+- **CI/CD**: Workflows de GitHub Actions, pipelines
+- **Config**: Variables de entorno por ambiente (dev, staging, prod)
 
 ### `db/`
 
@@ -35,16 +97,15 @@ Backend que expone la lógica de negocio mediante HTTP:
 - **Service**: Clases que encapsulan llamadas a APIs externas (con `httpClient()`)
 - **Endpoints**: Exposición HTTP de los casos de uso
 
-### `ui/` (/cli también entra en esta categoría)
+### `app/` y `cli/`
 
-Aplicación cliente que consume el API:
+Aplicaciones cliente que consumen el API:
 
-- **Patrón**: MVC/MVVM
 - **Service (por módulo)**: Clases que encapsulan las llamadas HTTP al API
-    - **No hay llamadas directas a APIs externas**: todo se canaliza a través de `api/v<>/`
-    - La única otra api es /auth/ para autenticación, que puede tener una url diferente pero sigue el mismo patrón de Service
-- **Controller**: Orquesta las llamadas entre la UI y las clases Service
-    - Cada widget/vista tiene su propio Controller
-- **UI**: Componentes visuales que reaccionan a los cambios de estado del Controller
+    - **No hay llamadas directas a APIs externas**: todo se canaliza a través de `api/`
+    - La única otra api es `/auth/` para autenticación
+- **Controller**: Orquesta las llamadas entre la interfaz y las clases Service
+    - Cada vista tiene su propio Controller
+- **Interfaz**: Componentes visuales (app) o textuales (cli) que reaccionan al estado del Controller
 
 ---
