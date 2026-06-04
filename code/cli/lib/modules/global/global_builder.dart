@@ -3,6 +3,7 @@ import 'package:modular_cli_sdk/modular_cli_sdk.dart';
 import '../../assets.dart';
 import 'commands/create.dart';
 import 'commands/doctor.dart';
+import 'commands/help.dart';
 import 'commands/tui.dart';
 import 'commands/uninstall.dart';
 import 'commands/upgrade.dart';
@@ -13,6 +14,12 @@ void buildGlobalModule(ModuleBuilder m, {required Assets assets}) {
     '',
     (req) => TuiCommand(TuiInput.fromCliRequest(req)),
     description: 'Display MACSS banner and available commands',
+  );
+
+  m.command<HelpInput, HelpOutput>(
+    'help',
+    (req) => HelpCommand(HelpInput.fromCliRequest(req)),
+    description: 'Show available commands',
   );
 
   m.command<CreateInput, CreateOutput>(
