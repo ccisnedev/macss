@@ -28,13 +28,16 @@ class GraphqlCompileInput extends Input {
     required this.helpRequested,
   });
 
-  factory GraphqlCompileInput.fromCliRequest(CliRequest req) {
+  factory GraphqlCompileInput.fromCliRequest(
+    CliRequest req, {
+    String? workingDirectory,
+  }) {
     return GraphqlCompileInput(
       sourceRoot: req.flagString('source-root'),
       metadataFile: req.flagString('metadata'),
       outputDirectory: req.flagString('output'),
       engine: req.flagString('engine'),
-      workingDirectory: Directory.current.path,
+      workingDirectory: workingDirectory ?? Directory.current.path,
       helpRequested: req.isHelpRequested,
     );
   }

@@ -8,16 +8,12 @@ import 'package:macss_cli/modules/api/graphql/commands/compile.dart';
 void main() {
   group('GraphqlCompileInput', () {
     late Directory tempDir;
-    late String originalWorkingDirectory;
 
     setUp(() {
-      originalWorkingDirectory = Directory.current.path;
       tempDir = Directory.systemTemp.createTempSync('macss_compile_input_');
-      Directory.current = tempDir.path;
     });
 
     tearDown(() {
-      Directory.current = originalWorkingDirectory;
       if (tempDir.existsSync()) {
         tempDir.deleteSync(recursive: true);
       }
@@ -45,7 +41,10 @@ void main() {
         positionals: const [],
       );
 
-      final input = GraphqlCompileInput.fromCliRequest(req);
+      final input = GraphqlCompileInput.fromCliRequest(
+        req,
+        workingDirectory: tempDir.path,
+      );
 
       expect(input.sourceRoot, equals('services/orders/db'));
       expect(
@@ -66,7 +65,10 @@ void main() {
         positionals: const [],
       );
 
-      final input = GraphqlCompileInput.fromCliRequest(req);
+      final input = GraphqlCompileInput.fromCliRequest(
+        req,
+        workingDirectory: tempDir.path,
+      );
 
       expect(input.helpRequested, isTrue);
     });
