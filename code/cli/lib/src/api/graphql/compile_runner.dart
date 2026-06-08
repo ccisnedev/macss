@@ -3,6 +3,7 @@ library;
 import 'dart:io';
 
 import 'package:modular_api/modular_api.dart';
+import 'package:modular_api_sqlserver/modular_api_sqlserver.dart';
 
 import 'compile_config.dart';
 

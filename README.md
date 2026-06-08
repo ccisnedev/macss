@@ -21,6 +21,22 @@ MACSS is the umbrella project for multiple development surfaces.
 `modular_api` is an important component inside MACSS, but it is not the root
 product. The root product is MACSS itself.
 
+## Milestone Achieved (June 2026)
+
+The `modular_api` subsystem has reached a major delivery milestone inside the
+MACSS ecosystem:
+
+- GraphQL integration is now implemented across the subsystem.
+- The multi-SDK package ecosystem (Dart, TypeScript, Python) is already
+	operational and publishable.
+- Complementary publish workflows and release gates are in place for the
+	package train.
+
+This confirms the intended architecture boundary:
+
+- `modular_api` provides runtime and package surfaces.
+- `macss` provides the companion CLI boundary used by teams and pipelines.
+
 ## CLI Naming Decision
 
 The official command-line entry point for the ecosystem is `macss`.
@@ -97,6 +113,10 @@ For GraphQL compile mode, the current direction is:
 macss api graphql compile
 ```
 
+In CI/CD, GraphQL artifact compilation must be executed through the `macss`
+companion CLI surface, preserving one ecosystem entry point and avoiding
+tooling drift.
+
 This keeps the command aligned with the actual product structure:
 
 - MACSS is the ecosystem root
@@ -126,7 +146,8 @@ structure.
 
 ## Next Design Step
 
-The next strong design stage in the CLI is the `api` module.
+The next strong design stage in the CLI is hardening the `api` module after the
+GraphQL and package-ecosystem milestone.
 
 The first concrete vertical slice under that module is expected to be GraphQL
 artifact tooling for `modular_api`, beginning with commands in the shape of:
@@ -137,5 +158,5 @@ macss api graphql check
 macss api graphql schema
 ```
 
-The exact subcommands, flags, and output contracts will be designed as part of
-the `api` module architecture.
+The exact contracts of `check` and `schema`, plus CI/CD operating profiles,
+should be finalized as the next slice of the `api` module architecture.
