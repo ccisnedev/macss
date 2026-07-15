@@ -221,8 +221,8 @@ Convenience function for one-shot HTTP calls. Internally creates a temporary
 `ServiceClient`, sends the request, and closes the connection.
 
 When documentation says "use `httpClient()`", it means "use the service client
-to make the HTTP call". The implementation lives in the `service_client` package
-(Dart, TypeScript, Python).
+to make the HTTP call". The implementation ships inside `modular_api` as its
+REST and GraphQL client packages (Dart, TypeScript, Python).
 
 ---
 

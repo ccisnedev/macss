@@ -64,7 +64,7 @@ Minimum gates:
 
 ## Architectural constraints validated by tests
 
-- clear layer responsibilities (`db`, `api`, `app`/`ui`, `infra`)
+- clear layer responsibilities (`db`, `api`, `app`, `infra`)
 - unidirectional request-response flow
 - external integrations centralized in `api`
 - declarative database-as-code workflow

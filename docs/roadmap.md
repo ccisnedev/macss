@@ -92,6 +92,89 @@ Examples under consideration:
 
 These are ecosystem modules, not separate top-level product CLIs.
 
+## Stage 3.5 - Cross-Platform CLI and Project Flavors
+
+### Cross-platform target
+
+The `macss` CLI must operate natively on Windows, Linux, and macOS — the same
+portability expectation Flutter sets. Project scaffolding (`macss create`) is
+pure file generation and carries no external runtime dependency on any platform.
+
+### Scaffolding flavors
+
+`macss create` should let the developer choose the technology of each layer while
+keeping the same architectural geometry (the wax foundation stays constant; only
+the stamped implementation changes):
+
+- **db**: `sqlserver` (DACPAC / `.dacpac` workflow) or `postgres` (declarative
+	`pg_schema` workflow)
+- **api**: `python`, `dart`, or `typescript` (aligned with the `modular_api` SDKs)
+- **app**: Flutter as the initial base surface
+
+Each flavor stamps a working base project that already follows the MACSS layer
+model and request flow.
+
+### Deploy and provision boundary
+
+Deployment and provisioning are delegated to the published `macss-devops`
+PowerShell module, not reimplemented in the CLI:
+
+- `macss` (Dart) is the cross-platform front door; `macss-devops` remains the
+	engine where PowerShell is the correct tool (SqlPackage/DACPAC, Docker stack
+	over SSH, Flutter web publish).
+- Delegation runs through `pwsh`, which is itself cross-platform (Windows, Linux,
+	macOS), so a developer on any OS can deploy the same way.
+- `pwsh` and the `macss-devops` module become documented prerequisites of the
+	deploy/provision commands.
+
+This keeps interface unification (one entry point) without implementation
+rewrite, consistent with the separate-surfaces decision.
+
+### `macss doctor` as dependency preflight
+
+`macss doctor` owns the responsibility of failing early instead of mid-deploy.
+It should detect missing tooling and print the exact install command for each
+gap rather than a bare error:
+
+- `pwsh` (PowerShell 7+), the `macss-devops` module, `.NET` runtime
+- flavor-specific tools: `pgschema` (postgres), `microsoft.sqlpackage` / DACPAC
+	(sqlserver), Docker, `ssh`, Flutter (app)
+
+Each check reports present/missing and, when missing, the platform-appropriate
+install command, so a developer on any OS can reach a deployable state from a
+single diagnostic run.
+
+## Stage 3.6 - DevOps Tooling Consolidation
+
+### Ecosystem taxonomy
+
+MACSS distinguishes two kinds of ecosystem members, and this decides where each
+one lives:
+
+- **Runtime products that user apps embed** — e.g. `modular_api` and its SDKs.
+	These stay as sibling repositories, referenced (not vendored) by MACSS, because
+	end-user applications depend on them at runtime and they have a life of their
+	own.
+- **Companion tooling for the MACSS workflow** — the `macss` CLI, documentation,
+	book, templates, and DevOps automation. These live **inside** the macss repo,
+	because no user app embeds them; they exist to serve the MACSS workflow.
+
+### macss-devops migration
+
+Under this taxonomy, `macss-devops` is companion tooling — the deploy/provision
+engine the CLI delegates to — so it belongs in the macss repo at
+`code/powershell`, alongside the CLI at `code/cli`.
+
+- migrate `macss-devops` into `code/powershell` as a fresh English rewrite
+	(git history not preserved; the module is early-stage)
+- preserve the published module identity: same `macss-devops` name, same SemVer
+	line, PSGallery publish workflow path-filtered to `code/powershell/**` for an
+	independent release cadence within the monorepo
+- co-location keeps the CLI ↔ devops delegation contract aligned atomically,
+	removing the cross-repo version dance
+- tracked in `ccisnedev/devops` issues #46 (legacy cmdlet removal) and #47
+	(migration + rewrite)
+
 ## Stage 4 - Companion Tooling Expansion
 
 MACSS is expected to grow as a development companion beyond basic command
