@@ -42,7 +42,6 @@ void main() {
           outputDirectory: p.join(tempDir.path, 'out'),
           engine: 'sqlserver',
           workingDirectory: tempDir.path,
-          helpRequested: false,
         ),
         configResolver: GraphqlCompileConfigResolver(environment: const {}),
         runner: runner,
@@ -69,7 +68,6 @@ void main() {
           outputDirectory: p.join(tempDir.path, 'out'),
           engine: 'sqlserver',
           workingDirectory: tempDir.path,
-          helpRequested: false,
         ),
         configResolver: GraphqlCompileConfigResolver(environment: const {}),
         runner: runner,
@@ -89,7 +87,6 @@ void main() {
           outputDirectory: p.join(tempDir.path, 'out'),
           engine: 'sqlserver',
           workingDirectory: tempDir.path,
-          helpRequested: false,
         ),
         configResolver: GraphqlCompileConfigResolver(environment: const {}),
         runner: runner,
@@ -99,28 +96,6 @@ void main() {
       expect(output.toText(), contains('boom'));
     });
 
-    test('help output does not invoke the runner', () async {
-      final runner = _RecordingRunner(
-        result: const GraphqlCompileRunResult(message: 'should not run'),
-      );
-
-      final output = await GraphqlCompileCommand(
-        GraphqlCompileInput(
-          sourceRoot: null,
-          metadataFile: null,
-          outputDirectory: null,
-          engine: null,
-          workingDirectory: tempDir.path,
-          helpRequested: true,
-        ),
-        configResolver: GraphqlCompileConfigResolver(environment: const {}),
-        runner: runner,
-      ).execute();
-
-      expect(output.exitCode, 0);
-      expect(output.toText(), contains('Usage:'));
-      expect(runner.seenConfig, isNull);
-    });
   });
 }
 

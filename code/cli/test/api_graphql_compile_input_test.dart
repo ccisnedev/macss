@@ -55,22 +55,5 @@ void main() {
       expect(input.engine, equals('sqlserver'));
       expect(input.workingDirectory, equals(tempDir.path));
     });
-
-    test('captures contextual help requests from flags', () {
-      final req = CliRequest(
-        originalArgs: const ['api', 'graphql', 'compile', '--help'],
-        matchedCommand: const ['api', 'graphql', 'compile'],
-        params: const {},
-        flags: const {'help': ''},
-        positionals: const [],
-      );
-
-      final input = GraphqlCompileInput.fromCliRequest(
-        req,
-        workingDirectory: tempDir.path,
-      );
-
-      expect(input.helpRequested, isTrue);
-    });
   });
 }

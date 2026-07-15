@@ -9,7 +9,7 @@ code/
   infra/    # Infrastructure and deployment
   db/       # Database layer
   api/      # Backend services
-  ui/       # Frontend applications
+  app/      # Frontend applications
 docs/
   adr/      # Architecture Decision Records
 ```

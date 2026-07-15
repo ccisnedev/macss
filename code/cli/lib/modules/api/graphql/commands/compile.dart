@@ -17,7 +17,6 @@ class GraphqlCompileInput extends Input {
   final String? outputDirectory;
   final String? engine;
   final String workingDirectory;
-  final bool helpRequested;
 
   GraphqlCompileInput({
     required this.sourceRoot,
@@ -25,7 +24,6 @@ class GraphqlCompileInput extends Input {
     required this.outputDirectory,
     required this.engine,
     required this.workingDirectory,
-    required this.helpRequested,
   });
 
   factory GraphqlCompileInput.fromCliRequest(
@@ -38,9 +36,32 @@ class GraphqlCompileInput extends Input {
       outputDirectory: req.flagString('output'),
       engine: req.flagString('engine'),
       workingDirectory: workingDirectory ?? Directory.current.path,
-      helpRequested: req.isHelpRequested,
     );
   }
+
+  /// Declared contract: the four compile options. Declaring them rejects any
+  /// other flag at parse time and publishes them in help.
+  static final List<CliParam> params = [
+    CliParam.string(
+      'source-root',
+      description: 'GraphQL source root. Default: code/db',
+    ),
+    CliParam.string(
+      'metadata',
+      description: 'Metadata file. Default: <source-root>/graphql.metadata.jsonc',
+    ),
+    CliParam.string(
+      'output',
+      description: 'Artifact directory. Default: .modular_api/graphql',
+    ),
+    CliParam.string(
+      'engine',
+      description: 'GraphQL engine. Supported: sqlserver',
+    ),
+  ];
+
+  @override
+  List<CliParam> get schemaFields => params;
 
   @override
   Map<String, dynamic> toJson() => {
@@ -49,7 +70,6 @@ class GraphqlCompileInput extends Input {
     'outputDirectory': outputDirectory,
     'engine': engine,
     'workingDirectory': workingDirectory,
-    'helpRequested': helpRequested,
   };
 }
 
@@ -99,10 +119,6 @@ class GraphqlCompileCommand
 
   @override
   Future<GraphqlCompileOutput> execute() async {
-    if (input.helpRequested) {
-      return GraphqlCompileOutput(message: graphqlCompileHelpText);
-    }
-
     final resolved = configResolver.resolve(input);
 
     try {
@@ -142,14 +158,3 @@ class GraphqlCompileCommand
     }
   }
 }
-
-const graphqlCompileHelpText = '''Usage:
-  macss api graphql compile [--source-root=<dir>] [--metadata=<file>] [--output=<dir>] [--engine=<engine>]
-
-Options:
-  --source-root   GraphQL source root. Default: code/db
-  --metadata      Metadata file. Default: <source-root>/graphql.metadata.jsonc
-  --output        Artifact directory. Default: .modular_api/graphql
-  --engine        GraphQL engine. Supported: sqlserver
-  --help, -h      Show this help message
-''';

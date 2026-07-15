@@ -11,5 +11,6 @@ void buildApiModule(ModuleBuilder m, {GraphqlCompileRunner? runner}) {
       runner: runner,
     ),
     description: 'Compile GraphQL artifacts for modular_api',
+    params: GraphqlCompileInput.params,
   );
 }

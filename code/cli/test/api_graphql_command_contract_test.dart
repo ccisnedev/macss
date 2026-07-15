@@ -47,7 +47,9 @@ void main() {
       expect(await stderr.text(), isEmpty);
     });
 
-    test('matched commands do not get contextual help automatically', () async {
+    test('matched commands get contextual help from the contract', () async {
+      // Since modular_cli_sdk 0.3.3 the framework answers `--help` itself,
+      // rendering the command's declared contract before the command body runs.
       final cli = ModularCli()
         ..command<_ProbeInput, _ProbeOutput>(
           'probe',
@@ -66,7 +68,9 @@ void main() {
       );
 
       expect(code, ExitCode.ok);
-      expect(await stdout.text(), equals('helpRequested=true\n'));
+      final out = await stdout.text();
+      expect(out, contains('Usage: probe'));
+      expect(out, isNot(contains('helpRequested')));
       expect(await stderr.text(), isEmpty);
     });
   });
