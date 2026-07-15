@@ -27,7 +27,6 @@ void main() {
         outputDirectory: null,
         engine: null,
         workingDirectory: tempDir.path,
-        helpRequested: false,
       );
 
       final resolved = GraphqlCompileConfigResolver(
@@ -53,7 +52,6 @@ void main() {
         outputDirectory: null,
         engine: null,
         workingDirectory: tempDir.path,
-        helpRequested: false,
       );
 
       final resolved = GraphqlCompileConfigResolver(
@@ -87,7 +85,6 @@ void main() {
         outputDirectory: 'build/graphql',
         engine: 'sqlserver',
         workingDirectory: tempDir.path,
-        helpRequested: false,
       );
 
       final resolved = GraphqlCompileConfigResolver(

@@ -1,10 +1,13 @@
 import 'dart:io';
 
+import 'package:modular_cli_sdk/modular_cli_sdk.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
 import 'package:macss_cli/assets.dart';
 import 'package:macss_cli/modules/global/commands/create.dart';
+
+import 'support/memory_sink.dart';
 
 void main() {
   late Directory tempRoot;
@@ -32,6 +35,9 @@ void main() {
     );
     _writeFile(p.join(tplBase, 'docs', 'architecture.md'), '# Architecture');
     _writeFile(p.join(tplBase, 'docs', 'roadmap.md'), '# Roadmap');
+    for (final mod in ['infra', 'db', 'api', 'app']) {
+      _writeFile(p.join(tplBase, 'code', mod, 'README.md'), '# $mod\n');
+    }
     _writeFile(p.join(assetsDir.path, 'assets', 'templates', 'project-base', 'README.md'), '# Project Name\n');
     _writeFile(p.join(assetsDir.path, 'assets', 'templates', 'project-base', '.gitignore'), '.dart_tool/\nbuild/\n');
     _writeFile(p.join(assetsDir.path, 'assets', 'templates', 'project-base', '.gitattributes'), '* text=auto eol=lf\n');
@@ -48,6 +54,60 @@ void main() {
     ),
     assets: assets,
   );
+
+  // Wires `create` through the SDK exactly as the global builder does, but with
+  // the test assets — so contract parsing (abbr, rejection) is exercised end to
+  // end without depending on the compiled binary's asset layout.
+  ModularCli makeCli() => ModularCli()
+    ..command<CreateInput, CreateOutput>(
+      'create',
+      (req) => CreateCommand(CreateInput.fromCliRequest(req), assets: assets),
+      description: 'Scaffold a new MACSS project',
+      params: CreateInput.params,
+    );
+
+  group('macss create contract', () {
+    test('rejects an undeclared option before scaffolding', () async {
+      final dest = p.join(tempRoot.path, 'reject-proj');
+      final stderr = MemorySink();
+
+      final code = await makeCli().run(
+        ['create', '--path=$dest', '--bogus'],
+        stdout: MemorySink().sink,
+        stderr: stderr.sink,
+      );
+
+      expect(code, 7); // ExitCode.validationFailed
+      expect(await stderr.text(), contains('unknown option --bogus'));
+      expect(Directory(dest).existsSync(), isFalse); // never scaffolded
+    });
+
+    test('still accepts the -p abbreviation', () async {
+      final dest = p.join(tempRoot.path, 'abbr-proj');
+
+      final code = await makeCli().run(
+        ['create', '-p', dest],
+        stdout: MemorySink().sink,
+        stderr: MemorySink().sink,
+      );
+
+      expect(code, 0);
+      expect(File(p.join(dest, 'README.md')).existsSync(), isTrue);
+    });
+
+    test('still accepts the --path option', () async {
+      final dest = p.join(tempRoot.path, 'long-proj');
+
+      final code = await makeCli().run(
+        ['create', '--path=$dest'],
+        stdout: MemorySink().sink,
+        stderr: MemorySink().sink,
+      );
+
+      expect(code, 0);
+      expect(File(p.join(dest, 'README.md')).existsSync(), isTrue);
+    });
+  });
 
   group('macss create', () {
     test('validate returns error when path is null', () {
@@ -67,13 +127,17 @@ void main() {
       expect(output.created, isTrue);
     });
 
-    test('creates code/db, code/api, code/ui', () async {
+    test('stamps a README anchor in each module (survives first commit)', () async {
       final dest = p.join(tempRoot.path, 'proj');
       await makeCmd(dest).execute();
 
-      expect(Directory(p.join(dest, 'code', 'db')).existsSync(), isTrue);
-      expect(Directory(p.join(dest, 'code', 'api')).existsSync(), isTrue);
-      expect(Directory(p.join(dest, 'code', 'ui')).existsSync(), isTrue);
+      for (final mod in ['infra', 'db', 'api', 'app']) {
+        expect(
+          File(p.join(dest, 'code', mod, 'README.md')).existsSync(),
+          isTrue,
+          reason: 'code/$mod must have a README anchor',
+        );
+      }
     });
 
     test('creates doc files from templates', () async {

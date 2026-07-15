@@ -4,8 +4,11 @@ import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
 import 'package:macss_cli/assets.dart';
+import 'package:macss_cli/macss_cli.dart';
 import 'package:macss_cli/modules/global/commands/doctor.dart';
 import 'package:macss_cli/modules/global/commands/version.dart';
+
+import 'support/memory_sink.dart';
 
 Assets _makeAssets(Directory root, {List<String> presentTemplates = const []}) {
   final assets = Assets(root: root.path);
@@ -38,6 +41,20 @@ void main() {
       DoctorCommand(DoctorInput(), assets: assets);
 
   group('macss doctor', () {
+    test('rejects an undeclared option (empty params contract)', () async {
+      final stdout = MemorySink();
+      final stderr = MemorySink();
+
+      final code = await runMacss(
+        const ['doctor', '--bogus'],
+        stdout: stdout.sink,
+        stderr: stderr.sink,
+      );
+
+      expect(code, 7); // ExitCode.validationFailed
+      expect(await stderr.text(), contains('unknown option --bogus'));
+    });
+
     test('all checks pass when assets and templates are present', () async {
       // Create the templates directory so directoryExists('templates') passes
       Directory(

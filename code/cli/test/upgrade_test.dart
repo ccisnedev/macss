@@ -1,10 +1,29 @@
 import 'package:test/test.dart';
 
+import 'package:macss_cli/macss_cli.dart';
 import 'package:macss_cli/modules/global/commands/upgrade.dart';
 import 'package:macss_cli/modules/global/commands/version.dart';
 
+import 'support/memory_sink.dart';
+
 void main() {
   group('macss upgrade', () {
+    // The empty contract rejects the flag before execute() runs, so this never
+    // touches the network or the install directory.
+    test('rejects an undeclared option (empty params contract)', () async {
+      final stdout = MemorySink();
+      final stderr = MemorySink();
+
+      final code = await runMacss(
+        const ['upgrade', '--bogus'],
+        stdout: stdout.sink,
+        stderr: stderr.sink,
+      );
+
+      expect(code, 7); // ExitCode.validationFailed
+      expect(await stderr.text(), contains('unknown option --bogus'));
+    });
+
     test('UpgradeInput serializes correctly', () {
       final input = UpgradeInput(installDir: '/fake/dir');
       expect(input.toJson(), {'installDir': '/fake/dir'});

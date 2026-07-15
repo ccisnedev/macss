@@ -13,9 +13,12 @@ import 'src/api/graphql/compile_runner.dart';
 import 'modules/api/api_builder.dart';
 import 'modules/global/global_builder.dart';
 
+/// `--help` / `-h` are left to the SDK, which routes every help request itself
+/// (including the focused `macss <command> --help`). Only `--version` / `-v`
+/// need normalizing, since the SDK has no version convention.
 List<String> normalizeMacssArgs(List<String> args) {
-  if (args.length == 1 && (args.first == '--help' || args.first == '-h')) {
-    return const ['help'];
+  if (args.length == 1 && (args.first == '--version' || args.first == '-v')) {
+    return const ['version'];
   }
   return args;
 }

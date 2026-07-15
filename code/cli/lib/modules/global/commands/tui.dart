@@ -14,6 +14,12 @@ class TuiInput extends Input {
 
   factory TuiInput.fromCliRequest(CliRequest req) => TuiInput();
 
+  /// Empty contract: the root banner takes no option.
+  static const List<CliParam> params = [];
+
+  @override
+  List<CliParam> get schemaFields => params;
+
   @override
   Map<String, dynamic> toJson() => {};
 }

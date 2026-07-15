@@ -36,7 +36,6 @@ void main() {
           outputDirectory: p.join(tempDir.path, 'artifacts', 'graphql'),
           engine: 'postgres',
           workingDirectory: tempDir.path,
-          helpRequested: false,
         ),
         configResolver: GraphqlCompileConfigResolver(environment: const {}),
       ).execute();
@@ -53,7 +52,6 @@ void main() {
           outputDirectory: p.join(tempDir.path, 'artifacts', 'graphql'),
           engine: 'sqlserver',
           workingDirectory: tempDir.path,
-          helpRequested: false,
         ),
         configResolver: GraphqlCompileConfigResolver(environment: const {}),
       ).execute();
@@ -70,7 +68,6 @@ void main() {
           outputDirectory: p.join(tempDir.path, 'artifacts', 'graphql'),
           engine: 'sqlserver',
           workingDirectory: tempDir.path,
-          helpRequested: false,
         ),
         configResolver: GraphqlCompileConfigResolver(environment: const {}),
       ).execute();
@@ -87,7 +84,6 @@ void main() {
           outputDirectory: p.join(tempDir.path, 'artifacts', 'graphql'),
           engine: 'sqlserver',
           workingDirectory: tempDir.path,
-          helpRequested: false,
         ),
         configResolver: GraphqlCompileConfigResolver(environment: const {}),
         runner: _SuccessRunner(),
