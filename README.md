@@ -14,12 +14,47 @@ MACSS is the umbrella project for multiple development surfaces.
 - Architecture documentation and ecosystem conventions
 - The official `macss` companion CLI
 - Project scaffolding and templates
+- Reference content such as the book under `code/book`
 - Future AI skills and companion automation
-- Future reference content such as the book under `code/book`
-- Ecosystem components such as `modular_api`
+- Ecosystem components such as `modular_api` and `macss-devops`
 
-`modular_api` is an important component inside MACSS, but it is not the root
-product. The root product is MACSS itself.
+These components are the root product's building blocks, but none of them is the
+root product. The root product is MACSS itself.
+
+## Ecosystem Components
+
+MACSS is the ecosystem root. The components below are independent, already
+published, and live in sibling repositories. MACSS references them; it does not
+vendor them.
+
+### `modular_api` — runtime and SDKs
+
+Monorepo of official SDKs for building modular, use-case-centric HTTP APIs, with
+aligned implementations in Dart, TypeScript, and Python. Each endpoint maps to
+one use case. Optional capabilities — health, metrics, OpenAPI, interactive
+docs, and GraphQL — are official plugins mounted under a shared `basePath`.
+GraphQL provides the optional CQRS query side; REST-only APIs remain first-class.
+
+| Language | Package | Registry |
+|---|---|---|
+| Dart | `modular_api` | pub.dev |
+| TypeScript | `@macss/modular-api` | npm |
+| Python | `macss-modular-api` | PyPI |
+
+The `macss api graphql ...` CLI surface operates on `modular_api` projects.
+
+### `macss-devops` — PowerShell automation
+
+Published PowerShell module for DevOps automation across development, testing,
+CI/CD, and deployment: Flutter builds, declarative SQL Server packaging, Docker
+stack deploys over SSH, GitHub issue creation, and `dev → main` merges, among
+others.
+
+```powershell
+Install-Module macss-devops -Repository PSGallery -Scope CurrentUser
+Import-Module macss-devops
+Get-Command -Module macss-devops   # list available cmdlets
+```
 
 ## Milestone Achieved (June 2026)
 

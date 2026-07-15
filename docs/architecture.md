@@ -13,6 +13,7 @@ It is not limited to a single SDK or runtime. It is the ecosystem root that may
 contain multiple assets and companion surfaces, including:
 
 - runtime-oriented components such as `modular_api`
+- DevOps automation such as the published `macss-devops` PowerShell module
 - architecture documentation
 - CLI automation
 - prompts and future AI skills

@@ -122,7 +122,7 @@ No hay un único inventor. El concepto emergió de Dijkstra (1968) y Parnas (197
 | Dimensión | Arquitectura material | Arquitectura de software | MACSS |
 |-----------|----------------------|--------------------------|-------|
 | **Estructura portante** | Columnas, vigas, cimentación | Infraestructura: DB, runtime, red | Database as Code, capas server |
-| **Distribución espacial** | Plantas, habitaciones, circulaciones | Módulos, capas, separación de concerns | Corte vertical por módulo (db + api + ui) |
+| **Distribución espacial** | Plantas, habitaciones, circulaciones | Módulos, capas, separación de concerns | Corte vertical por módulo (db + api + app) |
 | **Instalaciones** | Agua, electricidad, HVAC | Cross-cutting concerns | Auth, logging, config, error handling |
 | **Fachada / interfaz** | Envolvente visible al exterior | API pública, contratos | OpenAPI (commands), GraphQL Schema (queries) |
 | **Normativa** | Códigos de edificación, zonificación | Estándares, contratos, tests | Especificación ejecutable (tests como sensor) |
@@ -140,7 +140,7 @@ Siguiendo el método de Le Corbusier — definir pocas restricciones bien elegid
 
 | # | Restricción MACSS | Análogo Le Corbusier | Efecto |
 |---|-------------------|---------------------|--------|
-| 1 | **Corte vertical por módulo** (db + api + ui) | Plan libre | Cada módulo atraviesa todas las capas; es independiente y extraíble |
+| 1 | **Corte vertical por módulo** (db + api + app) | Plan libre | Cada módulo atraviesa todas las capas; es independiente y extraíble |
 | 2 | **CQRS** (Commands via REST, Queries via GraphQL) | Estructura ≠ fachada | Separación explícita de intención: mutar vs. consultar |
 | 3 | **Database as Code** (DDL declarativo, sin ORMs) | Pilotis: estructura expuesta y honesta | La base de datos es visible, versionada y reproducible |
 | 4 | **Contratos como interfaz** (OpenAPI + GraphQL Schema) | Façade libre | La interfaz pública es independiente de la implementación interna |
@@ -158,7 +158,7 @@ Siguiendo el método de Le Corbusier — definir pocas restricciones bien elegid
 
 Como el Modulor de Le Corbusier — un sistema base que genera coherencia:
 
-> En MACSS, el **módulo** es la unidad generativa. Un módulo tiene estructura fija (db/ + api/ + ui/), contratos fijos (OpenAPI + GraphQL), y un patrón de flujo fijo (Controller → Service → API → UseCase → Repository → DB). Esta restricción genera variedad funcional dentro de consistencia estructural.
+> En MACSS, el **módulo** es la unidad generativa. Un módulo tiene estructura fija (db/ + api/ + app/), contratos fijos (OpenAPI + GraphQL), y un patrón de flujo fijo (Controller → Service → API → UseCase → Repository → DB). Esta restricción genera variedad funcional dentro de consistencia estructural.
 
 ---
 
