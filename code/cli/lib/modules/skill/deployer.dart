@@ -1,7 +1,4 @@
-/// Materializes the shipped `SKILL.md` assets into a target skills directory.
-///
-/// Shared by `macss skill deploy` and `macss create`, so a freshly scaffolded
-/// project arrives with its skills already in place and both paths cannot drift.
+/// Materializes the shipped `SKILL.md` assets into a host's skills directory.
 library;
 
 import 'dart:io';
@@ -12,8 +9,7 @@ import '../../assets.dart';
 
 /// Writes every skill under `assets/skills/` into `<targetDir>/<name>/SKILL.md`.
 ///
-/// Returns one `created` / `updated` / `exists` line per skill, using [display]
-/// as the directory label in those lines.
+/// Returns one indented `created` / `updated` / `exists` line per skill.
 ///
 /// A skill whose content differs is **refreshed**, not preserved: the target is
 /// machine-written output reproducible from the shipped assets, so a stale file
@@ -21,24 +17,22 @@ import '../../assets.dart';
 List<String> deploySkills({
   required Assets assets,
   required String targetDir,
-  required String display,
 }) {
   final steps = <String>[];
 
   for (final name in assets.listDirectory('skills')) {
     final content = assets.loadString('skills/$name/SKILL.md');
     final file = File(p.join(targetDir, name, 'SKILL.md'));
-    final label = p.posix.join(display, name, 'SKILL.md');
 
     if (!file.existsSync()) {
       file.parent.createSync(recursive: true);
       file.writeAsStringSync(content);
-      steps.add('created  $label');
+      steps.add('  created  $name');
     } else if (file.readAsStringSync() != content) {
       file.writeAsStringSync(content);
-      steps.add('updated  $label');
+      steps.add('  updated  $name');
     } else {
-      steps.add('exists   $label');
+      steps.add('  exists   $name');
     }
   }
 

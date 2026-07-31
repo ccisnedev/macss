@@ -1,8 +1,9 @@
-/// `macss skill clean [--path <dir>] [--host <assistant>]` — removes skills this
-/// CLI deployed.
+/// `macss skill clean [--host <assistant>]` — removes the lifecycle skills from
+/// the assistants they were deployed to.
 ///
 /// Only skills MACSS ships are removed, by name. Anything else living in the
-/// target directory is another tool's, or the user's, and is left alone.
+/// assistant's skills directory is another tool's, or the user's, and is left
+/// alone.
 library;
 
 import 'dart:io';
@@ -17,34 +18,19 @@ import '../host.dart';
 // ─── Input ──────────────────────────────────────────────────────────────────
 
 class SkillCleanInput extends Input {
-  final String resolvedPath;
   final String? host;
 
-  SkillCleanInput({required this.resolvedPath, this.host});
+  SkillCleanInput({this.host});
 
-  factory SkillCleanInput.fromCliRequest(CliRequest req) {
-    final rawPath = req.flagString('path', aliases: const ['p']);
-    final workingDirectory = Directory.current.path;
-    final resolved = rawPath == null
-        ? workingDirectory
-        : (p.isAbsolute(rawPath) ? rawPath : p.join(workingDirectory, rawPath));
-
-    return SkillCleanInput(
-      resolvedPath: resolved,
-      host: req.flagString('host'),
-    );
-  }
+  factory SkillCleanInput.fromCliRequest(CliRequest req) =>
+      SkillCleanInput(host: req.flagString('host'));
 
   static final List<CliParam> params = [
     CliParam.string(
-      'path',
-      abbr: 'p',
-      description: 'Project directory to remove the skills from',
-    ),
-    CliParam.string(
       'host',
       allowed: supportedHosts,
-      description: 'Also remove them from this assistant\'s skills directory',
+      description:
+          'Clean this assistant only; defaults to every one installed',
     ),
   ];
 
@@ -52,7 +38,7 @@ class SkillCleanInput extends Input {
   List<CliParam> get schemaFields => params;
 
   @override
-  Map<String, dynamic> toJson() => {'resolvedPath': resolvedPath, 'host': host};
+  Map<String, dynamic> toJson() => {'host': host};
 }
 
 // ─── Output ─────────────────────────────────────────────────────────────────
@@ -99,37 +85,39 @@ class SkillCleanCommand implements Command<SkillCleanInput, SkillCleanOutput> {
 
   @override
   Future<SkillCleanOutput> execute() async {
-    final names = assets.listDirectory('skills');
+    final hosts = input.host != null
+        ? [input.host!]
+        : detectHosts(environment: environment);
 
-    final targets = <String, String>{
-      p.join(input.resolvedPath, '.skills'): '.skills',
-    };
-
-    if (input.host != null) {
-      final dir = hostSkillsDirectory(input.host!, environment: environment);
-      if (dir == null) {
-        return SkillCleanOutput(
-          message: 'Cannot resolve the home directory for host '
-              '"${input.host}". Set HOME or USERPROFILE.',
-          exitCode: ExitCode.genericError,
-        );
-      }
-      targets[dir] = dir;
+    if (hosts.isEmpty) {
+      return SkillCleanOutput(
+        message: 'No supported assistant found in your home directory.',
+      );
     }
 
+    final names = assets.listDirectory('skills');
     final steps = <String>[];
     final removed = <String>[];
 
-    for (final entry in targets.entries) {
+    for (final host in hosts) {
+      final paths = hostPaths(host, environment: environment);
+      if (paths == null) {
+        return SkillCleanOutput(
+          message: 'Cannot resolve the home directory for host "$host". '
+              'Set HOME or USERPROFILE.',
+          exitCode: ExitCode.genericError,
+        );
+      }
+
+      steps.add('$host → ${paths.skillsDirectory}');
       for (final name in names) {
-        final dir = Directory(p.join(entry.key, name));
-        final display = p.posix.join(entry.value, name);
+        final dir = Directory(p.join(paths.skillsDirectory, name));
         if (dir.existsSync()) {
           dir.deleteSync(recursive: true);
-          steps.add('removed  $display');
+          steps.add('  removed  $name');
           removed.add(name);
         } else {
-          steps.add('absent   $display');
+          steps.add('  absent   $name');
         }
       }
     }

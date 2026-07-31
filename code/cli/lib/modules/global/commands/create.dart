@@ -8,7 +8,6 @@ import 'package:modular_cli_sdk/modular_cli_sdk.dart';
 import 'package:path/path.dart' as p;
 
 import '../../../assets.dart';
-import '../../skill/deployer.dart';
 
 // ─── Input ──────────────────────────────────────────────────────────────────
 
@@ -164,19 +163,6 @@ class CreateCommand implements Command<CreateInput, CreateOutput> {
         entry.value,
         entry.key,
         steps,
-      );
-    }
-
-    // 5. Lifecycle skills — the project arrives with them in place. `.skills/`
-    //    is git-ignored (see the project-base .gitignore), so this is local,
-    //    reproducible output, refreshable with `macss skill deploy`.
-    if (assets.directoryExists('skills')) {
-      steps.addAll(
-        deploySkills(
-          assets: assets,
-          targetDir: p.join(root, '.skills'),
-          display: '.skills',
-        ),
       );
     }
 

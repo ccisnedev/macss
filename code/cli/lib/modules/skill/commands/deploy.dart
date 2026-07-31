@@ -1,22 +1,21 @@
-/// `macss skill deploy [--path <dir>] [--host <assistant>]` — materializes the
-/// lifecycle skills the CLI ships.
+/// `macss skill deploy [--host <assistant>]` — installs the lifecycle skills the
+/// CLI ships into the assistant's own skills directory under the user's home.
 ///
-/// By default they land in a project-local, git-ignored `.skills/` directory.
-/// That is not a standard any assistant auto-detects, but it is readable by all
-/// of them — which beats deploying per assistant as the list of assistants
-/// grows. `--host` opts into an assistant's own location for auto-detection.
+/// With no `--host`, every supported assistant that is installed on this machine
+/// is refreshed. With `--host`, only that one, whether or not it looks installed
+/// — so a fresh setup can be primed before the assistant first runs.
+///
+/// This is a per-machine operation, done rarely. Deploying into a repository
+/// would mean repeating it in every clone.
 ///
 /// Unlike `macss create`, this command **refreshes** a skill whose content has
-/// changed. `.skills/` is machine-written output reproducible from the shipped
-/// assets, so a stale skill left behind by an older CLI is a defect, not a user
-/// edit worth preserving.
+/// changed: the deployed copy is machine-written output reproducible from the
+/// shipped assets, so a stale file left by an older CLI is a defect rather than
+/// a user edit worth preserving.
 library;
-
-import 'dart:io';
 
 import 'package:cli_router/cli_router.dart';
 import 'package:modular_cli_sdk/modular_cli_sdk.dart';
-import 'package:path/path.dart' as p;
 
 import '../../../assets.dart';
 import '../deployer.dart';
@@ -25,36 +24,21 @@ import '../host.dart';
 // ─── Input ──────────────────────────────────────────────────────────────────
 
 class SkillDeployInput extends Input {
-  final String resolvedPath;
   final String? host;
 
-  SkillDeployInput({required this.resolvedPath, this.host});
+  SkillDeployInput({this.host});
 
-  factory SkillDeployInput.fromCliRequest(CliRequest req) {
-    final rawPath = req.flagString('path', aliases: const ['p']);
-    final workingDirectory = Directory.current.path;
-    final resolved = rawPath == null
-        ? workingDirectory
-        : (p.isAbsolute(rawPath) ? rawPath : p.join(workingDirectory, rawPath));
+  factory SkillDeployInput.fromCliRequest(CliRequest req) =>
+      SkillDeployInput(host: req.flagString('host'));
 
-    return SkillDeployInput(
-      resolvedPath: resolved,
-      host: req.flagString('host'),
-    );
-  }
-
-  /// Declared contract. `--path` defaults to the working directory, so the
-  /// common case is a bare `macss skill deploy`.
+  /// Declared contract: a single optional `--host`. Omitting it deploys to every
+  /// installed assistant, which is the common case.
   static final List<CliParam> params = [
-    CliParam.string(
-      'path',
-      abbr: 'p',
-      description: 'Project directory to deploy the skills into',
-    ),
     CliParam.string(
       'host',
       allowed: supportedHosts,
-      description: 'Also deploy to this assistant\'s own skills directory',
+      description:
+          'Deploy to this assistant only; defaults to every one installed',
     ),
   ];
 
@@ -62,24 +46,24 @@ class SkillDeployInput extends Input {
   List<CliParam> get schemaFields => params;
 
   @override
-  Map<String, dynamic> toJson() => {'resolvedPath': resolvedPath, 'host': host};
+  Map<String, dynamic> toJson() => {'host': host};
 }
 
 // ─── Output ─────────────────────────────────────────────────────────────────
 
 class SkillDeployOutput extends Output {
   final String message;
-  final List<String> deployed;
+  final List<String> hosts;
   final int _exitCode;
 
   SkillDeployOutput({
     required this.message,
-    this.deployed = const [],
+    this.hosts = const [],
     int exitCode = ExitCode.ok,
   }) : _exitCode = exitCode;
 
   @override
-  Map<String, dynamic> toJson() => {'message': message, 'deployed': deployed};
+  Map<String, dynamic> toJson() => {'message': message, 'hosts': hosts};
 
   @override
   int get exitCode => _exitCode;
@@ -102,9 +86,6 @@ class SkillDeployCommand
 
   @override
   String? validate() {
-    if (File(input.resolvedPath).existsSync()) {
-      return '"${input.resolvedPath}" is an existing file, not a directory.';
-    }
     if (!assets.directoryExists('skills')) {
       return 'No skills found in the installed assets. Run: macss upgrade';
     }
@@ -113,44 +94,35 @@ class SkillDeployCommand
 
   @override
   Future<SkillDeployOutput> execute() async {
-    final names = assets.listDirectory('skills');
-    if (names.isEmpty) {
+    final hosts = input.host != null
+        ? [input.host!]
+        : detectHosts(environment: environment);
+
+    if (hosts.isEmpty) {
       return SkillDeployOutput(
-        message: 'No skills to deploy.',
-        exitCode: ExitCode.genericError,
+        message: 'No supported assistant found in your home directory.\n'
+            'Supported: ${supportedHosts.join(', ')}.\n'
+            'Pass --host <assistant> to deploy anyway.',
+        exitCode: ExitCode.notFound,
       );
-    }
-
-    final targets = <String, String>{
-      p.join(input.resolvedPath, '.skills'): '.skills',
-    };
-
-    if (input.host != null) {
-      final dir = hostSkillsDirectory(input.host!, environment: environment);
-      if (dir == null) {
-        return SkillDeployOutput(
-          message: 'Cannot resolve the home directory for host '
-              '"${input.host}". Set HOME or USERPROFILE.',
-          exitCode: ExitCode.genericError,
-        );
-      }
-      targets[dir] = dir;
     }
 
     final steps = <String>[];
-    for (final entry in targets.entries) {
+    for (final host in hosts) {
+      final paths = hostPaths(host, environment: environment);
+      if (paths == null) {
+        return SkillDeployOutput(
+          message: 'Cannot resolve the home directory for host "$host". '
+              'Set HOME or USERPROFILE.',
+          exitCode: ExitCode.genericError,
+        );
+      }
+      steps.add('$host → ${paths.skillsDirectory}');
       steps.addAll(
-        deploySkills(
-          assets: assets,
-          targetDir: entry.key,
-          display: entry.value,
-        ),
+        deploySkills(assets: assets, targetDir: paths.skillsDirectory),
       );
     }
 
-    return SkillDeployOutput(
-      message: steps.join('\n'),
-      deployed: names.toSet().toList()..sort(),
-    );
+    return SkillDeployOutput(message: steps.join('\n'), hosts: hosts);
   }
 }

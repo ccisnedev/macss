@@ -20,18 +20,18 @@ goes back to being the state machine for the implementation stage alone.
 - `macss issue new <name>` scaffolds an "issue as code" file, inheriting the
   specification's language; `macss issue publish <name>` turns it into a GitHub
   issue via `gh`, previewing with `--plan` before `--apply`.
-- `macss skill deploy` materializes the four lifecycle skills
-  (`macss-specification`, `macss-analyze`, `macss-plan`, `macss-execute`) into a
-  project-local, git-ignored `.skills/` directory, readable by any assistant.
-  `--host claude|opencode` also deploys to that assistant's own location.
-  `macss skill list` and `macss skill clean` complete the module.
+- `macss skill deploy` installs the four lifecycle skills
+  (`macss-specification`, `macss-analyze`, `macss-plan`, `macss-execute`) into
+  the skills directory of every supported assistant found in your home
+  directory. `--host claude|opencode` targets one, whether or not it looks
+  installed, so a fresh setup can be primed. Skills are installed once per
+  machine, not per repository. `macss skill list` and `macss skill clean`
+  complete the module.
 - `Assets.listDirectory()`, sorted so deployment order is identical on every
   platform.
 
 ### Changed
-- `macss create` now deploys the lifecycle skills into `.skills/`, and the
-  scaffolded `.gitignore` ignores `.macss/`, `.skills/`, and
-  `docs/requisitions/`.
+- The scaffolded `.gitignore` now ignores `.macss/` and `docs/requisitions/`.
 - `macss doctor` verifies the artifact templates and the shipped skills, not just
   the project templates.
 - Unlike `create`, `skill deploy` refreshes a skill whose content changed:
