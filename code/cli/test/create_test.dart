@@ -41,10 +41,6 @@ void main() {
     _writeFile(p.join(assetsDir.path, 'assets', 'templates', 'project-base', 'README.md'), '# Project Name\n');
     _writeFile(p.join(assetsDir.path, 'assets', 'templates', 'project-base', '.gitignore'), '.dart_tool/\nbuild/\n');
     _writeFile(p.join(assetsDir.path, 'assets', 'templates', 'project-base', '.gitattributes'), '* text=auto eol=lf\n');
-    _writeFile(
-      p.join(assetsDir.path, 'assets', 'skills', 'macss-specification', 'SKILL.md'),
-      '# Specification skill\n',
-    );
   });
 
   tearDown(() {
@@ -233,25 +229,12 @@ void main() {
       expect(gitattributes.readAsStringSync(), contains('eol'));
     });
 
-    test('deploys the lifecycle skills into .skills/', () async {
+    test('does not deploy skills into the project', () async {
+      // Skills are installed once per machine under the user's home, not per
+      // repository — see `macss skill deploy`.
       final dest = p.join(tempRoot.path, 'proj-skills');
-      final out = await makeCmd(dest).execute();
+      await makeCmd(dest).execute();
 
-      final skill =
-          File(p.join(dest, '.skills', 'macss-specification', 'SKILL.md'));
-      expect(skill.existsSync(), isTrue);
-      expect(skill.readAsStringSync(), '# Specification skill\n');
-      expect(out.message, contains('.skills/macss-specification/SKILL.md'));
-    });
-
-    test('scaffolds without skills when the assets ship none', () async {
-      Directory(p.join(assetsDir.path, 'assets', 'skills'))
-          .deleteSync(recursive: true);
-
-      final dest = p.join(tempRoot.path, 'proj-no-skills');
-      final out = await makeCmd(dest).execute();
-
-      expect(out.created, isTrue);
       expect(Directory(p.join(dest, '.skills')).existsSync(), isFalse);
     });
 

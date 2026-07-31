@@ -65,7 +65,7 @@ Current macss surface: `create`, `doctor`, `upgrade`, `uninstall`, `version`, `h
 |---|---|---|
 | D1 | `macss` is the canonical entry point; **`ma` is the official short alias** | Already implemented in the installers. Only the README needs fixing — it currently disowns it |
 | D2 | macss skills are **static** `SKILL.md` files versioned under `assets/skills/` | inquiry's generative `SkillBuilder` is not replicated |
-| D3 | They are deployed to a **local `.skills/`** directory at the project root, git-ignored | Assistant-agnostic. `--host` stays optional |
+| D3 | They are installed **once per machine**, into each assistant's own skills directory under `~/` | A project-local copy would have to be refreshed in every clone — the opposite of a rare operation |
 | D4 | Skills are **thin and delegating** | They point at the live contract through commands (`iq fsm state --json`) instead of restating gate rules |
 | D5 | macss = which stage and why. inquiry = how implementation is executed | Stable split, no overlap |
 
@@ -171,22 +171,23 @@ Declared contract for `deploy`:
 
 | Param | Type | Notes |
 |---|---|---|
-| `--path` / `-p` | string | Project root. Same relative→absolute resolution as `create` |
-| `--host` | string, `allowed: [claude, opencode, codex, gemini]` | Optional. Without it, `.skills/` only |
+| `--host` | string, `allowed: [claude, opencode]` | Optional. Without it, every assistant detected in `~/` |
 
-Writes `<path>/.skills/<name>/SKILL.md`, **idempotently**, reporting `created` / `exists` in the same
-format as `create.dart`. Registered in `macss_cli.dart`:
+Only assistants whose skills-directory convention is actually known are offered;
+guessing would create trees in a user's home that nothing reads. A host counts as
+installed when its config root exists (`~/.claude`, `~/.config/opencode`), so a
+bare `deploy` skips what is not there while `--host` forces it, priming a fresh
+setup. Writes `<skills dir>/<name>/SKILL.md` idempotently, reporting
+`created` / `updated` / `exists`. Registered in `macss_cli.dart`:
 
 ```dart
 cli.module('skill', (m) => buildSkillModule(m, assets: assets));
 ```
 
-**Integrate with `create`:** also stamp `.skills/`, and add to
-`assets/templates/project-base/.gitignore`:
+**Integrate with `create`:** add to `assets/templates/project-base/.gitignore`:
 
 ```
 # MACSS
-.skills/
 .macss/
 docs/requisitions/
 ```
@@ -211,7 +212,7 @@ Resulting routes: `macss specification new|check`, `macss issue new|publish`.
 
 1. **State pointer:** `.inquiry/specification.yaml` → **`.macss/specification.yaml`**
    (`workspace.dart::activeRequisitionPath`). The only observable behavioral change.
-2. **Gitignore:** guarantee `docs/requisitions/`, `.macss/`, and `.skills/`; **drop** `.inquiry/` and
+2. **Gitignore:** guarantee `docs/requisitions/` and `.macss/`; **drop** `.inquiry/` and
    `cleanrooms/`, which belong to the FSM engine.
 3. **Text:** every help message, error, and remediation that says `iq …` becomes `macss …`.
 
@@ -370,8 +371,8 @@ anything.
 - [ ] `docs/macss_skills.md`: close the draft with D2–D4. This resolves its explicit open item,
       *"Diseñar estructura de `code/skills/` en el repositorio macss"*.
 - [ ] `docs/adr/0003-lifecycle-ownership-and-local-skills-directory.md`: new ADR (0001 and 0002 set
-      the practice) recording **why** the lifecycle lives in macss and **why** `.skills/` instead of
-      per-assistant deployment.
+      the practice) recording **why** the lifecycle lives in macss and **why** skills are installed
+      once per machine rather than per repository.
 - [ ] `docs/adr/0004-project-canon-is-executable.md`: why the canon in `project-structure.md` is
       verified by `macss project check` instead of remaining prose.
 - [ ] `docs/architecture.md`: the grammar gains `specification`, `issue`, `skill`, `project`.
@@ -419,11 +420,11 @@ CI covers `ubuntu-latest` + `windows-latest`, path-filtered on `code/cli/**`.
 ### Manual, end to end — in a temporary directory
 
 ```
-macss create --path=.               # creates .skills/ and a .gitignore with .skills/, .macss/, docs/requisitions/
+macss create --path=.               # creates a .gitignore with .macss/, docs/requisitions/
 macss project check --path=.        # exit 0 — the scaffold satisfies its own canon
 ma skill list                       # the alias resolves to the same binary
-macss skill deploy --path=.         # 4 SKILL.md files under .skills/
-macss skill deploy --path=.         # idempotent: reports 'exists'
+macss skill deploy                  # 4 SKILL.md files per detected assistant
+macss skill deploy                  # idempotent: reports 'exists'
 
 macss specification new demo --lang es
 #   → docs/requisitions/<YYYYMMDD>-demo/{requisition,specification}.md
@@ -458,7 +459,7 @@ nothing overwritten).
 | PR B merged before PR A | Window with no `specification`/`issue` in either CLI | Sequential merge: A first, then B |
 | Rename `.inquiry/specification.yaml` → `.macss/specification.yaml` | In-flight requisitions lose their active pointer | If there is live work under `docs/requisitions/`, move the YAML by hand. Document in both CHANGELOGs |
 | Static implementation skills drift if the FSM changes | Stale instructions | D4: never copy gate rules or artifact sections; delegate to `iq fsm state` / `iq fsm transition` |
-| `.skills/` is not auto-detected by any assistant | The directory must be pointed at manually | Accepted deliberately: per-assistant deployment cost grows with every new assistant. `--host` covers anyone who wants auto-detection |
+| Skills live in `~/`, so a repo does not pin the version its contributors run | A teammate on an older CLI has older skills | Accepted: deployment is a rare per-machine setup step, and `macss skill deploy` refreshes stale copies in place |
 | `iq-*` skills already deployed under `~/.claude/skills` become orphans | Stale skills coexist with the `macss-*` ones | `iq host clean` after PR B, plus `macss skill clean` (§7.5) |
 | `project adopt` against a foreign repository | Writing into a project that did not expect the canon | `--plan` is the default; `--apply` never deletes |
 

@@ -11,17 +11,16 @@ import 'dart:io';
 
 /// The `.gitignore` entries MACSS manages (idempotently).
 ///
-/// All three are machine-written and reproducible from the CLI, so none of them
-/// belongs in version control:
+/// Both are machine-written and reproducible from the CLI, so neither belongs in
+/// version control:
 /// - `.macss/` holds local state, such as the active-requisition pointer.
-/// - `.skills/` is materialized by `macss skill deploy` from the shipped assets.
 /// - `docs/requisitions/` is the authoring workspace described above.
 ///
 /// The implementation cleanroom is deliberately absent: it belongs to the
-/// inquiry FSM, which manages its own entries.
+/// inquiry FSM, which manages its own entries. So are the skills — they are
+/// installed once per machine under the user's home, not per repository.
 const macssGitignoreEntries = <String>[
   '.macss/',
-  '.skills/',
   'docs/requisitions/',
 ];
 
