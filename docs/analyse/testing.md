@@ -85,7 +85,7 @@ Cada capa tiene una responsabilidad única y bien definida:
 
 - **`db/`**: Persistencia como código (scripts DDL, Database as Code)
 - **`api/`**: Lógica de negocio y exposición HTTP (UseCases, Repository, endpoints)
-- **`ui/`**: Presentación y experiencia de usuario (UI, Controllers, Services)
+- **`app/`**: Presentación y experiencia de usuario (UI, Controllers, Services)
 
 ### Flujo unidireccional de datos
 

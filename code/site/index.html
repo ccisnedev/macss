@@ -10,7 +10,7 @@
   <meta property="og:title" content="MACSS — Modular Architecture for Comprehensive Software Solutions">
   <meta property="og:description" content="MACSS is a software architecture methodology that structures projects as vertical modules. Each module owns persistence, business logic, presentation, and infrastructure.">
   <meta property="og:type" content="website">
-  <meta property="og:url" content="https://macss.ccisne.dev/">
+  <meta property="og:url" content="https://macss.dev/">
 
   <meta name="twitter:card" content="summary">
   <meta name="twitter:title" content="MACSS — Modular Architecture for Comprehensive Software Solutions">
@@ -80,10 +80,10 @@
 
         <div class="element-card element-card--linked">
           <div class="element-header">
-            <span class="element-symbol">ui</span>
+            <span class="element-symbol">app</span>
           </div>
-          <p>Client-side SDK. Transport-agnostic service client with the Result pattern. No raw HTTP in the presentation layer.</p>
-          <a href="service-client.html" class="element-link">service_client →</a>
+          <p>Client-side SDKs. Transport-agnostic REST and GraphQL clients with the Result pattern, shipped inside modular_api. No raw HTTP in the presentation layer.</p>
+          <a href="modular-api.html" class="element-link">modular_api clients →</a>
         </div>
       </div>
     </section>
@@ -96,7 +96,7 @@
 ├── code/
 │   ├── db/    → SQL schemas, DDL scripts, repositories
 │   ├── api/   → use cases, endpoints, server
-│   ├── ui/    → services, controllers, views
+│   ├── app/   → services, controllers, views
 │   └── infra/ → CI, containers, environment config
 ├── docs/
 │   ├── adr/          → architecture decision records
@@ -128,7 +128,7 @@
           <div class="install-block">
             <span class="label">PowerShell</span>
             <button class="copy-btn" onclick="copy(this)" aria-label="Copy install command">Copy</button>
-            <code>irm https://macss.ccisne.dev/install.ps1 | iex</code>
+            <code>irm https://macss.dev/install.ps1 | iex</code>
           </div>
           <p class="install-note">Installs to <code>%LOCALAPPDATA%\macss\</code>, adds <code>macss</code> and alias <code>ma</code> to <code>PATH</code>.</p>
         </div>
@@ -136,7 +136,7 @@
           <div class="install-block">
             <span class="label">Bash</span>
             <button class="copy-btn" onclick="copy(this)" aria-label="Copy install command">Copy</button>
-            <code>curl -fsSL https://macss.ccisne.dev/install.sh | bash</code>
+            <code>curl -fsSL https://macss.dev/install.sh | bash</code>
           </div>
           <p class="install-note">Installs to <code>~/.macss/</code>, adds <code>macss</code> and alias <code>ma</code> to <code>PATH</code>.</p>
         </div>
@@ -145,7 +145,7 @@
       <div class="commands">
         <div class="cmd-row">
           <code>macss create &lt;path&gt;</code>
-          <p>Scaffold a new project with <code>code/{db,api,ui,infra}</code> and documentation templates.</p>
+          <p>Scaffold a new project with <code>code/{db,api,app,infra}</code> and documentation templates.</p>
         </div>
         <div class="cmd-row">
           <code>macss doctor</code>
@@ -172,15 +172,6 @@
             <a class="eco-badge" href="https://pub.dev/packages/modular_api">pub.dev</a>
             <a class="eco-badge" href="https://www.npmjs.com/package/@macss/modular-api">npm</a>
             <a class="eco-badge" href="https://pypi.org/project/macss-modular-api/">PyPI</a>
-          </div>
-        </div>
-        <div class="eco-row">
-          <div class="eco-name"><a href="service-client.html">service_client</a></div>
-          <div class="eco-desc">Transport-agnostic service client — client side. HTTP implementation with the Result pattern, no raw exceptions.</div>
-          <div class="eco-badges">
-            <a class="eco-badge" href="https://pub.dev/packages/service_client">pub.dev</a>
-            <a class="eco-badge" href="https://www.npmjs.com/package/@macss/service-client">npm</a>
-            <a class="eco-badge" href="https://pypi.org/project/macss-service-client/">PyPI</a>
           </div>
         </div>
         <div class="eco-row">

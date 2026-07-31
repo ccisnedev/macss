@@ -13,35 +13,41 @@ void buildGlobalModule(ModuleBuilder m, {required Assets assets}) {
     '',
     (req) => TuiCommand(TuiInput.fromCliRequest(req)),
     description: 'Display MACSS banner and available commands',
+    params: TuiInput.params,
   );
 
   m.command<CreateInput, CreateOutput>(
     'create',
     (req) => CreateCommand(CreateInput.fromCliRequest(req), assets: assets),
     description: 'Scaffold a new MACSS project',
+    params: CreateInput.params,
   );
 
   m.command<DoctorInput, DoctorOutput>(
     'doctor',
     (req) => DoctorCommand(DoctorInput.fromCliRequest(req), assets: assets),
     description: 'Verify local installation and assets integrity',
+    params: DoctorInput.params,
   );
 
   m.command<UpgradeInput, UpgradeOutput>(
     'upgrade',
     (req) => UpgradeCommand(UpgradeInput.fromCliRequest(req)),
     description: 'Download and install latest release from GitHub',
+    params: UpgradeInput.params,
   );
 
   m.command<UninstallInput, UninstallOutput>(
     'uninstall',
     (req) => UninstallCommand(UninstallInput.fromCliRequest(req)),
     description: 'Remove MACSS CLI from the system',
+    params: UninstallInput.params,
   );
 
   m.command<VersionInput, VersionOutput>(
     'version',
     (req) => VersionCommand(VersionInput.fromCliRequest(req)),
     description: 'Print the current CLI version',
+    params: VersionInput.params,
   );
 }

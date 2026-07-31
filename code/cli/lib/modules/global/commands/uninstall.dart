@@ -21,6 +21,12 @@ class UninstallInput extends Input {
     return UninstallInput(installDir: installDir);
   }
 
+  /// Empty contract: `uninstall` takes no option (install dir is derived).
+  static const List<CliParam> params = [];
+
+  @override
+  List<CliParam> get schemaFields => params;
+
   @override
   Map<String, dynamic> toJson() => {'installDir': installDir};
 }
