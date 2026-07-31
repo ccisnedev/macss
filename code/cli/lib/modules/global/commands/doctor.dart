@@ -118,26 +118,30 @@ class DoctorCommand implements Command<DoctorInput, DoctorOutput> {
       ),
     );
 
-    // Check 3-5: Required templates
-    const templatePaths = [
-      'templates/project-base/docs/adr/0001-record-architecture-decisions.md',
-      'templates/project-base/docs/architecture.md',
-      'templates/project-base/docs/roadmap.md',
-      'artifacts/requisition.template.en.md',
-      'artifacts/specification.template.en.md',
-      'artifacts/issue.template.en.md',
-      'skills/macss-specification/SKILL.md',
-      'skills/macss-analyze/SKILL.md',
-      'skills/macss-plan/SKILL.md',
-      'skills/macss-execute/SKILL.md',
-    ];
+    // Check 3+: every asset the commands need at runtime.
+    //
+    // Labels come from the map, not from the path's basename: four skills all
+    // end in `SKILL.md`, so a basename label would render four identical rows
+    // and hide which one is actually missing.
+    const requiredAssets = <String, String>{
+      'template: 0001-record-architecture-decisions.md':
+          'templates/project-base/docs/adr/0001-record-architecture-decisions.md',
+      'template: architecture.md': 'templates/project-base/docs/architecture.md',
+      'template: roadmap.md': 'templates/project-base/docs/roadmap.md',
+      'artifact: requisition': 'artifacts/requisition.template.en.md',
+      'artifact: specification': 'artifacts/specification.template.en.md',
+      'artifact: issue': 'artifacts/issue.template.en.md',
+      'skill: macss-specification': 'skills/macss-specification/SKILL.md',
+      'skill: macss-analyze': 'skills/macss-analyze/SKILL.md',
+      'skill: macss-plan': 'skills/macss-plan/SKILL.md',
+      'skill: macss-execute': 'skills/macss-execute/SKILL.md',
+    };
 
-    for (final template in templatePaths) {
-      final exists = assets.fileExists(template);
-      final name = template.split('/').last;
+    for (final entry in requiredAssets.entries) {
+      final exists = assets.fileExists(entry.value);
       checks.add(
         DoctorCheck(
-          name: 'template: $name',
+          name: entry.key,
           status: exists ? CheckStatus.ok : CheckStatus.error,
           detail: exists ? 'found' : 'missing',
           remediation: exists ? null : 'Run: macss upgrade',

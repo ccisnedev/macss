@@ -9,7 +9,7 @@ covers: []
 ---
 
 <!-- "Issue as code": this .md is the source of truth. Edit and review it here;
-     `iq issue publish <slug> <name> --plan` shows the `gh issue create` it would
+     `macss issue publish <name> --plan` shows the `gh issue create` it would
      assemble from the front-matter; `--apply` creates it. The body (everything
      after the second `---`) is what gets published; the front-matter is NOT.
      `covers:` must list the AC this issue covers, each qualified by its user
