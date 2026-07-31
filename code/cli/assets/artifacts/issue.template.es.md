@@ -9,7 +9,7 @@ covers: []
 ---
 
 <!-- "Issue as code": este .md es la fuente de verdad. Edítalo y revísalo aquí;
-     `iq issue publish <slug> <nombre> --plan` muestra el `gh issue create` que
+     `macss issue publish <nombre> --plan` muestra el `gh issue create` que
      armaría con el front-matter; `--apply` lo crea. El cuerpo (todo lo que sigue
      al segundo `---`) es lo que se publica; el front-matter NO se publica.
      `covers:` debe listar los AC que cubre esta issue, cada uno calificado por
