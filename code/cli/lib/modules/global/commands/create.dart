@@ -37,6 +37,19 @@ class CreateInput extends Input {
     );
   }
 
+  /// Declared contract: a single `--path` / `-p` option. Declaring it rejects
+  /// any other flag at parse time and publishes the option in help.
+  static final List<CliParam> params = [
+    CliParam.string(
+      'path',
+      abbr: 'p',
+      description: 'Directory to scaffold the MACSS project into',
+    ),
+  ];
+
+  @override
+  List<CliParam> get schemaFields => params;
+
   @override
   Map<String, dynamic> toJson() => {
     'resolvedPath': resolvedPath,
@@ -103,15 +116,22 @@ class CreateCommand implements Command<CreateInput, CreateOutput> {
     // 1. Root directory
     _ensureDir(root, root, steps);
 
-    // 2. Code subdirectories
-    final subdirectories = [
-      'code/infra',
-      'code/db',
-      'code/api',
-      'code/ui',
-    ];
-    for (final dir in subdirectories) {
-      _ensureDir(p.join(root, p.joinAll(dir.split('/'))), dir, steps);
+    // 2. Module anchors — each README is the architectural signal of its module
+    //    and makes the directory survive the first commit (git ignores empty dirs).
+    final moduleAnchors = {
+      'code/infra/README.md': 'templates/project-base/code/infra/README.md',
+      'code/db/README.md': 'templates/project-base/code/db/README.md',
+      'code/api/README.md': 'templates/project-base/code/api/README.md',
+      'code/app/README.md': 'templates/project-base/code/app/README.md',
+    };
+
+    for (final entry in moduleAnchors.entries) {
+      _ensureFileFromTemplate(
+        p.join(root, p.joinAll(entry.key.split('/'))),
+        entry.value,
+        entry.key,
+        steps,
+      );
     }
 
     // 3. Docs from templates

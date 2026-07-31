@@ -32,6 +32,12 @@ class DoctorInput extends Input {
 
   factory DoctorInput.fromCliRequest(CliRequest req) => DoctorInput();
 
+  /// Empty contract: `doctor` takes no option, so any option is rejected.
+  static const List<CliParam> params = [];
+
+  @override
+  List<CliParam> get schemaFields => params;
+
   @override
   Map<String, dynamic> toJson() => {};
 }

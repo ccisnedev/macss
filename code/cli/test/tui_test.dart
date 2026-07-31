@@ -1,8 +1,11 @@
 import 'package:test/test.dart';
 
+import 'package:macss_cli/macss_cli.dart';
 import 'package:macss_cli/modules/global/commands/tui.dart';
 import 'package:macss_cli/modules/global/commands/version.dart';
 import 'package:macss_cli/src/version_check.dart';
+
+import 'support/memory_sink.dart';
 
 TuiCommand _makeTui() => TuiCommand(
   TuiInput(),
@@ -12,6 +15,22 @@ TuiCommand _makeTui() => TuiCommand(
 
 void main() {
   group('TUI Command', () {
+    test('root command rejects an unknown flag as invalid usage', () async {
+      // A lone flag on the bare root never routes to the banner: the router
+      // treats it as an unknown command (exit 64), not a contract violation.
+      final stdout = MemorySink();
+      final stderr = MemorySink();
+
+      final code = await runMacss(
+        const ['--bogus'],
+        stdout: stdout.sink,
+        stderr: stderr.sink,
+      );
+
+      expect(code, 64); // ExitCode.invalidUsage
+      expect(await stderr.text(), contains('unknown command'));
+    });
+
     test('TuiInput.fromCliRequest returns TuiInput', () {
       expect(TuiInput(), isA<TuiInput>());
     });

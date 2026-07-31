@@ -3,8 +3,11 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
+import 'package:macss_cli/macss_cli.dart';
 import 'package:macss_cli/modules/global/commands/uninstall.dart';
 import 'package:macss_cli/targets/platform_ops.dart';
+
+import 'support/memory_sink.dart';
 
 /// Fake PlatformOps for testing — records calls without touching the system.
 class FakePlatformOps implements PlatformOps {
@@ -61,6 +64,22 @@ void main() {
   });
 
   group('UninstallCommand', () {
+    // The empty contract rejects the flag before execute() runs, so this never
+    // touches PATH or schedules any deletion.
+    test('rejects an undeclared option (empty params contract)', () async {
+      final stdout = MemorySink();
+      final stderr = MemorySink();
+
+      final code = await runMacss(
+        const ['uninstall', '--bogus'],
+        stdout: stdout.sink,
+        stderr: stderr.sink,
+      );
+
+      expect(code, 7); // ExitCode.validationFailed
+      expect(await stderr.text(), contains('unknown option --bogus'));
+    });
+
     test('exits 0', () async {
       final ops = FakePlatformOps();
       final cmd = UninstallCommand(

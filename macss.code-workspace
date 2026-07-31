@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../modular_api"
+		},
+		{
+			"path": "../devops"
+		}
+	],
+	"settings": {}
+}
