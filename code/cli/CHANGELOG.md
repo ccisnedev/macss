@@ -40,8 +40,10 @@ goes back to being the state machine for the implementation stage alone.
 
 ### Migration
 - The active-requisition pointer moved from `.inquiry/specification.yaml` to
-  `.macss/specification.yaml`. If you have a requisition in flight, move that
-  file by hand.
+  `.macss/specification.yaml`. A requisition in flight still works without any
+  manual step — pass `--slug <slug>`, which resolves the folder directly and
+  ignores the pointer. Move the file only to restore the convenience of an
+  active requisition that the commands pick up on their own.
 - The on-disk format tokens are now namespaced to MACSS: templates emit
   `macss:lang` and `kind: macss-issue`. Specifications already written with
   `iq:lang` keep resolving their language, so existing requisitions still work.

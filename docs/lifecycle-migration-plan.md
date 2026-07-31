@@ -457,7 +457,7 @@ nothing overwritten).
 | Risk | Impact | Mitigation |
 |---|---|---|
 | PR B merged before PR A | Window with no `specification`/`issue` in either CLI | Sequential merge: A first, then B |
-| Rename `.inquiry/specification.yaml` → `.macss/specification.yaml` | In-flight requisitions lose their active pointer | If there is live work under `docs/requisitions/`, move the YAML by hand. Document in both CHANGELOGs |
+| Rename `.inquiry/specification.yaml` → `.macss/specification.yaml` | In-flight requisitions lose their active pointer | Verified: `--slug <slug>` resolves the folder directly and ignores the pointer, so legacy requisitions keep working with no manual step. Moving the YAML only restores the active-requisition convenience |
 | Static implementation skills drift if the FSM changes | Stale instructions | D4: never copy gate rules or artifact sections; delegate to `iq fsm state` / `iq fsm transition` |
 | Skills live in `~/`, so a repo does not pin the version its contributors run | A teammate on an older CLI has older skills | Accepted: deployment is a rare per-machine setup step, and `macss skill deploy` refreshes stale copies in place |
 | `iq-*` skills already deployed under `~/.claude/skills` become orphans | Stale skills coexist with the `macss-*` ones | `iq host clean` after PR B, plus `macss skill clean` (§7.5) |
