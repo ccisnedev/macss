@@ -76,6 +76,36 @@ void main() {
       expect(assets.directoryExists('missing'), isFalse);
     });
 
+    test('listDirectory returns immediate child dirs, sorted', () {
+      final skills = p.join(tempDir.path, 'assets', 'skills');
+      for (final name in ['macss-plan', 'macss-analyze', 'macss-execute']) {
+        Directory(p.join(skills, name)).createSync(recursive: true);
+      }
+
+      final assets = Assets(root: tempDir.path);
+      expect(
+        assets.listDirectory('skills'),
+        ['macss-analyze', 'macss-execute', 'macss-plan'],
+      );
+    });
+
+    test('listDirectory ignores files', () {
+      final skills = p.join(tempDir.path, 'assets', 'skills');
+      Directory(p.join(skills, 'macss-plan')).createSync(recursive: true);
+      File(p.join(skills, 'README.md')).writeAsStringSync('x');
+
+      final assets = Assets(root: tempDir.path);
+      expect(assets.listDirectory('skills'), ['macss-plan']);
+    });
+
+    test('listDirectory throws FileSystemException for missing dir', () {
+      final assets = Assets(root: tempDir.path);
+      expect(
+        () => assets.listDirectory('missing'),
+        throwsA(isA<FileSystemException>()),
+      );
+    });
+
     test('project-base templates exist in repo assets', () {
       // Verifies that the shipped templates are present in the source tree.
       // Assets root is two levels above bin/ — in tests we use cwd (code/cli/).
