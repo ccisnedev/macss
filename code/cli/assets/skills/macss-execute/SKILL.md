@@ -49,10 +49,3 @@ Dependencies point from the feature to the base, never the reverse.
 - [ ] The full suite passes, with nothing skipped, disabled or loosened to get
       there.
 - [ ] Release preparation is done as the plan specified.
-
-## If you run the inquiry FSM
-
-MACSS defines this phase; it does not enforce it. If [inquiry](https://github.com/ccisnedev/inquiry)
-is installed, it drives the same loop with enforced gates and a named sensor
-stack — `iq fsm state --json` will tell you where you are and what it expects.
-This skill is written to stand on its own without it.

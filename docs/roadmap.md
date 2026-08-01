@@ -228,7 +228,7 @@ serves each stage:
 | requisition | `macss requisition` | planned |
 | specification | `macss specification` | **shipped** (0.2.0) |
 | issue | `macss issue` | **shipped** (0.2.0) |
-| implementation | skills only, for now | **method** here (`macss-analyze/plan/execute`), **engine** in inquiry (`iq fsm`) |
+| implementation | skills, for now | `macss-analyze` / `macss-plan` / `macss-execute` — the method, self-contained |
 | verification | `macss verification` | planned |
 | deploy | `macss deploy` | planned — delegates to `macss-devops` (Stage 3.5) |
 
@@ -236,28 +236,37 @@ Shared verbs where they make sense: `start` (enter the stage), `check` (run the
 stage gate), `skill` (show the stage's operating instruction). Every argument is
 explicit and named — `--issue 40`, never a positional.
 
-### The boundary with inquiry
+### The relationship with inquiry: laboratory and product
 
-MACSS is **in production**: it has to work on its own, for people who never
-install anything else. Inquiry is a **scientific and engineering project** — a
-state machine with enforced gates, free to evolve at its own pace. That
-difference sets the boundary.
+MACSS is **in production**. It has to work on its own, for someone who installs
+nothing else. Inquiry is a **scientific and engineering project**: a state
+machine that puts the same method under enforced gates, instrumented, free to
+evolve at its own pace.
 
-MACSS owns the **method** of the implementation stage and ships it as skills:
-`analyze → plan → execute` is doctrine, documented in the engineering handbook,
-and macss inherits it. Inquiry owns the **engine** that enforces it — the FSM,
-the gates, the operators.
+The relationship is **one-directional**. Inquiry is the laboratory where the
+method is refined; MACSS inherits the result. When something is proven there, it
+is written into a MACSS skill. Value flows research → product, decided by a
+human, at editorial pace.
 
-So the implementation stage appears in both, deliberately, and that is not a
-fork: the skills are complete without any `iq` command, and they never restate a
-gate rule, an event name or an artifact schema. **Doctrine can safely live in two
-places; a contract cannot.** A macss user gets a working method; an inquiry user
-gets the same method with gates that enforce it.
+**MACSS therefore never references inquiry.** Not in a skill, not in a command,
+not as an optional enhancement. Naming a second CLI inside a production tool's
+instructions is an invitation to install it, and requiring a second install is
+exactly the coupling this decision removes. The implementation skills are
+complete on their own.
 
-What would break this is building an `iq specification` module, or a
-`macss fsm` — either one re-absorbs what the 0.2.0 / 0.22.0 split separated.
-A `macss implementation` module that drives the method without an FSM is
-compatible with it, and is left open.
+What is shared is **doctrine** — `analyze → plan → execute`, already documented
+in the engineering handbook. What is never shared is the **contract**: no gate
+rule, event name or artifact schema is restated in MACSS. Doctrine can safely
+live in two places; a contract cannot. That is what lets inquiry rewrite its FSM
+without touching anything here.
+
+The cost is a manual sync point: a lab improvement reaches MACSS when someone
+ports it into a `SKILL.md`. That is deliberate, and it is what buys MACSS the
+ability to stand alone.
+
+Should MACSS later gain a `macss implementation` module that drives the method
+itself, it belongs here and needs no engine from elsewhere. Building a
+`macss fsm` would not — that re-absorbs the laboratory.
 
 ### Inception: `create` becomes `macss project create`
 
