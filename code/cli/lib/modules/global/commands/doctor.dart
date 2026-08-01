@@ -6,6 +6,7 @@ import 'package:modular_cli_sdk/modular_cli_sdk.dart';
 
 import '../../../assets.dart';
 import '../../../src/checks.dart';
+import '../../../src/tools.dart';
 import '../../../src/version.dart';
 
 export '../../../src/checks.dart' show CheckStatus, DoctorCheck;
@@ -53,7 +54,10 @@ class DoctorCommand implements Command<DoctorInput, DoctorOutput> {
 
   final Assets assets;
 
-  DoctorCommand(this.input, {required this.assets});
+  /// Injected in tests so the PATH lookup is deterministic.
+  final Map<String, String>? environment;
+
+  DoctorCommand(this.input, {required this.assets, this.environment});
 
   @override
   String? validate() => null;
@@ -110,6 +114,21 @@ class DoctorCommand implements Command<DoctorInput, DoctorOutput> {
           status: exists ? CheckStatus.ok : CheckStatus.error,
           detail: exists ? 'found' : 'missing',
           remediation: exists ? null : 'Run: macss upgrade',
+        ),
+      );
+    }
+
+    // External toolchain. A missing tool never fails the command: `doctor`
+    // answers whether the CLI itself is sound, and these narrow what you can do
+    // rather than breaking what you have.
+    for (final tool in externalTools) {
+      final present = isOnPath(tool.executable, environment: environment);
+      checks.add(
+        DoctorCheck(
+          name: tool.executable,
+          status: present ? CheckStatus.ok : CheckStatus.warning,
+          detail: present ? 'on PATH' : 'not found — ${tool.neededFor}',
+          remediation: present ? null : 'Install: ${tool.install}',
         ),
       );
     }

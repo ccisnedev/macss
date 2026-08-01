@@ -7,6 +7,7 @@ import 'package:macss_cli/assets.dart';
 import 'package:macss_cli/macss_cli.dart';
 import 'package:macss_cli/modules/global/commands/doctor.dart';
 import 'package:macss_cli/modules/global/commands/version.dart';
+import 'package:macss_cli/src/tools.dart';
 
 import 'support/memory_sink.dart';
 
@@ -47,8 +48,20 @@ void main() {
     if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
   });
 
-  DoctorCommand makeCmd(Assets assets) =>
-      DoctorCommand(DoctorInput(), assets: assets);
+  /// An empty PATH, so the external-tool block is deterministic rather than a
+  /// function of whatever is installed on the machine running the tests.
+  const noTools = <String, String>{'PATH': ''};
+
+  DoctorCommand makeCmd(Assets assets, {Map<String, String>? environment}) =>
+      DoctorCommand(
+        DoctorInput(),
+        assets: assets,
+        environment: environment ?? noTools,
+      );
+
+  /// The checks that are about MACSS itself, not about the machine's toolchain.
+  Iterable<DoctorCheck> ownChecks(List<DoctorCheck> checks) =>
+      checks.take(checks.length - externalTools.length);
 
   group('macss doctor', () {
     test('rejects an undeclared option (empty params contract)', () async {
@@ -75,7 +88,7 @@ void main() {
 
       expect(output.exitCode, 0);
       expect(
-        output.checks.every((c) => c.status == CheckStatus.ok),
+        ownChecks(output.checks).every((c) => c.status == CheckStatus.ok),
         isTrue,
       );
     });
@@ -108,7 +121,7 @@ void main() {
       final assets = _makeAssets(tempDir);
       final output = await makeCmd(assets).execute();
 
-      final templateChecks = output.checks.skip(2);
+      final templateChecks = ownChecks(output.checks).skip(2);
       expect(
         templateChecks.every((c) => c.status == CheckStatus.error),
         isTrue,
@@ -134,6 +147,63 @@ void main() {
       final assets = _makeAssets(tempDir);
       final output = await makeCmd(assets).execute();
       expect(output.toText(), contains('✗'));
+    });
+  });
+
+  group('macss doctor external toolchain', () {
+    Future<List<DoctorCheck>> toolChecks({
+      required Map<String, String> environment,
+    }) async {
+      Directory(
+        p.join(tempDir.path, 'assets', 'templates'),
+      ).createSync(recursive: true);
+      final assets = _makeAssets(tempDir, presentTemplates: _allTemplates);
+      final output =
+          await makeCmd(assets, environment: environment).execute();
+      return output.checks.skip(output.checks.length - externalTools.length)
+          .toList();
+    }
+
+    test('a missing tool warns, and never fails the command', () async {
+      Directory(
+        p.join(tempDir.path, 'assets', 'templates'),
+      ).createSync(recursive: true);
+      final assets = _makeAssets(tempDir, presentTemplates: _allTemplates);
+      final output = await makeCmd(assets).execute();
+
+      // Every tool is absent from an empty PATH...
+      expect(
+        output.checks.where((c) => c.status == CheckStatus.warning).length,
+        externalTools.length,
+      );
+      // ...yet the CLI itself is sound, so doctor succeeds.
+      expect(output.exitCode, 0);
+    });
+
+    test('each missing tool says what it is for and how to install it',
+        () async {
+      final checks = await toolChecks(environment: const {'PATH': ''});
+      final gh = checks.firstWhere((c) => c.name == 'gh');
+
+      expect(gh.status, CheckStatus.warning);
+      expect(gh.detail, contains('macss issue publish'));
+      expect(gh.remediation, contains('Install:'));
+    });
+
+    test('a tool on PATH is reported ok', () async {
+      final binDir = Directory(p.join(tempDir.path, 'bin'))
+        ..createSync(recursive: true);
+      final exe = Platform.isWindows ? 'gh.cmd' : 'gh';
+      File(p.join(binDir.path, exe)).writeAsStringSync('');
+
+      final checks = await toolChecks(
+        environment: {'PATH': binDir.path},
+      );
+
+      expect(checks.firstWhere((c) => c.name == 'gh').status, CheckStatus.ok);
+      // Everything else is still absent.
+      expect(checks.firstWhere((c) => c.name == 'docker').status,
+          CheckStatus.warning);
     });
   });
 }
