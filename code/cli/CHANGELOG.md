@@ -5,6 +5,49 @@ All notable changes to this project will be documented in this file.
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.2.0]
+
+MACSS now owns the software lifecycle it defines. The specification and issue
+stages, plus the skills for every stage, move here from the `inquiry` CLI, which
+goes back to being the state machine for the implementation stage alone.
+
+### Added
+- `macss specification new <slug>` scaffolds a requisition workspace under
+  `docs/requisitions/<YYYYMMDD>-<slug>/` and records it as the active
+  requisition, so later commands need no slug. `--lang en|es`.
+- `macss specification check` runs the `specification_ready` gate over the active
+  requisition.
+- `macss issue new <name>` scaffolds an "issue as code" file, inheriting the
+  specification's language; `macss issue publish <name>` turns it into a GitHub
+  issue via `gh`, previewing with `--plan` before `--apply`.
+- `macss skill deploy` installs the four lifecycle skills
+  (`macss-specification`, `macss-analyze`, `macss-plan`, `macss-execute`) into
+  the skills directory of every supported assistant found in your home
+  directory. `--host claude|opencode` targets one, whether or not it looks
+  installed, so a fresh setup can be primed. Skills are installed once per
+  machine, not per repository. `macss skill list` and `macss skill clean`
+  complete the module.
+- `Assets.listDirectory()`, sorted so deployment order is identical on every
+  platform.
+
+### Changed
+- The scaffolded `.gitignore` now ignores `.macss/` and `docs/requisitions/`.
+- `macss doctor` verifies the artifact templates and the shipped skills, not just
+  the project templates.
+- Unlike `create`, `skill deploy` refreshes a skill whose content changed:
+  `.skills/` is reproducible machine output, so a stale file left behind by an
+  older CLI is a defect, not a user edit.
+
+### Migration
+- The active-requisition pointer moved from `.inquiry/specification.yaml` to
+  `.macss/specification.yaml`. A requisition in flight still works without any
+  manual step — pass `--slug <slug>`, which resolves the folder directly and
+  ignores the pointer. Move the file only to restore the convenience of an
+  active requisition that the commands pick up on their own.
+- The on-disk format tokens are now namespaced to MACSS: templates emit
+  `macss:lang` and `kind: macss-issue`. Specifications already written with
+  `iq:lang` keep resolving their language, so existing requisitions still work.
+
 ## [0.1.0]
 
 ### Changed

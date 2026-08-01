@@ -29,4 +29,20 @@ class Assets {
   /// Returns true if the directory at [relativePath] exists under `<root>/assets/`.
   bool directoryExists(String relativePath) =>
       Directory(path(relativePath)).existsSync();
+
+  /// Lists the immediate child directory names under `<root>/assets/[relativePath]`.
+  ///
+  /// Sorted, so callers that stamp files in this order behave identically on
+  /// every platform — `listSync` order is filesystem-dependent and CI runs on
+  /// both Linux and Windows.
+  ///
+  /// Throws [FileSystemException] when the directory is missing, matching
+  /// [loadString]. Guard with [directoryExists] when absence is expected.
+  List<String> listDirectory(String relativePath) =>
+      Directory(path(relativePath))
+          .listSync()
+          .whereType<Directory>()
+          .map((d) => p.basename(d.path))
+          .toList()
+        ..sort();
 }

@@ -12,6 +12,9 @@ import 'assets.dart';
 import 'src/api/graphql/compile_runner.dart';
 import 'modules/api/api_builder.dart';
 import 'modules/global/global_builder.dart';
+import 'modules/issue/issue_builder.dart';
+import 'modules/skill/skill_builder.dart';
+import 'modules/specification/specification_builder.dart';
 
 /// `--help` / `-h` are left to the SDK, which routes every help request itself
 /// (including the focused `macss <command> --help`). Only `--version` / `-v`
@@ -45,6 +48,12 @@ Future<int> runMacss(
     'api',
     (m) => buildApiModule(m, runner: graphqlCompileRunner),
   );
+  cli.module(
+    'specification',
+    (m) => buildSpecificationModule(m, assets: assets),
+  );
+  cli.module('issue', (m) => buildIssueModule(m, assets: assets));
+  cli.module('skill', (m) => buildSkillModule(m, assets: assets));
 
   final routeStdout = _isApiGraphqlCompileRoute(normalizedArgs) &&
           !_isJsonMode(normalizedArgs)

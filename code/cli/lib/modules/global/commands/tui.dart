@@ -99,6 +99,9 @@ String _buildBanner(String version) {
   final commands =
       '  ${_d}Commands:$_r\n'
       '    ${_cyn}create$_r $_d<path>$_r    scaffold a MACSS project\n'
+      '    ${_cyn}specification$_r     turn a requisition into a specification\n'
+      '    ${_cyn}issue$_r             derive and publish issues from it\n'
+      '    ${_cyn}skill$_r             deploy the lifecycle skills\n'
       '    ${_cyn}doctor$_r            verify local installation\n'
       '    ${_cyn}upgrade$_r           update to latest version\n'
       '    ${_cyn}uninstall$_r         remove MACSS CLI\n'

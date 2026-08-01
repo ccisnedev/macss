@@ -1,3 +1,8 @@
+# MACSS — local workspace (git-ignored)
+# Both are machine-written and reproducible from the CLI.
+.macss/
+docs/requisitions/
+
 # Dependencies
 node_modules/
 .dart_tool/
