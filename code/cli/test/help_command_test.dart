@@ -28,6 +28,13 @@ void main() {
         'uninstall',
         'version',
         'api graphql compile',
+        'specification new',
+        'specification check',
+        'issue new',
+        'issue publish',
+        'skill deploy',
+        'skill list',
+        'skill clean',
       ]) {
         expect(out, contains(route), reason: '$route must appear in help');
       }

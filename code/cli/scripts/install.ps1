@@ -36,8 +36,11 @@ New-Item -ItemType Directory -Force $installDir | Out-Null
 Expand-Archive -Path $zipPath -DestinationPath $installDir -Force
 
 # 3. Create ma.cmd alias
+#    %~dp0 is the directory of this .cmd, so `ma` always runs the macss.exe
+#    sitting next to it. Invoking a bare `macss` would resolve through PATH and
+#    could silently run a different installation.
 New-Item -ItemType Directory -Force $binDir | Out-Null
-Set-Content -Path "$binDir\ma.cmd" -Value "@echo off`r`nmacss %*"
+Set-Content -Path "$binDir\ma.cmd" -Value @('@echo off', '"%~dp0macss.exe" %*')
 
 # 4. Add to PATH
 $userPath = [System.Environment]::GetEnvironmentVariable('PATH', 'User')

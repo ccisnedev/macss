@@ -26,8 +26,11 @@ if (Test-Path assets) {
 }
 
 # Create alias ma.cmd
+# %~dp0 is the directory of this .cmd, so `ma` always runs the macss.exe sitting
+# next to it. Invoking a bare `macss` would resolve through PATH and could
+# silently run a different installation.
 $maCmd = "$binDir\ma.cmd"
-Set-Content -Path $maCmd -Value "@echo off`r`nmacss %*"
+Set-Content -Path $maCmd -Value @('@echo off', '"%~dp0macss.exe" %*')
 
 # Add to PATH if needed
 $userPath = [System.Environment]::GetEnvironmentVariable('PATH', 'User')

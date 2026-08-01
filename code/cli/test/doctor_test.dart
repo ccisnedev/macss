@@ -20,10 +20,19 @@ Assets _makeAssets(Directory root, {List<String> presentTemplates = const []}) {
   return assets;
 }
 
+/// Must mirror `templatePaths` in doctor.dart — that list is what `macss doctor`
+/// asserts is installed, and this fixture is the "everything present" case.
 const _allTemplates = [
   'templates/project-base/docs/adr/0001-record-architecture-decisions.md',
   'templates/project-base/docs/architecture.md',
   'templates/project-base/docs/roadmap.md',
+  'artifacts/requisition.template.en.md',
+  'artifacts/specification.template.en.md',
+  'artifacts/issue.template.en.md',
+  'skills/macss-specification/SKILL.md',
+  'skills/macss-analyze/SKILL.md',
+  'skills/macss-plan/SKILL.md',
+  'skills/macss-execute/SKILL.md',
 ];
 
 void main() {

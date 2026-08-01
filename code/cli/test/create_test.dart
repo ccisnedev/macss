@@ -229,6 +229,15 @@ void main() {
       expect(gitattributes.readAsStringSync(), contains('eol'));
     });
 
+    test('does not deploy skills into the project', () async {
+      // Skills are installed once per machine under the user's home, not per
+      // repository — see `macss skill deploy`.
+      final dest = p.join(tempRoot.path, 'proj-skills');
+      await makeCmd(dest).execute();
+
+      expect(Directory(p.join(dest, '.skills')).existsSync(), isFalse);
+    });
+
     test('does not overwrite existing README.md', () async {
       final dest = p.join(tempRoot.path, 'proj-no-overwrite');
       await makeCmd(dest).execute();
