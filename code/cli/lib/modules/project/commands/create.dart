@@ -1,4 +1,8 @@
-/// `macss create <path>` — scaffolds a MACSS project at the given path.
+/// `macss project create --path <dir>` — scaffolds a MACSS project.
+///
+/// Stamps the canon defined in `canon.dart`, the same definition
+/// `project check` verifies and `project adopt` fills. Idempotent: an existing
+/// file is never overwritten.
 library;
 
 import 'dart:io';
@@ -8,6 +12,7 @@ import 'package:modular_cli_sdk/modular_cli_sdk.dart';
 import 'package:path/path.dart' as p;
 
 import '../../../assets.dart';
+import '../canon.dart';
 
 // ─── Input ──────────────────────────────────────────────────────────────────
 
@@ -93,7 +98,7 @@ class CreateCommand implements Command<CreateInput, CreateOutput> {
   @override
   String? validate() {
     if (input.resolvedPath == null || input.resolvedPath!.isEmpty) {
-      return '--path is required. Usage: macss create --path=<dir>';
+      return '--path is required. Usage: macss project create --path=<dir>';
     }
     return null;
   }
@@ -113,57 +118,16 @@ class CreateCommand implements Command<CreateInput, CreateOutput> {
 
     final steps = <String>[];
 
-    // 1. Root directory
-    _ensureDir(root, root, steps);
-
-    // 2. Module anchors — each README is the architectural signal of its module
-    //    and makes the directory survive the first commit (git ignores empty dirs).
-    final moduleAnchors = {
-      'code/infra/README.md': 'templates/project-base/code/infra/README.md',
-      'code/db/README.md': 'templates/project-base/code/db/README.md',
-      'code/api/README.md': 'templates/project-base/code/api/README.md',
-      'code/app/README.md': 'templates/project-base/code/app/README.md',
-    };
-
-    for (final entry in moduleAnchors.entries) {
-      _ensureFileFromTemplate(
-        p.join(root, p.joinAll(entry.key.split('/'))),
-        entry.value,
-        entry.key,
-        steps,
-      );
+    final dir = Directory(root);
+    if (!dir.existsSync()) {
+      dir.createSync(recursive: true);
+      steps.add('created  $root');
+    } else {
+      steps.add('exists   $root');
     }
 
-    // 3. Docs from templates
-    final templates = {
-      'docs/adr/0001-record-architecture-decisions.md': 'templates/project-base/docs/adr/0001-record-architecture-decisions.md',
-      'docs/architecture.md': 'templates/project-base/docs/architecture.md',
-      'docs/roadmap.md': 'templates/project-base/docs/roadmap.md',
-    };
-
-    for (final entry in templates.entries) {
-      _ensureFileFromTemplate(
-        p.join(root, p.joinAll(entry.key.split('/'))),
-        entry.value,
-        entry.key,
-        steps,
-      );
-    }
-
-    // 4. Root files from templates
-    final rootFiles = {
-      'README.md': 'templates/project-base/README.md',
-      '.gitignore': 'templates/project-base/.gitignore',
-      '.gitattributes': 'templates/project-base/.gitattributes',
-    };
-
-    for (final entry in rootFiles.entries) {
-      _ensureFileFromTemplate(
-        p.join(root, entry.key),
-        entry.value,
-        entry.key,
-        steps,
-      );
+    for (final file in canonFiles) {
+      steps.add(_stamp(root, file));
     }
 
     if (steps.every((s) => s.startsWith('exists'))) {
@@ -176,30 +140,12 @@ class CreateCommand implements Command<CreateInput, CreateOutput> {
     return CreateOutput(message: steps.join('\n'), created: true);
   }
 
-  void _ensureDir(String path, String display, List<String> steps) {
-    final dir = Directory(path);
-    if (!dir.existsSync()) {
-      dir.createSync(recursive: true);
-      steps.add('created  $display');
-    } else {
-      steps.add('exists   $display');
-    }
-  }
+  String _stamp(String root, CanonFile file) {
+    final target = File(p.join(root, p.joinAll(file.path.split('/'))));
+    if (target.existsSync()) return 'exists   ${file.path}';
 
-  void _ensureFileFromTemplate(
-    String targetPath,
-    String templateRelative,
-    String display,
-    List<String> steps,
-  ) {
-    final file = File(targetPath);
-    if (!file.existsSync()) {
-      Directory(p.dirname(targetPath)).createSync(recursive: true);
-      final content = assets.loadString(templateRelative);
-      file.writeAsStringSync(content);
-      steps.add('created  $display');
-    } else {
-      steps.add('exists   $display');
-    }
+    target.parent.createSync(recursive: true);
+    target.writeAsStringSync(assets.loadString(file.template));
+    return 'created  ${file.path}';
   }
 }

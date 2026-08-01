@@ -35,6 +35,9 @@ void main() {
         'skill deploy',
         'skill list',
         'skill clean',
+        'project create',
+        'project check',
+        'project adopt',
       ]) {
         expect(out, contains(route), reason: '$route must appear in help');
       }

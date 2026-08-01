@@ -5,7 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
 import 'package:macss_cli/assets.dart';
-import 'package:macss_cli/modules/global/commands/create.dart';
+import 'package:macss_cli/modules/project/commands/create.dart';
 
 import 'support/memory_sink.dart';
 
@@ -41,6 +41,7 @@ void main() {
     _writeFile(p.join(assetsDir.path, 'assets', 'templates', 'project-base', 'README.md'), '# Project Name\n');
     _writeFile(p.join(assetsDir.path, 'assets', 'templates', 'project-base', '.gitignore'), '.dart_tool/\nbuild/\n');
     _writeFile(p.join(assetsDir.path, 'assets', 'templates', 'project-base', '.gitattributes'), '* text=auto eol=lf\n');
+    _writeFile(p.join(assetsDir.path, 'assets', 'templates', 'project-base', 'CHANGELOG.md'), '# Changelog\n');
   });
 
   tearDown(() {
