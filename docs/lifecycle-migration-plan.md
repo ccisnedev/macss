@@ -66,7 +66,7 @@ Current macss surface: `create`, `doctor`, `upgrade`, `uninstall`, `version`, `h
 | D1 | `macss` is the canonical entry point; **`ma` is the official short alias** | Already implemented in the installers. Only the README needs fixing — it currently disowns it |
 | D2 | macss skills are **static** `SKILL.md` files versioned under `assets/skills/` | inquiry's generative `SkillBuilder` is not replicated |
 | D3 | They are installed **once per machine**, into each assistant's own skills directory under `~/` | A project-local copy would have to be refreshed in every clone — the opposite of a rare operation |
-| D4 | Skills are **thin and delegating** | They point at the live contract through commands (`iq fsm state --json`) instead of restating gate rules |
+| D4 | Skills are **self-contained** | macss is in production; it cannot require an experimental tool at runtime. They teach the method, not the engine |
 | D5 | macss = which stage and why. inquiry = how implementation is executed | Stable split, no overlap |
 
 ### On D1 — name and alias
@@ -78,25 +78,28 @@ Current macss surface: `create`, `doctor`, `upgrade`, `uninstall`, `version`, `h
 "CLI Naming Decision", which states that MACSS does *not* expose `ma` and that short aliases
 *"are not the official documented contract"*.
 
-### On D4 — why static skills do not drift
+### On D4 — self-contained, and why that is not duplication
 
 In inquiry, `iq-analyze` / `iq-plan` / `iq-execute` are **generated** at deploy time by reading
 `assets/fsm/states/<phase>.yaml` and the `##` headers of the artifact templates, precisely so they
-cannot fall out of sync with the FSM contract. Copying that mechanism into macss would mean
-duplicating the FSM assets in another repository.
+cannot fall out of sync with the FSM contract. Copying that mechanism into macss would duplicate the
+FSM assets in another repository.
 
-The way out is to write them at the level macss actually owns — **which stage this is, what it
-produces, when it is done** — and delegate the mechanics to commands that query the live contract:
+The first attempt avoided that by making the skills **delegate** — every step was an `iq` command.
+That was wrong for a reason the mechanism hid: **macss is in production and inquiry is an
+experimental engine**, so delegating gave the production tool a runtime dependency on the
+experimental one. A user who installs macss without inquiry hits a failing `iq fsm state` at step 1
+of `macss-analyze`.
 
-```
-1. `iq fsm state --json`  → do exactly what its `next` field says
-2. `iq ape prompt --name <operator>` → read the method and apply it
-3. …
-4. `iq fsm transition --event <gate>` → the CLI verifies the result
-```
+The resolution is that macss inherits the **method**, not the engine. The skills teach
+`analyze → plan → execute` at the level macss owns — what the phase is, what it produces, when it is
+done — and are complete without any `iq` command. Each closes with a short note that inquiry, if
+installed, drives the same loop with enforced gates.
 
-That text is stable across FSM changes. What does drift — the concrete gate rules and each
-artifact's sections — is never copied: `iq` itself prints it on failure.
+What gets duplicated is **doctrine**, which is already shared and already written down in the
+engineering handbook. What is *not* duplicated is the **contract** — gate rules, artifact section
+schemas, event names — because none of it is restated. Doctrine can safely exist in two places;
+a contract cannot. That distinction is what makes this split stable rather than a fork.
 
 ---
 
