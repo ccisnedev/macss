@@ -66,7 +66,7 @@ Current macss surface: `create`, `doctor`, `upgrade`, `uninstall`, `version`, `h
 | D1 | `macss` is the canonical entry point; **`ma` is the official short alias** | Already implemented in the installers. Only the README needs fixing — it currently disowns it |
 | D2 | macss skills are **static** `SKILL.md` files versioned under `assets/skills/` | inquiry's generative `SkillBuilder` is not replicated |
 | D3 | They are installed **once per machine**, into each assistant's own skills directory under `~/` | A project-local copy would have to be refreshed in every clone — the opposite of a rare operation |
-| D4 | Skills are **self-contained** | macss is in production; it cannot require an experimental tool at runtime. They teach the method, not the engine |
+| D4 | Skills are **self-contained and never mention inquiry** | macss is in production and must work for someone who installs nothing else. Inquiry is the laboratory where the method is refined; macss inherits the result |
 | D5 | macss = which stage and why. inquiry = how implementation is executed | Stable split, no overlap |
 
 ### On D1 — name and alias
@@ -91,15 +91,24 @@ experimental engine**, so delegating gave the production tool a runtime dependen
 experimental one. A user who installs macss without inquiry hits a failing `iq fsm state` at step 1
 of `macss-analyze`.
 
-The resolution is that macss inherits the **method**, not the engine. The skills teach
-`analyze → plan → execute` at the level macss owns — what the phase is, what it produces, when it is
-done — and are complete without any `iq` command. Each closes with a short note that inquiry, if
-installed, drives the same loop with enforced gates.
+The resolution is a one-directional relationship: **inquiry is the laboratory, macss inherits the
+result.** Inquiry is where the method is put under gates, instrumented and refined; when something is
+learned there, it is written into macss's skills. Value flows research → product, at editorial pace,
+by a human deciding it is ready.
 
-What gets duplicated is **doctrine**, which is already shared and already written down in the
-engineering handbook. What is *not* duplicated is the **contract** — gate rules, artifact section
-schemas, event names — because none of it is restated. Doctrine can safely exist in two places;
-a contract cannot. That distinction is what makes this split stable rather than a fork.
+So the skills teach `analyze → plan → execute` at the level macss owns — what the phase is, what it
+produces, when it is done — sourced from the engineering handbook, and **they do not mention inquiry
+at all**. Not as a step, not as an optional enhancement. Naming a second CLI in a production tool's
+skill is an invitation to install it, which is the coupling this decision removes.
+
+What gets duplicated is **doctrine**, which is already shared and already written down. What is
+*not* duplicated is the **contract** — gate rules, artifact section schemas, event names — because
+none of it is restated anywhere. Doctrine can safely exist in two places; a contract cannot. That
+distinction is what lets inquiry rewrite its FSM without touching macss.
+
+The cost is a **manual sync point**: an improvement proven in the lab does not reach macss until
+someone ports it into a `SKILL.md`. That is the right kind of cost — deliberate, editorial, at human
+pace — and it is what buys macss the ability to work alone.
 
 ---
 
