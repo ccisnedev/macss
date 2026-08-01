@@ -1,36 +1,61 @@
 ---
 name: macss-plan
-description: Run the plan phase of a MACSS implementation cycle by hand — design the staged plan from the diagnosis, without the scheduler agent.
+description: Run the plan phase of a MACSS implementation cycle — turn the diagnosis into staged work, each stage carrying an executable verification.
 ---
 
 ## Goal
 
-Experimental plan design from the diagnosis. Divide the work into phases, order
-them by dependency, and define the verification criteria for each phase.
+Turn the diagnosis into a staged plan: divide the work into phases, order them
+by dependency, and define how each one is verified.
 
-Implementation is driven by the inquiry state machine. This skill runs its plan
-phase manually; the CLI remains the authority on what the phase requires.
+No code is written in this phase. Writing code here is how a plan becomes
+decoration.
+
+## Method
+
+**Order by the MACSS vertical.** Work flows bottom-up through the layer cake:
+`db → api → app`, with `infra` beneath them. A phase that needs a layer below it
+comes after that layer, never before.
+
+**Every phase carries an executable check** — a test-runner command or a
+test-file reference, not prose and not pseudocode. A phase you cannot verify is
+a phase you cannot call done. The plan ends with a final phase that runs the
+**full** suite, not only the tests the change touched.
+
+**Enumerate construction sites, not just call sites.** When a phase changes a
+shared interface or type shape, list every place that type is *constructed* —
+object literals, factory returns, dispatchers, adapters — not only the places
+that consume or import it. Name the concrete search that will find them; that
+search is part of the plan.
+
+**Trace to the acceptance criteria.** Each phase states which AC it advances.
+An AC no phase covers is scope you are about to miss.
 
 ## Steps
 
-1. `iq fsm state --json` — confirm you are in PLAN and do exactly what its `next`
-   field says. Use only the events it lists.
-2. `iq ape prompt --name descartes` — read the method for this phase and apply
-   it.
-3. The CLI has already scaffolded the plan artifact. **Open it and fill every
-   section** with real content, replacing every placeholder. Inputs and outputs
-   are files on disk, not your memory. Every phase must reference the diagnosis's
-   decisions. When a phase changes a shared interface or type shape, enumerate
-   every **construction** site for that type — object literals, factory returns,
-   dispatchers and adapters — not just the consumer and import sites, and name
-   the concrete search strategy that will find them. No code edits here; that is
-   the execute phase.
-4. `iq fsm transition --event approve_plan` — the CLI verifies the result. If it
-   fails, fix exactly what the error reports. Do not re-run the event unchanged.
-5. When the gate passes, present the result to the human and stop. The human
-   approves moving on.
+1. Read the diagnosis. The plan answers what it found; a plan that ignores it is
+   solving a different problem.
+2. Split the work into phases, each independently verifiable and each small
+   enough to leave the suite green.
+3. Order them by dependency, along the MACSS vertical.
+4. Give every phase its executable verification check and the AC it covers.
+5. Add the final full-suite phase, plus whatever release preparation the change
+   needs — version bump, CHANGELOG entry.
+6. Write the plan to disk and present it to the human for approval before any
+   code is written.
 
 ## Done when
 
-- [ ] The plan is filled — no scaffold placeholders remain.
-- [ ] `iq fsm transition --event approve_plan` exits 0.
+- [ ] Every phase references the diagnosis's findings.
+- [ ] Every phase has an executable verification check, and one runs the full
+      suite.
+- [ ] Every acceptance criterion is covered by at least one phase.
+- [ ] Phase order respects the layer dependencies.
+- [ ] The human approved the plan.
+
+## If you run the inquiry FSM
+
+MACSS defines this phase; it does not enforce it. If [inquiry](https://github.com/ccisnedev/inquiry)
+is installed, it drives the same loop with enforced gates and scaffolds the plan
+artifact for you — `iq fsm state --json` will tell you where you are and what it
+expects. This skill is written to stand on its own without it.

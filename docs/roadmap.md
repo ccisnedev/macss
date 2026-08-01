@@ -228,7 +228,7 @@ serves each stage:
 | requisition | `macss requisition` | planned |
 | specification | `macss specification` | **shipped** (0.2.0) |
 | issue | `macss issue` | **shipped** (0.2.0) |
-| implementation | — | **belongs to inquiry**: `iq implementation`, `iq fsm` |
+| implementation | skills only, for now | **method** here (`macss-analyze/plan/execute`), **engine** in inquiry (`iq fsm`) |
 | verification | `macss verification` | planned |
 | deploy | `macss deploy` | planned — delegates to `macss-devops` (Stage 3.5) |
 
@@ -236,13 +236,28 @@ Shared verbs where they make sense: `start` (enter the stage), `check` (run the
 stage gate), `skill` (show the stage's operating instruction). Every argument is
 explicit and named — `--issue 40`, never a positional.
 
-**The boundary with inquiry is fixed, not provisional.** MACSS says which stage
-this is and why; inquiry is the state machine that drives an already specified
-issue through `analyze → plan → execute`. Building an `iq specification` or a
-`macss analyze` would re-absorb what the 0.2.0 / 0.22.0 split deliberately
-separated. The lifecycle skills MACSS ships for the implementation stage
-delegate to `iq fsm state` and `iq fsm transition` rather than restating their
-gates, which is what keeps the two from drifting.
+### The boundary with inquiry
+
+MACSS is **in production**: it has to work on its own, for people who never
+install anything else. Inquiry is a **scientific and engineering project** — a
+state machine with enforced gates, free to evolve at its own pace. That
+difference sets the boundary.
+
+MACSS owns the **method** of the implementation stage and ships it as skills:
+`analyze → plan → execute` is doctrine, documented in the engineering handbook,
+and macss inherits it. Inquiry owns the **engine** that enforces it — the FSM,
+the gates, the operators.
+
+So the implementation stage appears in both, deliberately, and that is not a
+fork: the skills are complete without any `iq` command, and they never restate a
+gate rule, an event name or an artifact schema. **Doctrine can safely live in two
+places; a contract cannot.** A macss user gets a working method; an inquiry user
+gets the same method with gates that enforce it.
+
+What would break this is building an `iq specification` module, or a
+`macss fsm` — either one re-absorbs what the 0.2.0 / 0.22.0 split separated.
+A `macss implementation` module that drives the method without an FSM is
+compatible with it, and is left open.
 
 ### Inception: `create` becomes `macss project create`
 
