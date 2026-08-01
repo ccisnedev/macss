@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.3.1]
+
+### Fixed
+- **`macss skill deploy` could add but never retire.** A skill dropped from a
+  release survived in the host forever as a frozen copy nothing would ever
+  update again. Deploy now removes skills in the `macss-` namespace that MACSS
+  no longer ships, reporting each one.
+
+  Scoped by prefix rather than a hand-maintained list of retirements: the
+  `macss-` namespace is ours, so anything under it we do not ship is ours to
+  remove — self-maintaining for any future rename or drop. Everything else in
+  the directory is left alone, including another tool's skills.
+
 ## [0.3.0]
 
 The lifecycle stages have a module surface, and the canon has a verifier.
