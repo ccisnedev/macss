@@ -7,6 +7,10 @@ formalize the CLI as the official companion tool of the architecture.
 
 This stage is about nomenclature, ecosystem structure, and command design.
 
+Since 0.2.0 there is a second axis: MACSS is an architecture **and** an
+engineering methodology, and the CLI now carries the lifecycle stages the
+methodology defines. See **Stage 5 - Lifecycle Module Surface**.
+
 Current operational context:
 
 - `modular_api` has already achieved GraphQL integration.
@@ -186,6 +190,111 @@ Likely areas include:
 - prompts and future AI skills
 - workflow automation
 - future reference assets and book-related tooling
+
+## Stage 5 - Lifecycle Module Surface
+
+MACSS is an architecture **and** an engineering methodology. The CLI has so far
+expressed only the first half: `create` scaffolds the canonical structure, `api`
+tools a subsystem. The methodology — how a change travels from a business
+request to production — had no command surface here at all.
+
+This stage adopts the **module-per-stage** direction, inherited from inquiry's
+roadmap when the lifecycle moved to MACSS in 0.2.0. Inquiry adopted it in
+2026-07 and narrowed it to the implementation stage in its 0.22.0; the stages it
+handed over are planned here instead.
+
+### Why a module per stage
+
+Commands grouped by mechanism leak how the engine works: a user who wants to
+"start analyzing" should not have to translate that into "run an FSM
+transition". Naming the modules after the lifecycle stages makes the command
+surface teach the methodology instead of hiding it.
+
+Two principles carried over with the direction:
+
+- **Every mechanical process is a command**, never an instruction that has a
+  human or a model run `git` / `mkdir` / hand-write a scaffold.
+- **Commands are not flow-aware**: they do their job and report it. They do not
+  print a "next step" that would bias what the user does next.
+
+### The stages and their modules
+
+The lifecycle documented in the engineering handbook, with the module that
+serves each stage:
+
+| Stage | Module | Status |
+|---|---|---|
+| inception | `macss project` | planned — see below |
+| requisition | `macss requisition` | planned |
+| specification | `macss specification` | **shipped** (0.2.0) |
+| issue | `macss issue` | **shipped** (0.2.0) |
+| implementation | skills, for now | `macss-analyze` / `macss-plan` / `macss-execute` — the method, self-contained |
+| verification | `macss verification` | planned |
+| deploy | `macss deploy` | planned — delegates to `macss-devops` (Stage 3.5) |
+
+Shared verbs where they make sense: `start` (enter the stage), `check` (run the
+stage gate), `skill` (show the stage's operating instruction). Every argument is
+explicit and named — `--issue 40`, never a positional.
+
+### The relationship with inquiry: laboratory and product
+
+MACSS is **in production**. It has to work on its own, for someone who installs
+nothing else. Inquiry is a **scientific and engineering project**: a state
+machine that puts the same method under enforced gates, instrumented, free to
+evolve at its own pace.
+
+The relationship is **one-directional**. Inquiry is the laboratory where the
+method is refined; MACSS inherits the result. When something is proven there, it
+is written into a MACSS skill. Value flows research → product, decided by a
+human, at editorial pace.
+
+**MACSS therefore never references inquiry.** Not in a skill, not in a command,
+not as an optional enhancement. Naming a second CLI inside a production tool's
+instructions is an invitation to install it, and requiring a second install is
+exactly the coupling this decision removes. The implementation skills are
+complete on their own.
+
+What is shared is **doctrine** — `analyze → plan → execute`, already documented
+in the engineering handbook. What is never shared is the **contract**: no gate
+rule, event name or artifact schema is restated in MACSS. Doctrine can safely
+live in two places; a contract cannot. That is what lets inquiry rewrite its FSM
+without touching anything here.
+
+The cost is a manual sync point: a lab improvement reaches MACSS when someone
+ports it into a `SKILL.md`. That is deliberate, and it is what buys MACSS the
+ability to stand alone.
+
+Should MACSS later gain a `macss implementation` module that drives the method
+itself, it belongs here and needs no engine from elsewhere. Building a
+`macss fsm` would not — that re-absorbs the laboratory.
+
+### Inception: `create` becomes `macss project create`
+
+`create` is the entry point to the whole methodology — a project has to exist
+before anything can be requested of it — but it is a bare root-level command,
+not a module. That is the one stage with no module name.
+
+The resolution is **not** a new `init` module: the CLI grammar in
+`architecture.md` reserves modules for nouns and verbs for leaf actions, and
+`init` is a verb. Neither is an invented codename, which would make a core
+surface unguessable for the sake of novelty. The stage's noun is already in the
+vocabulary — **`project`** — and the three commands it needs are the same
+concern at three moments:
+
+```text
+macss project create   # from nothing: scaffold the canonical structure
+macss project check    # diagnose: what is missing, what is extra
+macss project adopt    # retrofit: bring an existing project to the canon
+```
+
+`check` and `adopt` answer the question `create` cannot: *what if a project
+already exists and should adopt MACSS?* Grouping all three under `project` also
+puts the canon's verification next to its materialization, which is what keeps
+`macss create` producing a project that satisfies
+`code/book/src/project-structure.md`.
+
+`macss create` stays as a deprecated alias for one minor version, since it is
+the command every existing doc and install guide names.
 
 ## Long-Term Direction
 

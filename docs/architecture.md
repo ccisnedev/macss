@@ -102,7 +102,8 @@ premature.
 
 The naming contract for MACSS CLI should follow these rules.
 
-1. Use `macss` as the only official top-level entry point.
+1. Use `macss` as the only official top-level entry point, with `ma` as its
+   short alias for the same binary.
 2. Use nouns for modules and subsystem surfaces.
 3. Use verbs only at leaf commands.
 4. Keep global commands reserved for ecosystem-wide workflows.
@@ -114,9 +115,23 @@ This gives a consistent grammar:
 
 Examples:
 
-- `macss create --path=.`
+- `macss project create --path=.`
+- `macss project check`
+- `macss specification new <slug>`
+- `macss issue publish <name> --plan`
+- `macss skill deploy`
 - `macss api graphql compile`
 - `macss db migrate`
+
+Rule 3 is load-bearing, not cosmetic. When `create` needed a module of its own,
+`init` was rejected for it — `init` is a verb, so it cannot name a module without
+breaking the grammar. `project` is the noun the vocabulary already had, and it
+groups the three commands that share one concern: `create` materializes the
+canon, `check` verifies it, `adopt` retrofits it.
+
+The modules split along the lifecycle MACSS defines
+(`requisition → specification → issue → implementation → verification → deploy`)
+and the subsystems it tools (`api`, `db`, `app`). See Stage 5 of the roadmap.
 
 ## Why `macss` Instead of `modular_api`
 
