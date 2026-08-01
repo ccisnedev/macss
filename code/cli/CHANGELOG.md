@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.3.0]
+
+The lifecycle stages have a module surface, and the canon has a verifier.
+
+### Added
+- **`macss project`** — a project's conformance to the canon, at three moments.
+  `project create` scaffolds one, `project check` diagnoses an existing one, and
+  `project adopt` retrofits a project that predates MACSS (`--plan` previews,
+  `--apply` writes). All three share one definition of the canon, so they cannot
+  disagree about what a MACSS project is.
+- `macss doctor` gains an external toolchain preflight: `git`, `gh`, `pwsh`,
+  `dotnet`, `sqlpackage`, `docker`, `flutter` — each with what it is needed for
+  and how to install it. Presence is a PATH lookup, so `doctor` stays instant.
+- A third check status, `warning`, for what needs human judgement rather than a
+  fix. It never fails a command.
+- `CHANGELOG.md` is now part of the scaffold. The canon in
+  `code/book/src/project-structure.md` always required it; `create` never
+  produced it, and nothing detected the gap.
+
+### Changed
+- **`macss create` is deprecated** in favour of `macss project create`. It keeps
+  working for one minor version. `create` is the entry point to the whole
+  methodology but was a bare root-level command; the CLI grammar reserves
+  modules for nouns and verbs for leaf actions, so it belongs under `project`
+  beside the commands that verify what it stamps.
+- The implementation skills — `macss-analyze`, `macss-plan`, `macss-execute` —
+  are self-contained. They previously opened by invoking `iq`, which gave MACSS
+  a runtime dependency on a second CLI. They now teach the method on their own,
+  sourced from the engineering handbook.
+
 ## [0.2.0]
 
 MACSS now owns the software lifecycle it defines. The specification and issue

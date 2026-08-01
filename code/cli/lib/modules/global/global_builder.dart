@@ -1,7 +1,7 @@
 import 'package:modular_cli_sdk/modular_cli_sdk.dart';
 
 import '../../assets.dart';
-import 'commands/create.dart';
+import '../project/commands/create.dart';
 import 'commands/doctor.dart';
 import 'commands/tui.dart';
 import 'commands/uninstall.dart';
@@ -16,10 +16,13 @@ void buildGlobalModule(ModuleBuilder m, {required Assets assets}) {
     params: TuiInput.params,
   );
 
+  // Deprecated alias of `macss project create`. The command lives in the
+  // `project` module now, next to the `check` and `adopt` that verify what it
+  // stamps. Kept for one minor version because every install guide names it.
   m.command<CreateInput, CreateOutput>(
     'create',
     (req) => CreateCommand(CreateInput.fromCliRequest(req), assets: assets),
-    description: 'Scaffold a new MACSS project',
+    description: 'Scaffold a new MACSS project (deprecated: use project create)',
     params: CreateInput.params,
   );
 

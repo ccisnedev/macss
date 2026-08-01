@@ -117,3 +117,29 @@ These are not style guidelines. They are constraints that make the system
 navigable, testable, and extractable — a single module can become a
 microservice without reorganization, because the structure already drew the
 boundary.
+
+## The canon is verified, not just described
+
+Rules that live only in prose drift from the tool that materializes them. These
+do not: `macss project check` reads the same definition `macss project create`
+stamps, and reports what a project is missing and where it deviates.
+
+```text
+macss project check
+```
+
+It distinguishes two kinds of finding, because they call for different
+responses. A **missing** canonical file is an error, and `macss project adopt`
+can create it. A **deviation** — an `api` module with no data module, a client
+module mirroring nothing, a stray directory under `code/`, documentation nested
+inside a layer — is a warning, reported and left alone. Whether a
+`code/legacy/` directory is deliberate debt is not a question a tool can answer.
+
+For a project that predates MACSS and wants to adopt it:
+
+```text
+macss project adopt --plan     # preview what would be created
+macss project adopt --apply    # create it
+```
+
+`adopt` never removes or overwrites anything.

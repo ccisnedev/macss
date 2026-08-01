@@ -66,7 +66,7 @@ Current macss surface: `create`, `doctor`, `upgrade`, `uninstall`, `version`, `h
 | D1 | `macss` is the canonical entry point; **`ma` is the official short alias** | Already implemented in the installers. Only the README needs fixing — it currently disowns it |
 | D2 | macss skills are **static** `SKILL.md` files versioned under `assets/skills/` | inquiry's generative `SkillBuilder` is not replicated |
 | D3 | They are installed **once per machine**, into each assistant's own skills directory under `~/` | A project-local copy would have to be refreshed in every clone — the opposite of a rare operation |
-| D4 | Skills are **thin and delegating** | They point at the live contract through commands (`iq fsm state --json`) instead of restating gate rules |
+| D4 | Skills are **self-contained and never mention inquiry** | macss is in production and must work for someone who installs nothing else. Inquiry is the laboratory where the method is refined; macss inherits the result |
 | D5 | macss = which stage and why. inquiry = how implementation is executed | Stable split, no overlap |
 
 ### On D1 — name and alias
@@ -78,25 +78,37 @@ Current macss surface: `create`, `doctor`, `upgrade`, `uninstall`, `version`, `h
 "CLI Naming Decision", which states that MACSS does *not* expose `ma` and that short aliases
 *"are not the official documented contract"*.
 
-### On D4 — why static skills do not drift
+### On D4 — self-contained, and why that is not duplication
 
 In inquiry, `iq-analyze` / `iq-plan` / `iq-execute` are **generated** at deploy time by reading
 `assets/fsm/states/<phase>.yaml` and the `##` headers of the artifact templates, precisely so they
-cannot fall out of sync with the FSM contract. Copying that mechanism into macss would mean
-duplicating the FSM assets in another repository.
+cannot fall out of sync with the FSM contract. Copying that mechanism into macss would duplicate the
+FSM assets in another repository.
 
-The way out is to write them at the level macss actually owns — **which stage this is, what it
-produces, when it is done** — and delegate the mechanics to commands that query the live contract:
+The first attempt avoided that by making the skills **delegate** — every step was an `iq` command.
+That was wrong for a reason the mechanism hid: **macss is in production and inquiry is an
+experimental engine**, so delegating gave the production tool a runtime dependency on the
+experimental one. A user who installs macss without inquiry hits a failing `iq fsm state` at step 1
+of `macss-analyze`.
 
-```
-1. `iq fsm state --json`  → do exactly what its `next` field says
-2. `iq ape prompt --name <operator>` → read the method and apply it
-3. …
-4. `iq fsm transition --event <gate>` → the CLI verifies the result
-```
+The resolution is a one-directional relationship: **inquiry is the laboratory, macss inherits the
+result.** Inquiry is where the method is put under gates, instrumented and refined; when something is
+learned there, it is written into macss's skills. Value flows research → product, at editorial pace,
+by a human deciding it is ready.
 
-That text is stable across FSM changes. What does drift — the concrete gate rules and each
-artifact's sections — is never copied: `iq` itself prints it on failure.
+So the skills teach `analyze → plan → execute` at the level macss owns — what the phase is, what it
+produces, when it is done — sourced from the engineering handbook, and **they do not mention inquiry
+at all**. Not as a step, not as an optional enhancement. Naming a second CLI in a production tool's
+skill is an invitation to install it, which is the coupling this decision removes.
+
+What gets duplicated is **doctrine**, which is already shared and already written down. What is
+*not* duplicated is the **contract** — gate rules, artifact section schemas, event names — because
+none of it is restated anywhere. Doctrine can safely exist in two places; a contract cannot. That
+distinction is what lets inquiry rewrite its FSM without touching macss.
+
+The cost is a **manual sync point**: an improvement proven in the lab does not reach macss until
+someone ports it into a `SKILL.md`. That is the right kind of cost — deliberate, editorial, at human
+pace — and it is what buys macss the ability to work alone.
 
 ---
 
@@ -306,9 +318,26 @@ tree and in the "Materialized by `macss create`" section — but `create.dart:15
 project that satisfies its own documented canon**, and nothing detects it. This PR fixes that
 alongside the checker that would have caught it.
 
-### 7.3 `macss project check` and `macss project adopt`
+### 7.3 The `project` module
 
-Grammar is `macss <module> <surface> <action>` — module `project`, verb at the leaf. ✓
+Grammar is `macss <module> <surface> <action>` — module `project`, verbs at the leaves. ✓
+
+The module absorbs `create` as well. `create` is the entry point to the whole methodology, but it is
+a bare root-level command with no module name — the one lifecycle stage without one. A new `init`
+module is not the answer: `architecture.md` reserves modules for nouns and verbs for leaf actions,
+and `init` is a verb. The stage's noun is already in the vocabulary. All three commands are the same
+concern — the project's conformance to the canon — at three moments, so they belong together:
+
+```text
+macss project create   # from nothing: scaffold the canonical structure
+macss project check    # diagnose: what is missing, what is extra
+macss project adopt    # retrofit: bring an existing project to the canon
+```
+
+`macss create` stays as a **deprecated alias** for one minor version, since every existing doc and
+install guide names it. Grouping the three also puts the canon's verification next to its
+materialization, which is what keeps `create` producing a project that satisfies the canon — the
+drift found in §7.2. See Stage 5 of `docs/roadmap.md`.
 
 **`macss project check --path=.`** — read-only diagnosis. Reuses the model in `doctor.dart`
 (`DoctorCheck{name, status, detail, remediation}`), which currently has `CheckStatus{ok, error}` and
@@ -330,10 +359,10 @@ executes). This is the command that answers *"what if I want an existing project
 > as a `warning` and left to the team's judgement — a `code/legacy/` folder may be deliberate debt,
 > and a tool has no context to decide that.
 
-How it relates to the existing commands:
+How the three relate:
 
 ```
-new project        →  macss create  --path=.
+new project        →  macss project create  --path=.
 existing project   →  macss project check   --path=.     (what is missing / extra?)
                       macss project adopt   --path=. --plan
                       macss project adopt   --path=. --apply
@@ -466,10 +495,14 @@ nothing overwritten).
 ## 12. Open items
 
 1. **Skill-less stages.** `verification` and `deploy` appear in the diagrams but have no skill. The
-   `skill` module would accept them with no changes.
+   `skill` module would accept them with no changes. Tracked in Stage 5 of `docs/roadmap.md`, which
+   now maps every lifecycle stage to the module that serves it.
 2. **Skill names.** Assumed `macss-specification`, `macss-analyze`, `macss-plan`, `macss-execute`.
    Alternative: a single `macss-implementation` instead of three.
-3. **Org inconsistency in the handbook.** `introduccion.md:171` cites `github.com/ccisnedev/macss`
+3. **Command naming — resolved.** `macss project check` / `adopt` over `macss project doctor`: the
+   grammar wants a verb at the leaf, and two "doctor" commands with different scopes — CLI vs
+   project — invite confusion. The module also absorbs `create` (§7.3).
+4. **Org inconsistency in the handbook.** `introduccion.md:171` cites `github.com/ccisnedev/macss`
    while `stack.md:74` cites `github.com/macss-dev/modular_api`. Confirm whether this is intentional
    before touching the references in §8.
 

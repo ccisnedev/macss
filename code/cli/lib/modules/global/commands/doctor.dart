@@ -5,25 +5,11 @@ import 'package:cli_router/cli_router.dart';
 import 'package:modular_cli_sdk/modular_cli_sdk.dart';
 
 import '../../../assets.dart';
+import '../../../src/checks.dart';
+import '../../../src/tools.dart';
 import '../../../src/version.dart';
 
-// ─── Check types ─────────────────────────────────────────────────────────────
-
-enum CheckStatus { ok, error }
-
-class DoctorCheck {
-  final String name;
-  final CheckStatus status;
-  final String detail;
-  final String? remediation;
-
-  const DoctorCheck({
-    required this.name,
-    required this.status,
-    required this.detail,
-    this.remediation,
-  });
-}
+export '../../../src/checks.dart' show CheckStatus, DoctorCheck;
 
 // ─── Input ──────────────────────────────────────────────────────────────────
 
@@ -50,35 +36,14 @@ class DoctorOutput extends Output {
   DoctorOutput({required this.checks});
 
   @override
-  Map<String, dynamic> toJson() => {
-    'checks': checks
-        .map(
-          (c) => {
-            'name': c.name,
-            'status': c.status.name,
-            'detail': c.detail,
-            if (c.remediation != null) 'remediation': c.remediation,
-          },
-        )
-        .toList(),
-  };
+  Map<String, dynamic> toJson() =>
+      {'checks': checks.map((c) => c.toJson()).toList()};
 
   @override
-  int get exitCode =>
-      checks.any((c) => c.status == CheckStatus.error) ? 1 : ExitCode.ok;
+  int get exitCode => hasError(checks) ? 1 : ExitCode.ok;
 
   @override
-  String? toText() {
-    final buf = StringBuffer();
-    for (final check in checks) {
-      final icon = check.status == CheckStatus.ok ? '✓' : '✗';
-      buf.writeln('  $icon  ${check.name}  ${check.detail}');
-      if (check.remediation != null) {
-        buf.writeln('       → ${check.remediation}');
-      }
-    }
-    return buf.toString();
-  }
+  String? toText() => renderChecks(checks);
 }
 
 // ─── Command ────────────────────────────────────────────────────────────────
@@ -89,7 +54,10 @@ class DoctorCommand implements Command<DoctorInput, DoctorOutput> {
 
   final Assets assets;
 
-  DoctorCommand(this.input, {required this.assets});
+  /// Injected in tests so the PATH lookup is deterministic.
+  final Map<String, String>? environment;
+
+  DoctorCommand(this.input, {required this.assets, this.environment});
 
   @override
   String? validate() => null;
@@ -128,6 +96,7 @@ class DoctorCommand implements Command<DoctorInput, DoctorOutput> {
           'templates/project-base/docs/adr/0001-record-architecture-decisions.md',
       'template: architecture.md': 'templates/project-base/docs/architecture.md',
       'template: roadmap.md': 'templates/project-base/docs/roadmap.md',
+      'template: CHANGELOG.md': 'templates/project-base/CHANGELOG.md',
       'artifact: requisition': 'artifacts/requisition.template.en.md',
       'artifact: specification': 'artifacts/specification.template.en.md',
       'artifact: issue': 'artifacts/issue.template.en.md',
@@ -145,6 +114,21 @@ class DoctorCommand implements Command<DoctorInput, DoctorOutput> {
           status: exists ? CheckStatus.ok : CheckStatus.error,
           detail: exists ? 'found' : 'missing',
           remediation: exists ? null : 'Run: macss upgrade',
+        ),
+      );
+    }
+
+    // External toolchain. A missing tool never fails the command: `doctor`
+    // answers whether the CLI itself is sound, and these narrow what you can do
+    // rather than breaking what you have.
+    for (final tool in externalTools) {
+      final present = isOnPath(tool.executable, environment: environment);
+      checks.add(
+        DoctorCheck(
+          name: tool.executable,
+          status: present ? CheckStatus.ok : CheckStatus.warning,
+          detail: present ? 'on PATH' : 'not found — ${tool.neededFor}',
+          remediation: present ? null : 'Install: ${tool.install}',
         ),
       );
     }

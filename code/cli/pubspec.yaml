@@ -1,7 +1,7 @@
 name: macss_cli
 description: >
   CLI for MACSS — Modular Architecture for Comprehensive Software Solutions.
-version: 0.2.0
+version: 0.3.0
 publish_to: none
 
 environment:

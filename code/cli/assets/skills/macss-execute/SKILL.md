@@ -1,34 +1,51 @@
 ---
 name: macss-execute
-description: Run the execute phase of a MACSS implementation cycle by hand — implement the plan phase by phase under TDD, without the scheduler agent.
+description: Run the execute phase of a MACSS implementation cycle — implement the plan phase by phase under TDD, keeping the suite green.
 ---
 
 ## Goal
 
-Implementation under plan constraints. Work the plan **phase by phase**; each
-phase produces tested code and a commit.
+Implement the plan **phase by phase**. Each phase produces tested code and a
+commit.
 
-Implementation is driven by the inquiry state machine. This skill runs its
-execute phase manually; the CLI remains the authority on what the phase requires.
+## Method
+
+**The test comes first.** For each phase, write the test before the code, and
+write it so it proves the acceptance criterion the phase covers. A test written
+after the code tends to describe what the code does rather than what the change
+was for.
+
+**The full suite must pass before every commit** — the whole project's tests,
+not only the ones this phase touched, and independent of whatever the plan's own
+verification criteria say. A phase that leaves the suite red is not done.
+
+**Never weaken a sensor to make it green.** Do not lower a threshold, disable a
+job, add a skip, or loosen an assertion to get past a failure. A gate that goes
+green without the problem being solved is worse than a red one: it removes the
+signal that would have caught it. If a test is wrong, fix it deliberately and
+say so.
+
+**A flaky test is a bug**, not noise to be re-run.
+
+**Behind a feature flag, OFF must be identical to `main`.** Code can ship inert.
+Dependencies point from the feature to the base, never the reverse.
 
 ## Steps
 
-1. `iq fsm state --json` — confirm you are in EXECUTE and do exactly what its
-   `next` field says. Use only the events it lists.
-2. `iq ape prompt --name ada` — read the method for this phase and apply it.
-3. Implement the plan **phase by phase**. For each phase: write the test
-   **first** — it must prove the acceptance criterion the phase covers — then the
-   code, keep the full test suite green, and commit. The full suite must pass
-   before any commit, independent of the plan's own verification criteria. Then
-   do the release preparation the plan specifies: version bump, CHANGELOG, and a
-   final commit.
-4. `iq fsm transition --event finish_execute` — the CLI verifies the result. If
-   it fails, fix exactly what the error reports. Do not re-run the event
-   unchanged.
-5. When the gate passes, present the result to the human and stop. The human
-   approves moving on.
+1. Take the next phase from the plan. Work them in order; the order encodes the
+   layer dependencies.
+2. Write the test that proves the phase's acceptance criterion. Watch it fail.
+3. Write the smallest code that makes it pass.
+4. Run the full suite. Fix what broke — do not proceed on red.
+5. Commit the phase.
+6. Repeat until every phase is done, then do the release preparation the plan
+   specifies: version bump, CHANGELOG entry, final commit.
+7. Present the result to the human.
 
 ## Done when
 
-- [ ] The plan is implemented and the full test suite passes.
-- [ ] `iq fsm transition --event finish_execute` exits 0.
+- [ ] Every plan phase is implemented and committed.
+- [ ] Every acceptance criterion is covered by at least one test.
+- [ ] The full suite passes, with nothing skipped, disabled or loosened to get
+      there.
+- [ ] Release preparation is done as the plan specified.
