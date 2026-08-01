@@ -74,28 +74,41 @@ This confirms the intended architecture boundary:
 
 ## CLI Naming Decision
 
-The official command-line entry point for the ecosystem is `macss`.
+The official command-line entry point for the ecosystem is `macss`, with **`ma`
+as its official short alias**.
 
-This means MACSS does not expose a separate primary CLI named
-`modular_api`, `modular-api`, `modularapi`, `mapi`, or `ma`.
+This means MACSS does not expose a separate primary CLI named `modular_api`,
+`modular-api`, `modularapi`, or `mapi`. There is one CLI, reachable under two
+names.
 
 The naming model is:
 
-- `macss` is the official ecosystem CLI
-- global commands live directly under `macss`
-- component-specific tooling lives under modules such as `macss api`
+- `macss` is the official ecosystem CLI, and the name documentation uses
+- `ma` is the same binary under a shorter name, for daily typing — two letters,
+  like `gh` or `iq`, and free of collisions with any standard Unix or Windows
+  executable
+- lifecycle and subsystem tooling lives under modules such as `macss project`,
+  `macss specification` or `macss api`
+- the grammar is `macss <module> <surface> <action>`: nouns for modules and
+  surfaces, verbs only at the leaves
 
 Examples:
 
 ```text
-macss create --path=.
+macss project create --path=.
+macss project check
+macss specification new <slug>
+macss issue publish <name> --plan
+macss skill deploy
 macss doctor
-macss version
 macss api graphql compile
+
+ma project check              # the alias resolves to the same binary
 ```
 
-Short aliases such as `ma` may exist later as convenience wrappers, but they
-are not the official documented contract.
+The installers create `ma` alongside `macss`: a symlink on Linux, a `ma.cmd`
+shim on Windows that invokes the `macss.exe` sitting next to it rather than
+resolving through `PATH`.
 
 ## CLI Scope
 
