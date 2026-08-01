@@ -306,9 +306,26 @@ tree and in the "Materialized by `macss create`" section — but `create.dart:15
 project that satisfies its own documented canon**, and nothing detects it. This PR fixes that
 alongside the checker that would have caught it.
 
-### 7.3 `macss project check` and `macss project adopt`
+### 7.3 The `project` module
 
-Grammar is `macss <module> <surface> <action>` — module `project`, verb at the leaf. ✓
+Grammar is `macss <module> <surface> <action>` — module `project`, verbs at the leaves. ✓
+
+The module absorbs `create` as well. `create` is the entry point to the whole methodology, but it is
+a bare root-level command with no module name — the one lifecycle stage without one. A new `init`
+module is not the answer: `architecture.md` reserves modules for nouns and verbs for leaf actions,
+and `init` is a verb. The stage's noun is already in the vocabulary. All three commands are the same
+concern — the project's conformance to the canon — at three moments, so they belong together:
+
+```text
+macss project create   # from nothing: scaffold the canonical structure
+macss project check    # diagnose: what is missing, what is extra
+macss project adopt    # retrofit: bring an existing project to the canon
+```
+
+`macss create` stays as a **deprecated alias** for one minor version, since every existing doc and
+install guide names it. Grouping the three also puts the canon's verification next to its
+materialization, which is what keeps `create` producing a project that satisfies the canon — the
+drift found in §7.2. See Stage 5 of `docs/roadmap.md`.
 
 **`macss project check --path=.`** — read-only diagnosis. Reuses the model in `doctor.dart`
 (`DoctorCheck{name, status, detail, remediation}`), which currently has `CheckStatus{ok, error}` and
@@ -330,10 +347,10 @@ executes). This is the command that answers *"what if I want an existing project
 > as a `warning` and left to the team's judgement — a `code/legacy/` folder may be deliberate debt,
 > and a tool has no context to decide that.
 
-How it relates to the existing commands:
+How the three relate:
 
 ```
-new project        →  macss create  --path=.
+new project        →  macss project create  --path=.
 existing project   →  macss project check   --path=.     (what is missing / extra?)
                       macss project adopt   --path=. --plan
                       macss project adopt   --path=. --apply
@@ -466,10 +483,14 @@ nothing overwritten).
 ## 12. Open items
 
 1. **Skill-less stages.** `verification` and `deploy` appear in the diagrams but have no skill. The
-   `skill` module would accept them with no changes.
+   `skill` module would accept them with no changes. Tracked in Stage 5 of `docs/roadmap.md`, which
+   now maps every lifecycle stage to the module that serves it.
 2. **Skill names.** Assumed `macss-specification`, `macss-analyze`, `macss-plan`, `macss-execute`.
    Alternative: a single `macss-implementation` instead of three.
-3. **Org inconsistency in the handbook.** `introduccion.md:171` cites `github.com/ccisnedev/macss`
+3. **Command naming — resolved.** `macss project check` / `adopt` over `macss project doctor`: the
+   grammar wants a verb at the leaf, and two "doctor" commands with different scopes — CLI vs
+   project — invite confusion. The module also absorbs `create` (§7.3).
+4. **Org inconsistency in the handbook.** `introduccion.md:171` cites `github.com/ccisnedev/macss`
    while `stack.md:74` cites `github.com/macss-dev/modular_api`. Confirm whether this is intentional
    before touching the references in §8.
 
