@@ -1,5 +1,24 @@
 # MACSS Skills — Diseño y análisis
 
+> **Superseded (2026-07-31).** The open questions in this draft are decided and
+> shipped in 0.2.0. Read [ADR 0003](adr/0003-macss-owns-the-software-lifecycle.md)
+> and Stage 5 of [the roadmap](roadmap.md) for the current design; this file is
+> kept as the record of the analysis that led there.
+>
+> How the questions resolved:
+>
+> | Draft question | Decision |
+> |---|---|
+> | Where does `code/skills/` live? | Nowhere. Skills are assets under `code/cli/assets/skills/<name>/SKILL.md` |
+> | Static or dynamic content? | **Static.** Hand-authored `SKILL.md`, not generated from repo inspection |
+> | Deploy target per host? | Each assistant's own directory under `~/`, **once per machine**, not per repository. `macss skill deploy` refreshes every assistant it detects; `--host` targets one |
+> | `--host` over `--target`? | Kept. `--host` is where the instruction runs |
+> | Normative vs instructive skill | Deferred. What shipped is the **lifecycle** skill set — `macss-specification`, `macss-analyze`, `macss-plan`, `macss-execute` — one per stage, not one per audience |
+>
+> Only `claude` and `opencode` are offered, being the assistants whose skills
+> directory convention is actually known. Guessing the others would create
+> directories in a user's home that nothing reads.
+
 Estado: borrador en progreso
 Última actualización: 2026-06-09
 
