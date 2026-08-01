@@ -147,6 +147,38 @@ void main() {
       expect(out.message, contains('home directory'));
     });
 
+    test('retires a namespaced skill that is no longer shipped', () async {
+      // Deployment that can only add leaves frozen copies nothing will update
+      // again — exactly what stranded the iq-* skills when the lifecycle moved.
+      installHost('claude');
+      await deployCmd().execute();
+      final dropped = File(
+        p.join(hostPaths('claude', environment: env)!.skillsDirectory,
+            'macss-retired', 'SKILL.md'),
+      );
+      dropped.createSync(recursive: true);
+      dropped.writeAsStringSync('# from an older release');
+
+      final out = await deployCmd().execute();
+
+      expect(dropped.parent.existsSync(), isFalse);
+      expect(out.message, contains('removed  macss-retired'));
+    });
+
+    test('never retires a skill outside the MACSS namespace', () async {
+      installHost('claude');
+      final foreign = File(
+        p.join(hostPaths('claude', environment: env)!.skillsDirectory,
+            'iq-analyze', 'SKILL.md'),
+      );
+      foreign.createSync(recursive: true);
+      foreign.writeAsStringSync("# another tool's");
+
+      await deployCmd().execute();
+
+      expect(foreign.existsSync(), isTrue);
+    });
+
     test('validate rejects assets with no skills directory', () {
       final empty = Assets(root: p.join(tempRoot.path, 'nowhere'));
       final cmd = SkillDeployCommand(SkillDeployInput(), assets: empty);
