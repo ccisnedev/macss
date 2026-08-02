@@ -1,6 +1,6 @@
 # Operational plan — the requisition produces the issue
 
-- **Status:** proposed, pending approval
+- **Status:** delivered in 0.4.0
 - **Repository:** `macss/macss` (`code/cli`)
 - **Baseline:** `main` at `72d544c` (macss 0.3.2)
 - **Analysis:** settled in `cacsi-dev/handbook` chapter 05 — *Un requerimiento, un issue*
@@ -313,9 +313,11 @@ Version: **0.4.0**.
 
 ## 11. Open items
 
-1. **Migration of existing three-file requisitions.** `docs/requisitions/` is a
-   git-ignored local workspace, so the options are: do nothing and document;
-   have `check` detect the old layout and explain; or ship a `migrate` command.
-   Undecided.
+1. **Migration of existing three-file requisitions — resolved: nothing.**
+   `docs/requisitions/` is a git-ignored local authoring workspace, and what
+   persists is the **issue** it produced. A requisition folder left in the old
+   layout is a scratch directory whose durable output already lives in GitHub,
+   so there is nothing to migrate and no command worth writing for it.
 2. **Whether `requisition check` should also verify `issue.yaml` is well
-   formed**, or leave that to `publish`.
+   formed**, or leave that to `publish`. Still open — today `publish` is the
+   only reader that needs it.
