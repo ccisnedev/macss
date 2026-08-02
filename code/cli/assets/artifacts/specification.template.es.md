@@ -33,13 +33,23 @@ _Esta especificación es el **acuerdo de negocio** —a la manera de un project 
 | -------------------- | -------------------- |
 | Entrega comprometida | <!-- AAAA-MM-DD -->  |
 
+
+### ¿Cómo sabremos que sirvió?
+
+<!-- La señal observable de que el problema de la §1 de la solicitud quedó
+     resuelto. No es un criterio de aceptación ---eso se comprueba al entregar---
+     sino lo que se mirará después para saber si valió la pena.
+     Si no se deja escribir como algo observable, el valor era humo. -->
+
+> **Ejemplo:** *"Ningún cierre mensual vuelve a rehacerse por registros perdidos."*
+
 ## 2. Historias de Usuario
 
 ### HU-1: <!-- Título descriptivo -->
 
-**As a (Como)** <!-- rol del usuario -->,
-**I want (Quiero)** <!-- acción que desea realizar -->,
-**So that (Para)** <!-- beneficio o valor que obtiene -->.
+**Como** <!-- rol del usuario -->,
+**Quiero** <!-- acción que desea realizar -->,
+**Para** <!-- beneficio o valor que obtiene -->.
 
 #### Acceptance Criteria
 
@@ -50,7 +60,7 @@ _Esta especificación es el **acuerdo de negocio** —a la manera de un project 
      exportación a PDF parte la columna. Cada AC es, además, su test de
      aceptación (los tests se escriben en desarrollo). -->
 
-| AC  | Given (Dado que)        | When (Cuando)        | Then (Entonces)        |
+| AC  | Dado que                | Cuando               | Entonces               |
 | --- | ----------------------- | -------------------- | ---------------------- |
 | 1   | <!-- Contexto/precondición --> | <!-- Acción que ocurre --> | <!-- Resultado esperado --> |
 
