@@ -89,6 +89,15 @@ const _blu = '\x1B[34m';
 const _cyn = '\x1B[36m';
 const _wht = '\x1B[97m';
 
+/// The command the banner tells a new user to run.
+///
+/// A constant so the banner and the test that runs it cannot disagree. The
+/// banner used to advertise `macss create my-project`: a positional argument
+/// the CLI rejects (ADR 0002 chose explicit flags), on the alias deprecated in
+/// favour of `project create`. The first command a new user was told to type
+/// exited 7.
+const quickstartCommand = 'macss project create --path=my-project';
+
 String _buildBanner(String version) {
   final logo =
       '\n$_wht   █▀   ▀█$_r'
@@ -109,7 +118,7 @@ String _buildBanner(String version) {
   ;
 
   final footer =
-      '  ${_d}Quickstart:$_r  macss create my-project'
+      '  ${_d}Quickstart:$_r  $quickstartCommand'
   ;
 
   return '$logo\n\n$commands\n\n$footer';
