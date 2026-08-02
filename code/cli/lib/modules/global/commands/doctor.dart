@@ -101,7 +101,6 @@ class DoctorCommand implements Command<DoctorInput, DoctorOutput> {
       'vocabulary: es': 'vocabulary/es.yaml',
       'artifact: requisition': 'artifacts/requisition.template.en.md',
       'artifact: specification': 'artifacts/specification.template.en.md',
-      'artifact: issue': 'artifacts/issue.template.en.md',
       'skill: macss-specification': 'skills/macss-specification/SKILL.md',
       'skill: macss-analyze': 'skills/macss-analyze/SKILL.md',
       'skill: macss-plan': 'skills/macss-plan/SKILL.md',
