@@ -9,6 +9,8 @@ import 'package:macss_cli/modules/requisition/commands/check.dart';
 import 'package:macss_cli/modules/requisition/commands/export_template.dart';
 import 'package:macss_cli/modules/requisition/commands/new.dart';
 import 'package:macss_cli/modules/requisition/issue_metadata.dart';
+import 'package:macss_cli/modules/requisition/commands/publish.dart';
+import 'package:macss_cli/modules/requisition/publisher.dart';
 import 'package:macss_cli/modules/requisition/requisition_builder.dart';
 import 'package:macss_cli/templates/template_resolver.dart';
 
@@ -204,6 +206,133 @@ void main() {
 
   // Contract style: through a real ModularCli, so parse-time enforcement is
   // exercised end to end.
+  group('macss requisition publish', () {
+    late List<List<String>> calls;
+
+    ProcessRunner runner({int exitCode = 0, String stdout = ''}) =>
+        (executable, arguments) async {
+          calls.add([executable, ...arguments]);
+          return ProcessResult(0, exitCode, stdout, '');
+        };
+
+    setUp(() => calls = []);
+
+    Future<RequisitionPublishOutput> publish({
+      bool apply = false,
+      ProcessRunner? run,
+      String? repo,
+    }) =>
+        RequisitionPublishCommand(
+          RequisitionPublishInput(apply: apply, repo: repo),
+          workingDirectory: tempDir.path,
+          runProcess: run ?? runner(),
+        ).execute();
+
+    Future<void> fillForm() async {
+      final form = file('$folder/requisition.md');
+      form.writeAsStringSync(form
+          .readAsStringSync()
+          .replaceAll('<!-- Su respuesta aquí -->', 'Una respuesta real.'));
+    }
+
+    test('refuses to publish an unanswered form', () async {
+      await open();
+
+      final out = await publish(apply: true);
+
+      expect(out.ok, isFalse);
+      expect(out.message, contains('REQ_NO_VALUE'));
+      expect(calls, isEmpty, reason: 'gh must not be reached');
+    });
+
+    test('previews by default and runs nothing', () async {
+      await open();
+      await fillForm();
+
+      final out = await publish();
+
+      expect(out.message, contains('would create'));
+      expect(out.message, contains('inferred by gh'));
+      expect(calls, isEmpty);
+    });
+
+    test('--apply creates the issue and records its number', () async {
+      await open();
+      await fillForm();
+
+      final out = await publish(
+        apply: true,
+        run: runner(stdout: 'https://github.com/o/r/issues/42'),
+      );
+
+      expect(out.ok, isTrue, reason: out.message);
+      expect(out.issue, 42);
+      expect(calls.single, containsAllInOrder(['gh', 'issue', 'create']));
+      expect(calls.single, isNot(contains('--repo')));
+
+      final dir = p.dirname(file('$folder/x').path);
+      expect(IssueMetadata.read(dir)!.issue, 42);
+    });
+
+    test('a second publish edits the issue it already created', () async {
+      await open();
+      await fillForm();
+      await publish(
+          apply: true, run: runner(stdout: 'https://github.com/o/r/issues/42'));
+      calls.clear();
+
+      final out = await publish(apply: true);
+
+      expect(out.message, contains('updated'));
+      expect(calls.single, containsAllInOrder(['gh', 'issue', 'edit', '42']));
+    });
+
+    test('the body grows when the specification appears', () async {
+      await open();
+      await fillForm();
+      final before = await publish();
+
+      file('$folder/specification.md').writeAsStringSync('# Contrato\n\nTexto.');
+      final after = await publish();
+
+      expect(before.message, contains('requisition.md'));
+      expect(before.message, isNot(contains('specification.md')));
+      expect(after.message, contains('requisition.md + specification.md'));
+    });
+
+    test('--repo overrides what gh would infer', () async {
+      await open();
+      await fillForm();
+
+      await publish(apply: true, repo: 'owner/other');
+
+      expect(calls.single, containsAllInOrder(['--repo', 'owner/other']));
+    });
+
+    test('a body over the GitHub limit fails before reaching gh', () async {
+      await open();
+      await fillForm();
+      file('$folder/specification.md')
+          .writeAsStringSync('x' * (githubBodyLimit + 1));
+
+      final out = await publish(apply: true);
+
+      expect(out.ok, isFalse);
+      expect(out.message, contains('$githubBodyLimit'));
+      expect(calls, isEmpty, reason: 'no point asking gh to reject it');
+    });
+
+    test('a gh failure is reported, not swallowed', () async {
+      await open();
+      await fillForm();
+
+      final out = await publish(apply: true, run: runner(exitCode: 1));
+
+      expect(out.ok, isFalse);
+      expect(out.message, contains('failed'));
+    });
+  });
+
   group('macss requisition contract', () {
     ModularCli makeCli() => ModularCli()
       ..module('requisition', (m) => buildRequisitionModule(m, assets: assets));
