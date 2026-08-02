@@ -5,6 +5,46 @@ All notable changes to this project will be documented in this file.
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.5.0]
+
+The skills are what a model actually executes. They had drifted from the CLI —
+`macss-specification` was instructing `macss issue new` and `macss issue
+publish`, removed in 0.4.0 — and nothing in the suite connected the two.
+
+### Changed — BREAKING
+- **`macss create` is removed.** It shipped deprecated in 0.3.0 as an alias of
+  `macss project create`. Two names for one command left the grammar ambiguous
+  about which noun owns scaffolding, which is the one thing `project` exists to
+  settle.
+
+### Changed
+- **`macss-specification` is rewritten** for the one-to-one model. It now walks
+  the whole stage — `requisition new` through `dor check` — instead of the
+  middle of it, and states the two rules the commands cannot enforce: the
+  Product Owner writes his own request, and the issue body freezes at DoR.
+- **`macss-analyze` and `macss-plan` publish their output on the issue.** The
+  diagnosis and the plan used to live in the model's session, which ends. They
+  are now comments below the frozen body: the body is what was agreed, the
+  comments are how the work unfolded.
+- **`macss-execute` closes the chain** by opening the PR against the issue that
+  carries the request, the contract, the diagnosis and the plan.
+
+### Added
+- **`skill_commands_test`**: every `macss <…>` a skill names is cross-checked
+  against `help --json`, the CLI's own catalogue. A skill that instructs a
+  command the CLI does not accept now fails the suite — the drift guard
+  `help_command_test` gives the catalogue, aimed at the skills.
+- The same guard for the **banner**, which is hand-maintained and advertised
+  `issue` until someone edited it by hand. Every command it names must be a
+  route the CLI serves, and it must name every lifecycle stage.
+
+### Fixed
+- `project_create_test` registered its own root-level `create` route rather than
+  the module that ships. It exercised a contract no user could reach.
+- `tui_test` asserted the banner `contains('create')`, which passed on the word
+  appearing in the Quickstart line rather than on any advertised command — and
+  kept passing after `create` was gone.
+
 ## [0.4.0]
 
 The CLI now follows the model the methodology actually uses: **one requirement

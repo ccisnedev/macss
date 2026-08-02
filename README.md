@@ -88,7 +88,7 @@ The naming model is:
   like `gh` or `iq`, and free of collisions with any standard Unix or Windows
   executable
 - lifecycle and subsystem tooling lives under modules such as `macss project`,
-  `macss specification` or `macss api`
+  `macss requisition`, `macss specification` or `macss api`
 - the grammar is `macss <module> <surface> <action>`: nouns for modules and
   surfaces, verbs only at the leaves
 
@@ -97,8 +97,10 @@ Examples:
 ```text
 macss project create --path=.
 macss project check
-macss specification new <slug>
-macss issue publish <name> --plan
+macss requisition new <slug>
+macss requisition publish --apply
+macss specification check
+macss dor check
 macss skill deploy
 macss doctor
 macss api graphql compile
@@ -127,7 +129,7 @@ to become the development companion for architecture-aware workflows such as:
 The CLI already supports global commands. For example:
 
 ```text
-macss create --path=.
+macss doctor
 ```
 
 That command remains intentionally global because it operates at the workspace

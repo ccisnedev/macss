@@ -101,12 +101,12 @@ These are ecosystem modules, not separate top-level product CLIs.
 ### Cross-platform target
 
 The `macss` CLI must operate natively on Windows, Linux, and macOS — the same
-portability expectation Flutter sets. Project scaffolding (`macss create`) is
+portability expectation Flutter sets. Project scaffolding (`macss project create`) is
 pure file generation and carries no external runtime dependency on any platform.
 
 ### Scaffolding flavors
 
-`macss create` should let the developer choose the technology of each layer while
+`macss project create` should let the developer choose the technology of each layer while
 keeping the same architectural geometry (the wax foundation stays constant; only
 the stamped implementation changes):
 
@@ -224,17 +224,23 @@ serves each stage:
 
 | Stage | Module | Status |
 |---|---|---|
-| inception | `macss project` | planned — see below |
-| requisition | `macss requisition` | planned |
-| specification | `macss specification` | **shipped** (0.2.0) |
-| issue | `macss issue` | **shipped** (0.2.0) |
+| inception | `macss project` | **shipped** (0.3.0) — `create` / `check` |
+| requisition | `macss requisition` | **shipped** (0.4.0) — the PO's form, published as the issue |
+| specification | `macss specification` | **shipped** (0.4.0) — the contract, appended to that same issue |
+| definition of ready | `macss dor` | **shipped** (0.4.0) — composes both gates plus "the issue exists" |
 | implementation | skills, for now | `macss-analyze` / `macss-plan` / `macss-execute` — the method, self-contained |
 | verification | `macss verification` | planned |
 | deploy | `macss deploy` | planned — delegates to `macss-devops` (Stage 3.5) |
 
-Shared verbs where they make sense: `start` (enter the stage), `check` (run the
-stage gate), `skill` (show the stage's operating instruction). Every argument is
-explicit and named — `--issue 40`, never a positional.
+There is no `macss issue` module. One requirement is one issue, and the issue is
+a **consequence** of publishing the requisition, not a separate artifact someone
+composes: `requisition publish` creates it, `specification publish` appends the
+contract to it, and at DoR the body freezes. A module for it would imply the
+issue could be authored independently of the request it carries.
+
+Shared verbs where they make sense: `new` (open the artifact), `check` (run the
+stage gate), `publish` (materialize it on GitHub, `--plan` then `--apply`).
+Every argument is explicit and named — `--issue 40`, never a positional.
 
 ### The relationship with inquiry: laboratory and product
 
@@ -290,11 +296,12 @@ macss project adopt    # retrofit: bring an existing project to the canon
 `check` and `adopt` answer the question `create` cannot: *what if a project
 already exists and should adopt MACSS?* Grouping all three under `project` also
 puts the canon's verification next to its materialization, which is what keeps
-`macss create` producing a project that satisfies
+`macss project create` producing a project that satisfies
 `code/book/src/project-structure.md`.
 
-`macss create` stays as a deprecated alias for one minor version, since it is
-the command every existing doc and install guide names.
+The root-level `macss create` alias shipped deprecated in 0.3.0 and was removed
+in 0.5.0: `project` is where scaffolding lives, and a second name for it only
+made the grammar ambiguous about which nouns own what.
 
 ## Long-Term Direction
 
