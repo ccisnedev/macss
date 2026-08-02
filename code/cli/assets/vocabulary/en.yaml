@@ -1,0 +1,13 @@
+# The words the specification gate looks for in an English document.
+#
+# Sections are matched by their leading number (1., 2., …), which is
+# language-independent; only the labels inside them need translating.
+# Adding a language: add <lang>.yaml here plus the templates. No code changes,
+# and the test suite picks it up by enumerating this directory.
+story:
+  role: "As a"
+  want: "I want"
+  benefit: "So that"
+scope:
+  includes: "Includes"
+  excludes: "Does NOT include"
