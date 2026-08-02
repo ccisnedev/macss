@@ -1,66 +1,82 @@
 ---
 name: macss-specification
-description: Run the MACSS specification stage — turn a raw requisition into a healthy specification plus the issues it yields, deciding by evidence rather than inference.
+description: Take a request from arrival to Definition of Ready — publish it as an issue, turn it into a contract by evidence, and pass the gate.
 ---
 
 ## Goal
 
-Turn a raw requisition (an email, a document, a chat thread) into a coherent,
-actionable specification and the issues it yields — with every key decision
-licensed by evidence, not by inference.
+Take a business request and leave it ready to build: published as an issue,
+carrying a contract that says what will be delivered, how it is accepted and
+when — with every key decision licensed by evidence rather than by inference.
 
-This is the stage that ends at Definition of Ready. It precedes implementation
-and is owned by QA.
+This is QA's job, and it ends at the Definition of Ready. One requirement is one
+issue; if a request is too large to deliver as a unit, split **the request**
+into smaller ones, each with its own issue and its own DoR.
 
 ## Method
 
-Decide by **evidence**, never by inference. For every decision you are unsure
-of, run a **throwaway experiment**: read the database, run code in a container,
-probe the API. These experiments validate a decision and are then discarded —
-they are not product code.
+**Decide by evidence, never by inference.** For every decision you are unsure
+of, run a throwaway experiment: read the database, run code in a container,
+probe the API. These validate a decision and are then discarded — they are not
+product code.
 
-Record each **technical** decision, with a re-checkable handle, in the *issues*.
-The specification itself stays at the business level.
+**The request is not yours to write.** `requisition.md` is a form the Product
+Owner fills: what problem this solves, who it affects, what happens if it is not
+done, and how things work today versus how they should. Do not fill it for him.
+A request written by the person interpreting it starts the analysis on a
+translation.
+
+**The contract is yours.** `specification.md` is a lean business charter in the
+domain's language — not an implementation document. Technical decisions belong
+in the issue body, with a re-checkable handle.
 
 ## Steps
 
-1. `macss specification new <slug>` (add `--lang es` for Spanish) — the CLI
-   scaffolds `docs/requisitions/<YYYYMMDD>-<slug>/requisition.md` and
-   `specification.md` as a **git-ignored local workspace**, and records it as the
-   **active requisition**, so later commands need no slug. Inputs and outputs are
-   files on disk, not your memory.
-2. Gather the raw requisition from **all** its sources into `requisition.md`
-   (AS-IS / TO-BE). Capture exactly what was asked — do not invent scope.
-3. Fill `specification.md`. It is a lean **business charter** written in the
-   domain's language, not an implementation document: a committed delivery date,
-   user stories each carrying at least one Given-When-Then acceptance criterion,
-   an explicit scope that states what is *excluded*, and the domain glossary and
-   business rules.
-4. Derive the issues with `macss issue new <name> [--repo owner/repo]` — it
-   scaffolds `issue-<name>.md` in the active requisition ("issue as code"),
-   inheriting the specification's language. Fill each from evidence, and list the
-   acceptance criteria it covers in the front-matter `covers:`, **each qualified
-   by its user story** — `covers: [US1-AC1, US1-AC2, US2-AC3]`. Numbering
-   restarts in every story, so a bare `AC-1` is ambiguous and traces nothing.
-   One issue per unit of work: split only what can ship independently. A feature
-   whose parts make no sense apart is one issue.
-5. `macss specification check` — the CLI runs the `specification_ready` gate over
-   the active requisition. Fix exactly what it reports, one violation at a time,
-   until it exits 0. Do not skip a violation.
-6. Dedup-check before creating: `gh issue list --search "<keywords>"`. If a
-   too-similar issue already exists, edit that one instead.
-7. `macss issue publish <name> --plan` previews the `gh issue create` built from
-   the front-matter. Once the human approves, `--apply` creates it. The
-   **published GitHub issues are the durable artifacts**; the requisition stays a
-   local, git-ignored workspace.
-8. Present the specification and its issues to the human for review.
+1. `macss requisition new <slug>` (add `--lang es` for Spanish) — scaffolds
+   `docs/requisitions/<YYYYMMDD>-<slug>/` with the form and its issue metadata,
+   and records it as the **active requisition**, so later commands need no slug.
+   Inputs and outputs are files on disk, not your memory.
+2. Hand `requisition.md` to the Product Owner and gather his answers from **all**
+   the sources — email, meeting, chat. Capture exactly what was asked; do not
+   invent scope.
+   (`macss requisition export-template` writes a blank form if you need one to
+   send before opening a requisition.)
+3. `macss requisition check` — verifies he answered every section. Fix exactly
+   what it reports.
+4. `macss requisition publish --plan`, then `--apply` once the human approves.
+   This creates the GitHub issue carrying the request, and records its number.
+   **From here the requirement has a consultable home**, and everything that
+   follows is published on top of it.
+5. `macss specification new` — scaffolds the contract template into the same
+   requisition, in the language the request was written in.
+6. Fill `specification.md`: the committed delivery date, user stories each
+   carrying at least one Given-When-Then acceptance criterion, an explicit scope
+   that states what is **excluded**, the domain glossary and business rules, and
+   the observable signal that will tell you it worked.
+7. `macss specification check` — runs the gate. Fix exactly what it reports, one
+   violation at a time, until it exits 0. Do not skip a violation.
+8. `macss specification publish --apply` — updates the issue so its body reads
+   request first, contract second.
+9. `macss dor check` — the Definition of Ready. It composes the two checks and
+   adds that the issue is published. When it exits 0, present the issue to the
+   human for approval.
+
+## On the observable signal
+
+The request says what problem this solves. The contract must say **how we will
+know it worked** — the signal you would look at afterwards, not an acceptance
+criterion.
+
+If the stated value cannot be turned into something observable, that is the
+finding: the value was vapour, and the request needs rethinking rather than
+specifying. No gate can judge prose; this translation is what catches it.
 
 ## Done when
 
-- [ ] `requisition.md` captures the need (AS-IS / TO-BE) from every source.
-- [ ] `specification.md` is filled — the CLI's gate is the authority on what
-      "filled" means; run it rather than guessing.
-- [ ] `macss specification check` exits 0.
-- [ ] At least one `issue-<name>.md` is derived, dedup-checked, and traces every
-      acceptance criterion.
-- [ ] The specification is presented to the human for review.
+- [ ] The Product Owner answered the request himself, from every source.
+- [ ] The issue is published and carries request plus contract.
+- [ ] `macss dor check` exits 0.
+- [ ] The issue is presented to the human for approval.
+
+Once the DoR is met the issue body is **frozen**: a change of scope opens a new
+requisition rather than an edit.

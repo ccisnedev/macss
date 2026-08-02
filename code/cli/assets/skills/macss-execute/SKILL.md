@@ -32,15 +32,16 @@ Dependencies point from the feature to the base, never the reverse.
 
 ## Steps
 
-1. Take the next phase from the plan. Work them in order; the order encodes the
-   layer dependencies.
+1. Take the next phase from the plan on the issue. Work them in order; the
+   order encodes the layer dependencies.
 2. Write the test that proves the phase's acceptance criterion. Watch it fail.
 3. Write the smallest code that makes it pass.
 4. Run the full suite. Fix what broke — do not proceed on red.
 5. Commit the phase.
 6. Repeat until every phase is done, then do the release preparation the plan
    specifies: version bump, CHANGELOG entry, final commit.
-7. Present the result to the human.
+7. Open the pull request, referencing the issue so the chain closes: request,
+   contract, diagnosis, plan, code. Present the result to the human.
 
 ## Done when
 
@@ -49,3 +50,4 @@ Dependencies point from the feature to the base, never the reverse.
 - [ ] The full suite passes, with nothing skipped, disabled or loosened to get
       there.
 - [ ] Release preparation is done as the plan specified.
+- [ ] The pull request references the issue.

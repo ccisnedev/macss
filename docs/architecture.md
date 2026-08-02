@@ -60,7 +60,6 @@ Global commands apply to the ecosystem or workspace as a whole.
 
 Examples:
 
-- `macss create --path=.`
 - `macss doctor`
 - `macss version`
 - `macss upgrade`
@@ -117,8 +116,10 @@ Examples:
 
 - `macss project create --path=.`
 - `macss project check`
-- `macss specification new <slug>`
-- `macss issue publish <name> --plan`
+- `macss requisition new <slug>`
+- `macss requisition publish --apply`
+- `macss specification check`
+- `macss dor check`
 - `macss skill deploy`
 - `macss api graphql compile`
 - `macss db migrate`

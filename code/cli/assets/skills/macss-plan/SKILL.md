@@ -33,16 +33,18 @@ An AC no phase covers is scope you are about to miss.
 
 ## Steps
 
-1. Read the diagnosis. The plan answers what it found; a plan that ignores it is
-   solving a different problem.
+1. Read the diagnosis on the issue. The plan answers what it found; a plan that
+   ignores it is solving a different problem.
 2. Split the work into phases, each independently verifiable and each small
    enough to leave the suite green.
 3. Order them by dependency, along the MACSS vertical.
 4. Give every phase its executable verification check and the AC it covers.
 5. Add the final full-suite phase, plus whatever release preparation the change
    needs — version bump, CHANGELOG entry.
-6. Write the plan to disk and present it to the human for approval before any
-   code is written.
+6. Post the plan as a **comment on the issue**, after the diagnosis it answers,
+   and present it to the human for approval before any code is written. The
+   issue then carries the whole chain: what was asked, what was agreed, what was
+   found, and what will be done.
 
 ## Done when
 
@@ -51,4 +53,5 @@ An AC no phase covers is scope you are about to miss.
       suite.
 - [ ] Every acceptance criterion is covered by at least one phase.
 - [ ] Phase order respects the layer dependencies.
+- [ ] The plan is posted on the issue, below the diagnosis.
 - [ ] The human approved the plan.
