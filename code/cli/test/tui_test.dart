@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:modular_cli_sdk/modular_cli_sdk.dart';
@@ -13,6 +14,33 @@ import 'package:macss_cli/modules/project/project_builder.dart';
 import 'package:macss_cli/src/version_check.dart';
 
 import 'support/memory_sink.dart';
+
+/// The command names the banner advertises, read out of its `Commands:` block.
+///
+/// The banner is a formatted string with colour codes, so strip those first and
+/// take the leading word of each indented entry — which is what a user's eye
+/// does too.
+Set<String> _bannerCommands(String banner) {
+  final plain = banner.replaceAll(RegExp(r'\[[0-9;]*m'), '');
+  final commands = <String>{};
+
+  var inBlock = false;
+  for (final line in const LineSplitter().convert(plain)) {
+    if (line.trimLeft().startsWith('Commands:')) {
+      inBlock = true;
+      continue;
+    }
+    if (!inBlock) continue;
+    // The block ends at the first line that is not an indented entry.
+    if (line.trim().isEmpty) break;
+
+    final entry = RegExp(r'^\s{2,}([a-z][a-z-]*)\s{2,}\S').firstMatch(line);
+    if (entry == null) break;
+    commands.add(entry.group(1)!);
+  }
+
+  return commands;
+}
 
 /// A shipped-asset tree with one file per canon entry, so the advertised
 /// command can stamp a whole project.
@@ -66,13 +94,79 @@ void main() {
       expect(output.banner, contains(macssVersion));
     });
 
-    test('TuiOutput.banner contains command names', () async {
+    // The banner is hand-maintained, and it advertised `issue` for as long as
+    // that module existed plus however long it would have taken someone to
+    // notice. `contains('create')` passed the whole time — and still passes
+    // today, on a command that no longer exists, because the word also appears
+    // in the Quickstart line. Read a substring, learn nothing.
+    //
+    // This asks the question that matters: is every command the banner names
+    // one the CLI actually answers?
+    test(
+      'every command the banner advertises is a route the CLI has',
+      () async {
+        final output = await _makeTui().execute();
+
+        final stdout = MemorySink();
+        await runMacss(
+          const ['help', '--json'],
+          stdout: stdout.sink,
+          stderr: MemorySink().sink,
+        );
+        final catalog = jsonDecode(await stdout.text()) as Map<String, dynamic>;
+        final routes = (catalog['commands'] as List)
+            .cast<Map<String, dynamic>>()
+            .map((c) => c['route'] as String)
+            .toSet();
+
+        // A banner entry names either a root command (`doctor`) or a module
+        // (`project`), which stands for the routes underneath it.
+        bool served(String name) =>
+            routes.contains(name) || routes.any((r) => r.startsWith('$name '));
+
+        final advertised = _bannerCommands(output.banner);
+        expect(
+          advertised,
+          isNotEmpty,
+          reason: 'the banner parser found nothing',
+        );
+
+        for (final name in advertised) {
+          expect(
+            served(name),
+            isTrue,
+            reason:
+                'the banner advertises `macss $name`, '
+                'which the CLI does not accept',
+          );
+        }
+      },
+    );
+
+    test('the banner names every lifecycle stage', () async {
+      // A new user reads this list before anything else. A stage missing from
+      // it is a stage they will not know exists.
       final output = await _makeTui().execute();
-      expect(output.banner, contains('create'));
-      expect(output.banner, contains('doctor'));
-      expect(output.banner, contains('upgrade'));
-      expect(output.banner, contains('uninstall'));
-      expect(output.banner, contains('version'));
+
+      expect(
+        _bannerCommands(output.banner),
+        containsAll(<String>['project', 'requisition', 'specification', 'dor']),
+      );
+    });
+
+    test('the parser reads the banner the way it is actually written', () {
+      // Trusting an unverified parser is how a guard silently passes on
+      // nothing: an empty result set satisfies every `for` loop.
+      expect(
+        _bannerCommands(
+          '  Commands:\n'
+          '    [36mproject[0m     scaffold the canon\n'
+          '    [36mdoctor[0m      verify the install\n'
+          '\n'
+          '  Quickstart:  macss project create --path=my-project',
+        ),
+        <String>{'project', 'doctor'},
+      );
     });
 
     test('TuiOutput.banner contains quickstart hint', () async {
@@ -84,10 +178,10 @@ void main() {
     // `macss create my-project` — a positional argument the CLI rejects, on a
     // deprecated alias. It exited 7: the first command a new user was told to
     // run did not work. This guard runs it instead of reading it.
-    test('the quickstart command the banner advertises actually works',
-        () async {
-      final tempRoot =
-          Directory.systemTemp.createTempSync('macss_quickstart_test_');
+    test('the quickstart command the banner advertises actually works', () async {
+      final tempRoot = Directory.systemTemp.createTempSync(
+        'macss_quickstart_test_',
+      );
       addTearDown(() {
         if (tempRoot.existsSync()) tempRoot.deleteSync(recursive: true);
       });
@@ -102,9 +196,12 @@ void main() {
           arg.startsWith('--path') ? '--path=$dest' : arg,
       ];
 
-      final code = await (ModularCli()
-            ..module('project', (m) => buildProjectModule(m, assets: assets)))
-          .run(args, stdout: MemorySink().sink, stderr: MemorySink().sink);
+      final code =
+          await (ModularCli()..module(
+                'project',
+                (m) => buildProjectModule(m, assets: assets),
+              ))
+              .run(args, stdout: MemorySink().sink, stderr: MemorySink().sink);
 
       expect(code, ExitCode.ok, reason: 'quickstart was: $quickstartCommand');
       expect(File(p.join(dest, 'README.md')).existsSync(), isTrue);
