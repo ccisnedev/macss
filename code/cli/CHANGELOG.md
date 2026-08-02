@@ -34,10 +34,16 @@ publish`, removed in 0.4.0 — and nothing in the suite connected the two.
   against `help --json`, the CLI's own catalogue. A skill that instructs a
   command the CLI does not accept now fails the suite — the drift guard
   `help_command_test` gives the catalogue, aimed at the skills.
+- The same guard for the **banner**, which is hand-maintained and advertised
+  `issue` until someone edited it by hand. Every command it names must be a
+  route the CLI serves, and it must name every lifecycle stage.
 
 ### Fixed
 - `project_create_test` registered its own root-level `create` route rather than
   the module that ships. It exercised a contract no user could reach.
+- `tui_test` asserted the banner `contains('create')`, which passed on the word
+  appearing in the Quickstart line rather than on any advertised command — and
+  kept passing after `create` was gone.
 
 ## [0.4.0]
 
