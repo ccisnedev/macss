@@ -29,13 +29,19 @@
 
 **¿Qué problema resuelve?**
 
+<!-- Su respuesta aquí -->
+
 > **Ejemplo:** *"Se pierden registros de facturas cuando dos analistas editan el archivo a la vez."*
 
 **¿A quién afecta?**
 
+<!-- Su respuesta aquí -->
+
 > **Ejemplo:** *"A los cuatro analistas de Cuentas por Pagar, todos los días."*
 
 **¿Qué pasa si no se hace?**
+
+<!-- Su respuesta aquí -->
 
 > **Ejemplo:** *"Seguimos rehaciendo el cierre mensual y arrastrando diferencias que se detectan tarde."*
 
@@ -47,7 +53,9 @@
 
 <!-- BABOK® — Current State Description -->
 
-Describa cómo se hace **hoy** lo que quiere cambiar. Si es algo nuevo que no existe, escriba: *"No existe actualmente"*.
+> Describa cómo se hace **hoy** lo que quiere cambiar. Si es algo nuevo que no existe, escriba: *"No existe actualmente"*.
+
+<!-- Su respuesta aquí -->
 
 > **Ejemplo:** *"Actualmente el registro de facturas se realiza en una hoja de Excel compartida. Cada analista abre el archivo, localiza la última fila e ingresa los datos manualmente. En ocasiones dos personas editan simultáneamente y se pierden registros."*
 
@@ -57,7 +65,9 @@ Describa cómo se hace **hoy** lo que quiere cambiar. Si es algo nuevo que no ex
 
 <!-- BABOK® — Future State Description -->
 
-Describa cómo **quiere que funcione** en el futuro. No necesita dar la solución técnica, solo el resultado esperado.
+> Describa cómo **quiere que funcione** en el futuro. No necesita dar la solución técnica, solo el resultado esperado.
+
+<!-- Su respuesta aquí -->
 
 > **Ejemplo:** *"El sistema debe contar con un formulario de registro de facturas con los campos: número, monto, proveedor y fecha. No debe permitir registros duplicados. Al guardar, la información debe quedar disponible para todos los usuarios sin riesgo de pérdida."*
 

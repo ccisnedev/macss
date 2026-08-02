@@ -14,6 +14,7 @@ import 'modules/api/api_builder.dart';
 import 'modules/global/global_builder.dart';
 import 'modules/issue/issue_builder.dart';
 import 'modules/project/project_builder.dart';
+import 'modules/requisition/requisition_builder.dart';
 import 'modules/skill/skill_builder.dart';
 import 'modules/specification/specification_builder.dart';
 
@@ -56,6 +57,10 @@ Future<int> runMacss(
   cli.module('issue', (m) => buildIssueModule(m, assets: assets));
   cli.module('skill', (m) => buildSkillModule(m, assets: assets));
   cli.module('project', (m) => buildProjectModule(m, assets: assets));
+  cli.module(
+    'requisition',
+    (m) => buildRequisitionModule(m, assets: assets),
+  );
 
   final routeStdout = _isApiGraphqlCompileRoute(normalizedArgs) &&
           !_isJsonMode(normalizedArgs)

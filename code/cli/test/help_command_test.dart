@@ -38,6 +38,9 @@ void main() {
         'project create',
         'project check',
         'project adopt',
+        'requisition export-template',
+        'requisition new',
+        'requisition check',
       ]) {
         expect(out, contains(route), reason: '$route must appear in help');
       }
