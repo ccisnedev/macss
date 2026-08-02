@@ -31,13 +31,19 @@
 
 **What problem does this solve?**
 
+<!-- Your answer here -->
+
 > **Example:** *"Invoice records are lost when two analysts edit the file at the same time."*
 
 **Who does it affect?**
 
+<!-- Your answer here -->
+
 > **Example:** *"The four Accounts Payable analysts, every day."*
 
 **What happens if it is not done?**
+
+<!-- Your answer here -->
 
 > **Example:** *"We keep redoing the monthly close and carrying differences that surface late."*
 
@@ -50,7 +56,9 @@
 
 <!-- BABOK® — Current State Description -->
 
-Describe how the thing you want to change is done **today**. If it is something new that does not exist, write: *"Does not currently exist"*.
+> Describe how the thing you want to change is done **today**. If it is something new that does not exist, write: *"Does not currently exist"*.
+
+<!-- Your answer here -->
 
 > **Example:** *"Invoice registration is currently done in a shared Excel sheet. Each analyst opens the file, finds the last row, and enters the data manually. Sometimes two people edit at once and records are lost."*
 
@@ -60,7 +68,9 @@ Describe how the thing you want to change is done **today**. If it is something 
 
 <!-- BABOK® — Future State Description -->
 
-Describe how you **want it to work** in the future. You do not need to give the technical solution, only the expected result.
+> Describe how you **want it to work** in the future. You do not need to give the technical solution, only the expected result.
+
+<!-- Your answer here -->
 
 > **Example:** *"The system must have an invoice registration form with fields: number, amount, supplier, and date. It must not allow duplicate records. On save, the information must be available to all users without risk of loss."*
 
