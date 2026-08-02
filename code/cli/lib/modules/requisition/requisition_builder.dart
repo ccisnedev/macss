@@ -11,6 +11,7 @@ import '../../templates/template_resolver.dart';
 import 'commands/check.dart';
 import 'commands/export_template.dart';
 import 'commands/new.dart';
+import 'commands/publish.dart';
 
 void buildRequisitionModule(ModuleBuilder m, {required Assets assets}) {
   final resolver = TemplateResolver(assets);
@@ -36,6 +37,18 @@ void buildRequisitionModule(ModuleBuilder m, {required Assets assets}) {
     description:
         'Open a requisition: the form, its issue metadata, and the active pointer',
     params: RequisitionNewInput.params,
+  );
+
+  m.command<RequisitionPublishInput, RequisitionPublishOutput>(
+    'publish',
+    (req) => RequisitionPublishCommand(
+      RequisitionPublishInput.fromCliRequest(req),
+      workingDirectory: Directory.current.path,
+      runProcess: Process.run,
+    ),
+    description:
+        'Create or update the issue from the requisition — previews by default',
+    params: RequisitionPublishInput.params,
   );
 
   m.command<RequisitionCheckInput, RequisitionCheckOutput>(
