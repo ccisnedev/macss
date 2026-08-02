@@ -4,6 +4,7 @@ import 'package:test/test.dart';
 
 import 'package:macss_cli/assets.dart';
 import 'package:macss_cli/modules/specification/specification_gate.dart';
+import 'package:macss_cli/src/vocabulary.dart';
 
 /// A fully-filled specification that satisfies every rule.
 const _filledSpec = '''
@@ -100,7 +101,9 @@ const _filledSpecEs = '''
 ''';
 
 void main() {
-  final gate = SpecificationGate();
+  final gate = SpecificationGate(
+    vocabulary: Vocabularies.fromAssets(Assets(root: Directory.current.path)),
+  );
 
   group('SpecificationGate', () {
     // An issue body that traces both ACs of _filledSpec (US1-AC1, US1-AC2).

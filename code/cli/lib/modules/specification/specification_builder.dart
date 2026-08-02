@@ -34,6 +34,7 @@ void buildSpecificationModule(ModuleBuilder m, {required Assets assets}) {
     (req) => SpecificationCheckCommand(
       SpecificationCheckInput.fromCliRequest(req),
       workingDirectory: Directory.current.path,
+      assets: assets,
     ),
     description:
         'Run the specification_ready gate over the active requisition — '

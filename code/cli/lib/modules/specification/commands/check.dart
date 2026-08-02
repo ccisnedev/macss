@@ -14,6 +14,8 @@ import 'package:cli_router/cli_router.dart';
 import 'package:modular_cli_sdk/modular_cli_sdk.dart';
 import 'package:path/path.dart' as p;
 
+import '../../../assets.dart';
+import '../../../src/vocabulary.dart';
 import '../slug.dart';
 import '../specification_gate.dart';
 import '../workspace.dart';
@@ -75,8 +77,10 @@ class SpecificationCheckCommand
   SpecificationCheckCommand(
     this.input, {
     required this.workingDirectory,
+    required Assets assets,
     SpecificationGate? gate,
-  }) : gate = gate ?? SpecificationGate();
+  }) : gate = gate ??
+            SpecificationGate(vocabulary: Vocabularies.fromAssets(assets));
 
   String? get _dir => resolveRequisitionDir(workingDirectory, input.slug);
 

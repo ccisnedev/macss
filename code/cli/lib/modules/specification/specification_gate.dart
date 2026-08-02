@@ -12,6 +12,7 @@
 /// issues — neither is gated here.
 library;
 
+import '../../src/vocabulary.dart';
 import '../issue/front_matter.dart';
 
 /// One failed rule, with a stable [code] (mirrors the dev-cycle gate codes such
@@ -35,6 +36,15 @@ class SpecificationGateResult {
 }
 
 class SpecificationGate {
+  /// The labels to look for, loaded from `assets/vocabulary/`.
+  ///
+  /// The gate matches the **union** of every shipped language rather than the
+  /// one the document declares: a missing or stale `macss:lang` directive would
+  /// otherwise make a perfectly good specification fail as if it had no stories.
+  final Vocabularies vocabulary;
+
+  const SpecificationGate({required this.vocabulary});
+
   /// Evaluates [specificationMd] (the file content) plus the [issues] derived
   /// for the slug — the **contents** of each `issue-<slug>.md`, so the gate can
   /// verify that every acceptance criterion is traced to an issue (the QA→Dev
@@ -124,9 +134,9 @@ class SpecificationGate {
   ) {
     final body = _section(sections, 3);
     final includes =
-        body == null ? false : _hasFilledBullet(body, _includesHeadings);
+        body == null ? false : _hasFilledBullet(body, vocabulary.scopeIncludes);
     final excludes =
-        body == null ? false : _hasFilledBullet(body, _excludesHeadings);
+        body == null ? false : _hasFilledBullet(body, vocabulary.scopeExcludes);
     if (!includes || !excludes) {
       violations.add(const SpecificationViolation(
         'SPEC_SCOPE_INCOMPLETE',
@@ -347,8 +357,6 @@ class SpecificationGate {
   }
 
   // Bilingual scope subheadings (en + es) the templates ship.
-  static const _includesHeadings = ['Includes', 'Incluye'];
-  static const _excludesHeadings = ['Does NOT include', 'NO incluye'];
 
   /// A value is "filled" when, after removing HTML comments and trailing
   /// punctuation/whitespace, something real remains.
