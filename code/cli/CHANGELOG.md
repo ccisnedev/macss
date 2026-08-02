@@ -5,6 +5,54 @@ All notable changes to this project will be documented in this file.
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.4.0]
+
+The CLI now follows the model the methodology actually uses: **one requirement
+is one issue**, and the issue is where the request and its contract persist.
+
+### Changed — BREAKING
+- **`macss requisition`** is the new stage module: `export-template` writes the
+  blank form for the Product Owner, `new` opens the requisition, `check` asks
+  whether he filled it, and `publish` creates the issue carrying the request.
+- **`macss specification new` creates only `specification.md`**, and requires an
+  open requisition. It used to create both documents, which collapsed a real
+  distinction: the requisition is a form the business fills, the specification
+  is QA's contract — different authors, different moments.
+- **`macss specification publish`** adds the contract to the issue the
+  requisition created, so the body reads request first, contract second.
+- **`macss issue new` and `macss issue publish` are removed.** The issue body is
+  assembled from the two documents rather than hand-authored, which is what
+  made a third document — repeating their context and scope — unnecessary.
+- **`.macss/specification.yaml` → `.macss/state.yaml`.** It records which
+  requisition is active; the old name said something else.
+
+### Added
+- **`macss dor check`** — the Definition of Ready. It composes the stage checks
+  and adds what neither owns: that the requirement has a home. Until the issue
+  exists there is nothing to pick up, reference from a branch, or freeze.
+- The requisition asks for **value**: what problem this solves, who it affects,
+  what happens if it is not done. Three questions, one sentence each, all of
+  them facts only the requester has. The fourth — how we will know it worked —
+  lands in the specification, because turning value into something observable
+  is analysis, not form-filling.
+- **`assets/vocabulary/<lang>.yaml`.** The gate's keywords are assets now, so
+  adding a language is one file plus its templates: no code change, and no new
+  tests, because the suite enumerates the directory.
+
+### Removed
+- `SPEC_NO_ISSUE` and `SPEC_AC_NOT_TRACED`. Both were artefacts of
+  one-specification-many-issues. Under one-requirement-one-issue they are
+  tautologies: the document *is* the issue, and every acceptance criterion in it
+  is covered by definition.
+- `covers:` and `spec:` from the issue front-matter, and `repo` from the issue
+  metadata — `gh` infers the repository from the directory, the way `gh pr list`
+  does.
+
+### Fixed
+- The Spanish specification template no longer embeds English
+  (`**As a (Como)**`). A Product Owner reading a Spanish form saw two languages
+  mixed for no reason he could see.
+
 ## [0.3.2]
 
 ### Fixed

@@ -19,7 +19,7 @@ void buildSkillModule(ModuleBuilder m, {required Assets assets}) {
       SkillDeployInput.fromCliRequest(req),
       assets: assets,
     ),
-    description: 'Deploy the MACSS lifecycle skills into .skills/',
+    description: 'Install the MACSS lifecycle skills for every AI host detected',
     params: SkillDeployInput.params,
   );
 

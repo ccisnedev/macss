@@ -30,8 +30,6 @@ void main() {
         'api graphql compile',
         'specification new',
         'specification check',
-        'issue new',
-        'issue publish',
         'skill deploy',
         'skill list',
         'skill clean',

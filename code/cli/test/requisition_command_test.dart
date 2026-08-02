@@ -53,7 +53,7 @@ void main() {
 
       expect(file('$folder/requisition.md').existsSync(), isTrue);
       expect(file('$folder/issue.yaml').existsSync(), isTrue);
-      expect(file('.macss/specification.yaml').existsSync(), isTrue);
+      expect(file('.macss/state.yaml').existsSync(), isTrue);
     });
 
     test('does not create the specification', () async {

@@ -19,15 +19,14 @@ void buildSpecificationModule(ModuleBuilder m, {required Assets assets}) {
   final resolver = TemplateResolver(assets);
 
   m.command<SpecificationNewInput, SpecificationNewOutput>(
-    'new <slug>',
+    'new',
     (req) => SpecificationNewCommand(
       SpecificationNewInput.fromCliRequest(req),
       resolver: resolver,
       workingDirectory: Directory.current.path,
     ),
     description:
-        'Scaffold a QA specification workspace under docs/requisitions/ '
-        '(requisition.md + specification.md) and make it the active requisition',
+        'Write the contract template into the active requisition',
     params: SpecificationNewInput.params,
   );
 

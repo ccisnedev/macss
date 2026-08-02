@@ -32,7 +32,6 @@ const _allTemplates = [
   'vocabulary/es.yaml',
   'artifacts/requisition.template.en.md',
   'artifacts/specification.template.en.md',
-  'artifacts/issue.template.en.md',
   'skills/macss-specification/SKILL.md',
   'skills/macss-analyze/SKILL.md',
   'skills/macss-plan/SKILL.md',

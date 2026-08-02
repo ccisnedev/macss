@@ -108,8 +108,9 @@ String _buildBanner(String version) {
   final commands =
       '  ${_d}Commands:$_r\n'
       '    ${_cyn}project$_r           scaffold, check and adopt the canon\n'
-      '    ${_cyn}specification$_r     turn a requisition into a specification\n'
-      '    ${_cyn}issue$_r             derive and publish issues from it\n'
+      '    ${_cyn}requisition$_r       open a request, publish it as an issue\n'
+      '    ${_cyn}specification$_r     write the contract on top of it\n'
+      '    ${_cyn}dor$_r               Definition of Ready\n'
       '    ${_cyn}skill$_r             deploy the lifecycle skills\n'
       '    ${_cyn}doctor$_r            verify local installation\n'
       '    ${_cyn}upgrade$_r           update to latest version\n'
