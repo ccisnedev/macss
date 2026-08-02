@@ -4,7 +4,14 @@ Date: 2026-07-31
 
 ## Status
 
-Accepted
+Accepted. Two things this ADR describes in the present tense have since changed,
+and the decision body is left as written because it records what was decided:
+
+- The deprecated root-level `macss create` alias was removed in 0.5.0, one minor
+  version after 0.3.0 shipped it — as this ADR anticipated.
+- `macss issue publish`, cited here for the `--plan` / `--apply` convention, no
+  longer exists. The convention outlived it: `requisition publish` and
+  `specification publish` follow it.
 
 ## Context
 

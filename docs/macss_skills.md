@@ -19,8 +19,8 @@
 > directory convention is actually known. Guessing the others would create
 > directories in a user's home that nothing reads.
 
-Estado: borrador en progreso
-Última actualización: 2026-06-09
+Estado: superseded — ver el recuadro anterior
+Última actualización del borrador: 2026-06-09
 
 ---
 
