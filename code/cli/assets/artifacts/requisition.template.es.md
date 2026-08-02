@@ -22,7 +22,28 @@
 - [ ] Alta
 - [ ] Normal
 
-## 1. Estado Actual (AS-IS)
+## 1. Necesidad y valor
+
+<!-- BABOK® — Business Need. Tres preguntas cortas: una frase cada una.
+     Sólo usted tiene estas respuestas; nadie las puede escribir por usted. -->
+
+**¿Qué problema resuelve?**
+
+> **Ejemplo:** *"Se pierden registros de facturas cuando dos analistas editan el archivo a la vez."*
+
+**¿A quién afecta?**
+
+> **Ejemplo:** *"A los cuatro analistas de Cuentas por Pagar, todos los días."*
+
+**¿Qué pasa si no se hace?**
+
+> **Ejemplo:** *"Seguimos rehaciendo el cierre mensual y arrastrando diferencias que se detectan tarde."*
+
+<!-- La cuarta pregunta ---cómo sabremos que sirvió--- no va aquí: sale del
+     análisis con QA y queda en la especificación, porque convertirla en algo
+     observable es trabajo de ingeniería, no del solicitante. -->
+
+## 2. Situación actual
 
 <!-- BABOK® — Current State Description -->
 
@@ -32,7 +53,7 @@ Describa cómo se hace **hoy** lo que quiere cambiar. Si es algo nuevo que no ex
 
 <!-- Usar el lenguaje ubicuo del dominio (Ubiquitous Language — DDD). -->
 
-## 2. Estado Deseado (TO-BE)
+## 3. Situación deseada
 
 <!-- BABOK® — Future State Description -->
 

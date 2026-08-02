@@ -24,7 +24,29 @@
 - [ ] High
 - [ ] Normal
 
-## 1. Current State (AS-IS)
+## 1. Need and value
+
+<!-- BABOK® — Business Need. Three short questions, one sentence each.
+     Only you have these answers; nobody can write them for you. -->
+
+**What problem does this solve?**
+
+> **Example:** *"Invoice records are lost when two analysts edit the file at the same time."*
+
+**Who does it affect?**
+
+> **Example:** *"The four Accounts Payable analysts, every day."*
+
+**What happens if it is not done?**
+
+> **Example:** *"We keep redoing the monthly close and carrying differences that surface late."*
+
+<!-- The fourth question ---how will we know it worked--- does not belong here:
+     it comes out of the analysis with QA and lands in the specification,
+     because turning it into something observable is engineering work, not the
+     requester's. -->
+
+## 2. Current state
 
 <!-- BABOK® — Current State Description -->
 
@@ -34,7 +56,7 @@ Describe how the thing you want to change is done **today**. If it is something 
 
 <!-- Use the domain's ubiquitous language (Ubiquitous Language — DDD). -->
 
-## 2. Desired State (TO-BE)
+## 3. Desired state
 
 <!-- BABOK® — Future State Description -->
 
