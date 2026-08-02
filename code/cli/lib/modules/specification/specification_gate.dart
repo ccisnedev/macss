@@ -206,14 +206,18 @@ class SpecificationGate {
         ? title.substring(title.indexOf(':') + 1).trim()
         : title;
     if (!_isFilled(titleValue)) return false;
-    // Role keywords are English in both templates (the es template embeds them:
-    // `**As a (Como)**`), so matching the English keyword finds the line in
-    // either language; the value is whatever follows the bold label.
-    for (final keyword in const ['As a', 'I want', 'So that']) {
-      final line = block
-          .split('\n')
-          .firstWhere((l) => l.contains('**') && l.contains(keyword),
-              orElse: () => '');
+    // Each label is looked up across every shipped language. The keyword
+    // must follow the bold marker (`**Como`), not merely appear in the line:
+    // "Para" is a common Spanish word and would otherwise match prose.
+    for (final variants in [
+      vocabulary.storyRoles,
+      vocabulary.storyWants,
+      vocabulary.storyBenefits,
+    ]) {
+      final line = block.split('\n').firstWhere(
+            (l) => variants.any((v) => l.contains("**$v")),
+            orElse: () => '',
+          );
       if (line.isEmpty || !_isFilled(_valueAfterBold(line))) return false;
     }
     return true;

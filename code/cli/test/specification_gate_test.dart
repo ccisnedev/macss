@@ -75,9 +75,9 @@ const _filledSpecEs = '''
 
 ### HU-1: Registrar una factura
 
-**As a (Como)** analista de facturación,
-**I want (Quiero)** registrar una factura desde un formulario,
-**So that (Para)** no se pierdan registros.
+**Como** analista de facturación,
+**Quiero** registrar una factura desde un formulario,
+**Para** no se pierdan registros.
 
 #### Acceptance Criteria
 
