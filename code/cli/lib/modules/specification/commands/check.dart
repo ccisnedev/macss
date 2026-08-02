@@ -107,10 +107,7 @@ class SpecificationCheckCommand
 
   @override
   Future<SpecificationCheckOutput> execute() async {
-    final result = gate.evaluate(
-      _specFile!.readAsStringSync(),
-      issues: _issueBodies(),
-    );
+    final result = gate.evaluate(_specFile!.readAsStringSync());
 
     if (result.passed) {
       return SpecificationCheckOutput(
@@ -127,21 +124,4 @@ class SpecificationCheckCommand
     return SpecificationCheckOutput(ready: false, message: lines.join('\n'));
   }
 
-  /// The contents of the `issue-*.md` files derived under the slug's workspace —
-  /// the gate reads them to verify AC → issue traceability.
-  List<String> _issueBodies() {
-    final d = _dir;
-    if (d == null) return const [];
-    final dir = Directory(d);
-    if (!dir.existsSync()) return const [];
-    return dir
-        .listSync()
-        .whereType<File>()
-        .where((f) {
-          final name = p.basename(f.path);
-          return name.startsWith('issue-') && name.endsWith('.md');
-        })
-        .map((f) => f.readAsStringSync())
-        .toList();
-  }
 }
