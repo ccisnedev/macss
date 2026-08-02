@@ -6,6 +6,7 @@ import 'package:test/test.dart';
 
 import 'package:macss_cli/assets.dart';
 import 'package:macss_cli/modules/project/commands/create.dart';
+import 'package:macss_cli/modules/project/project_builder.dart';
 
 import 'support/memory_sink.dart';
 
@@ -38,10 +39,46 @@ void main() {
     for (final mod in ['infra', 'db', 'api', 'app']) {
       _writeFile(p.join(tplBase, 'code', mod, 'README.md'), '# $mod\n');
     }
-    _writeFile(p.join(assetsDir.path, 'assets', 'templates', 'project-base', 'README.md'), '# Project Name\n');
-    _writeFile(p.join(assetsDir.path, 'assets', 'templates', 'project-base', '.gitignore'), '.dart_tool/\nbuild/\n');
-    _writeFile(p.join(assetsDir.path, 'assets', 'templates', 'project-base', '.gitattributes'), '* text=auto eol=lf\n');
-    _writeFile(p.join(assetsDir.path, 'assets', 'templates', 'project-base', 'CHANGELOG.md'), '# Changelog\n');
+    _writeFile(
+      p.join(
+        assetsDir.path,
+        'assets',
+        'templates',
+        'project-base',
+        'README.md',
+      ),
+      '# Project Name\n',
+    );
+    _writeFile(
+      p.join(
+        assetsDir.path,
+        'assets',
+        'templates',
+        'project-base',
+        '.gitignore',
+      ),
+      '.dart_tool/\nbuild/\n',
+    );
+    _writeFile(
+      p.join(
+        assetsDir.path,
+        'assets',
+        'templates',
+        'project-base',
+        '.gitattributes',
+      ),
+      '* text=auto eol=lf\n',
+    );
+    _writeFile(
+      p.join(
+        assetsDir.path,
+        'assets',
+        'templates',
+        'project-base',
+        'CHANGELOG.md',
+      ),
+      '# Changelog\n',
+    );
   });
 
   tearDown(() {
@@ -49,31 +86,24 @@ void main() {
   });
 
   CreateCommand makeCmd(String resolvedPath) => CreateCommand(
-    CreateInput(
-      resolvedPath: resolvedPath,
-      workingDirectory: tempRoot.path,
-    ),
+    CreateInput(resolvedPath: resolvedPath, workingDirectory: tempRoot.path),
     assets: assets,
   );
 
-  // Wires `create` through the SDK exactly as the global builder does, but with
-  // the test assets — so contract parsing (abbr, rejection) is exercised end to
-  // end without depending on the compiled binary's asset layout.
-  ModularCli makeCli() => ModularCli()
-    ..command<CreateInput, CreateOutput>(
-      'create',
-      (req) => CreateCommand(CreateInput.fromCliRequest(req), assets: assets),
-      description: 'Scaffold a new MACSS project',
-      params: CreateInput.params,
-    );
+  // Wires the real module with the test assets, so contract parsing (abbr,
+  // rejection) is exercised through the registration that actually ships —
+  // rather than a local copy of it that could drift.
+  ModularCli makeCli() =>
+      ModularCli()
+        ..module('project', (m) => buildProjectModule(m, assets: assets));
 
-  group('macss create contract', () {
+  group('macss project create contract', () {
     test('rejects an undeclared option before scaffolding', () async {
       final dest = p.join(tempRoot.path, 'reject-proj');
       final stderr = MemorySink();
 
       final code = await makeCli().run(
-        ['create', '--path=$dest', '--bogus'],
+        ['project', 'create', '--path=$dest', '--bogus'],
         stdout: MemorySink().sink,
         stderr: stderr.sink,
       );
@@ -87,7 +117,7 @@ void main() {
       final dest = p.join(tempRoot.path, 'abbr-proj');
 
       final code = await makeCli().run(
-        ['create', '-p', dest],
+        ['project', 'create', '-p', dest],
         stdout: MemorySink().sink,
         stderr: MemorySink().sink,
       );
@@ -100,7 +130,7 @@ void main() {
       final dest = p.join(tempRoot.path, 'long-proj');
 
       final code = await makeCli().run(
-        ['create', '--path=$dest'],
+        ['project', 'create', '--path=$dest'],
         stdout: MemorySink().sink,
         stderr: MemorySink().sink,
       );
@@ -110,7 +140,7 @@ void main() {
     });
   });
 
-  group('macss create', () {
+  group('macss project create', () {
     test('validate returns error when path is null', () {
       final cmd = CreateCommand(
         CreateInput(resolvedPath: null, workingDirectory: tempRoot.path),
@@ -128,18 +158,21 @@ void main() {
       expect(output.created, isTrue);
     });
 
-    test('stamps a README anchor in each module (survives first commit)', () async {
-      final dest = p.join(tempRoot.path, 'proj');
-      await makeCmd(dest).execute();
+    test(
+      'stamps a README anchor in each module (survives first commit)',
+      () async {
+        final dest = p.join(tempRoot.path, 'proj');
+        await makeCmd(dest).execute();
 
-      for (final mod in ['infra', 'db', 'api', 'app']) {
-        expect(
-          File(p.join(dest, 'code', mod, 'README.md')).existsSync(),
-          isTrue,
-          reason: 'code/$mod must have a README anchor',
-        );
-      }
-    });
+        for (final mod in ['infra', 'db', 'api', 'app']) {
+          expect(
+            File(p.join(dest, 'code', mod, 'README.md')).existsSync(),
+            isTrue,
+            reason: 'code/$mod must have a README anchor',
+          );
+        }
+      },
+    );
 
     test('creates doc files from templates', () async {
       final dest = p.join(tempRoot.path, 'proj2');

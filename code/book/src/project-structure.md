@@ -84,13 +84,13 @@ Every significant design choice should have an ADR so future contributors
 **`CHANGELOG.md`** records delivery history at the project level.
 It is the readable history of the system's evolution.
 
-## Materialized by `macss create`
+## Materialized by `macss project create`
 
 This structure is not something a team has to define from scratch.
-The command `macss create` produces it.
+The command `macss project create` produces it.
 
 ```text
-macss create --path=./my-project
+macss project create --path=./my-project
 ```
 
 Running this command gives you a clean project workspace with:
@@ -102,7 +102,7 @@ Running this command gives you a clean project workspace with:
 
 The structure is not locked. Teams can add layers, rename modules, or extend
 the cli and app surfaces. But the skeleton is the minimum expression of a
-MACSS project, and `macss create` is its materialization.
+MACSS project, and `macss project create` is its materialization.
 
 ## Why structure is architecture
 
