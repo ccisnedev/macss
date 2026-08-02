@@ -28,6 +28,8 @@ const _allTemplates = [
   'templates/project-base/docs/architecture.md',
   'templates/project-base/docs/roadmap.md',
   'templates/project-base/CHANGELOG.md',
+  'vocabulary/en.yaml',
+  'vocabulary/es.yaml',
   'artifacts/requisition.template.en.md',
   'artifacts/specification.template.en.md',
   'artifacts/issue.template.en.md',

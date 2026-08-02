@@ -97,6 +97,8 @@ class DoctorCommand implements Command<DoctorInput, DoctorOutput> {
       'template: architecture.md': 'templates/project-base/docs/architecture.md',
       'template: roadmap.md': 'templates/project-base/docs/roadmap.md',
       'template: CHANGELOG.md': 'templates/project-base/CHANGELOG.md',
+      'vocabulary: en': 'vocabulary/en.yaml',
+      'vocabulary: es': 'vocabulary/es.yaml',
       'artifact: requisition': 'artifacts/requisition.template.en.md',
       'artifact: specification': 'artifacts/specification.template.en.md',
       'artifact: issue': 'artifacts/issue.template.en.md',

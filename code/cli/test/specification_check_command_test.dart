@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
+import 'package:macss_cli/assets.dart';
 import 'package:macss_cli/modules/specification/commands/check.dart';
 import 'package:macss_cli/modules/specification/workspace.dart';
 
@@ -67,6 +68,7 @@ void main() {
   SpecificationCheckCommand cmd(String? slug) => SpecificationCheckCommand(
         SpecificationCheckInput(slug: slug),
         workingDirectory: tempDir.path,
+        assets: Assets(root: Directory.current.path),
       );
 
   group('SpecificationCheckCommand', () {

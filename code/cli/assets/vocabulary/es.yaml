@@ -1,0 +1,13 @@
+# Las palabras que el gate de especificación busca en un documento en español.
+#
+# Las secciones se detectan por su número inicial (1., 2., …), que no depende
+# del idioma; sólo hay que traducir las etiquetas de dentro.
+# Para añadir un idioma: <lang>.yaml aquí más las plantillas. Sin cambios de
+# código, y la suite lo recoge sola al enumerar este directorio.
+story:
+  role: "Como"
+  want: "Quiero"
+  benefit: "Para"
+scope:
+  includes: "Incluye"
+  excludes: "NO incluye"
