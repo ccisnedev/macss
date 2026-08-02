@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:test/test.dart';
 
 import 'package:macss_cli/assets.dart';
+import 'package:macss_cli/modules/specification/specification_gate.dart';
 import 'package:macss_cli/src/vocabulary.dart';
 import 'package:macss_cli/templates/template_resolver.dart';
 
@@ -84,6 +85,33 @@ void main() {
       test('$lang: the specification asks how we will know it worked', () {
         final template = resolver.resolve('specification', lang: lang).content;
         expect(RegExp(r'^### .+\?$', multiLine: true).hasMatch(template), isTrue);
+      });
+    }
+  });
+
+  // The gate matched English-only story labels while the Spanish template had
+  // stopped embedding them. Every unit test passed, because the fixture still
+  // carried `**As a (Como)**` — a fixture that had drifted from what ships.
+  //
+  // This walks the SHIPPED template through the real gate, per language, so the
+  // fixtures cannot mask it again.
+  group('the shipped template passes the gate it was written for', () {
+    final gate = SpecificationGate(vocabulary: vocabularies);
+
+    for (final lang in languages) {
+      test('$lang: a filled shipped template has its stories found', () {
+        final filled = resolver
+            .resolve('specification', lang: lang)
+            .content
+            // Fill the story labels and the AC row the way a person would.
+            .replaceAll(RegExp(r'<!--[^>]*-->'), 'contenido real')
+            .replaceAll('| --- |', '| --- |');
+
+        final codes =
+            gate.evaluate(filled).violations.map((v) => v.code).toList();
+
+        expect(codes, isNot(contains('SPEC_NO_USER_STORY')),
+            reason: 'the $lang labels must be findable by the $lang vocabulary');
       });
     }
   });
