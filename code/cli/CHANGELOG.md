@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.3.2]
+
+### Fixed
+- **The banner's Quickstart advertised a command that fails.** It printed
+  `macss create my-project` — a positional argument the CLI rejects (ADR 0002
+  chose explicit flags), on the alias deprecated in 0.3.0. The first command a
+  new user was told to run exited 7. It is now
+  `macss project create --path=my-project`.
+
+  The guard that should have caught it asserted the banner *contained* the
+  string `macss create`, which a broken command satisfies. The test now runs
+  the advertised command through the CLI and asserts it scaffolds a project,
+  so a quickstart that stops working fails the build.
+
 ## [0.3.1]
 
 ### Fixed
