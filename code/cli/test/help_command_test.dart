@@ -42,6 +42,8 @@ void main() {
         'requisition new',
         'requisition check',
         'requisition publish',
+        'specification export-template',
+        'specification publish',
       ]) {
         expect(out, contains(route), reason: '$route must appear in help');
       }

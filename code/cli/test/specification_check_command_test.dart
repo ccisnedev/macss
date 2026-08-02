@@ -72,7 +72,7 @@ void main() {
       );
 
   group('SpecificationCheckCommand', () {
-    test('passes (exit 0) for a filled spec with an issue', () async {
+    test('passes (exit 0) for a filled spec', () async {
       writeSpec('ok', _filledSpec);
       writeIssue('ok', 'issue-ok.md');
 
@@ -83,32 +83,20 @@ void main() {
 
     test('fails (non-zero) and lists violation codes for an incomplete spec',
         () async {
-      writeSpec('bad', _filledSpec); // no issue derived
+      // A contract with no committed date is not a contract: the date is what
+      // the Product Owner accepts alongside the acceptance criteria.
+      writeSpec('bad', _filledSpec.replaceAll(RegExp(r'\d{4}-\d{2}-\d{2}'), ''));
 
       final out = await cmd('bad').execute();
       expect(out.exitCode, isNot(0));
-      expect(out.message, contains('SPEC_NO_ISSUE'));
+      expect(out.message, contains('SPEC_NO_COMMITMENT_DATE'));
     });
 
     test('validate fails when the specification.md is missing', () {
       expect(cmd('ghost').validate(), isNotNull);
     });
 
-    test('issue-<slug>.md files are discovered as derived issues', () async {
-      writeSpec('disc', _filledSpec);
-      writeIssue('disc', 'issue-disc.md');
-      final out = await cmd('disc').execute();
-      expect(out.exitCode, 0);
-    });
 
-    test('an issue that does not reference the AC → SPEC_AC_NOT_TRACED',
-        () async {
-      writeSpec('trace', _filledSpec); // declares US1-AC1
-      writeIssue('trace', 'issue-trace.md', covers: 'nothing');
-      final out = await cmd('trace').execute();
-      expect(out.exitCode, isNot(0));
-      expect(out.message, contains('SPEC_AC_NOT_TRACED'));
-    });
 
     test('checks the active requisition from the pointer (no --slug)', () async {
       final folder = '20260709-active';

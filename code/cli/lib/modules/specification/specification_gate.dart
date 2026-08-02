@@ -7,13 +7,17 @@
 /// specification is a lean **business charter** (PO ↔ team contract, in the
 /// domain's ubiquitous language): a committed delivery date; each user story
 /// carries ≥1 Given-When-Then acceptance criterion; the explicit scope is
-/// filled; and at least one issue is derived, tracing every AC. Testing (each AC
-/// is already a test) moves to development, and technical decisions to the
-/// issues — neither is gated here.
+/// filled. Testing (each AC is already a test) moves to development, and
+/// technical decisions to the issue body — neither is gated here.
+///
+/// Two rules used to live here and no longer can: one requiring at least one
+/// derived issue, and one tracing every acceptance criterion to one. Both were
+/// artefacts of a one-specification-many-issues model. Under one requirement,
+/// one issue they are tautologies — the document *is* the issue, and every AC
+/// in it is covered by definition.
 library;
 
 import '../../src/vocabulary.dart';
-import '../issue/front_matter.dart';
 
 /// One failed rule, with a stable [code] (mirrors the dev-cycle gate codes such
 /// as `DIAGNOSIS_EVIDENCE_MISSING`) and a human-readable [message].
@@ -45,31 +49,15 @@ class SpecificationGate {
 
   const SpecificationGate({required this.vocabulary});
 
-  /// Evaluates [specificationMd] (the file content) plus the [issues] derived
-  /// for the slug — the **contents** of each `issue-<slug>.md`, so the gate can
-  /// verify that every acceptance criterion is traced to an issue (the QA→Dev
-  /// handoff: AC → issue).
-  SpecificationGateResult evaluate(
-    String specificationMd, {
-    required List<String> issues,
-  }) {
+  /// Evaluates the contract: a committed date, user stories carrying verifiable
+  /// acceptance criteria, and an explicit scope.
+  SpecificationGateResult evaluate(String specificationMd) {
     final violations = <SpecificationViolation>[];
     final sections = _splitSections(specificationMd);
 
     _checkCommitmentDate(sections, violations);
     _checkUserStories(sections, violations);
     _checkScope(sections, violations);
-
-    final realIssues = issues.where((i) => i.trim().isNotEmpty).toList();
-    if (realIssues.isEmpty) {
-      violations.add(const SpecificationViolation(
-        'SPEC_NO_ISSUE',
-        'No issue derived — create at least one issue-<slug>.md tracing to the '
-            'acceptance criteria.',
-      ));
-    } else {
-      _checkAcTraceability(sections, realIssues, violations);
-    }
 
     return SpecificationGateResult(violations);
   }
@@ -143,45 +131,6 @@ class SpecificationGate {
         'Explicit scope is incomplete — both "Includes" and "Does NOT include" '
             'need at least one real bullet.',
       ));
-    }
-  }
-
-  /// Every filled AC declared in the User Stories must be referenced by at least
-  /// one derived issue — the AC → issue link of the traceability spine. For an
-  /// "issue as code" file (with `---` front-matter) the trace comes from its
-  /// declared `covers:` list — the canonical, machine-readable source — so prose
-  /// or template examples in the body never trace falsely. A freehand issue (no
-  /// front-matter) falls back to a raw-text scan.
-  void _checkAcTraceability(
-    Map<String, String> sections,
-    List<String> issues,
-    List<SpecificationViolation> violations,
-  ) {
-    final body = _section(sections, 2);
-    if (body == null) return;
-
-    final declared = <String>{};
-    final stories = _splitStories(body);
-    for (var i = 0; i < stories.length; i++) {
-      final story = stories[i];
-      declared.addAll(_acIds(story.title, story.body, i)); // US<n>-AC<m>
-    }
-
-    final traceTexts = issues.map((issue) {
-      final doc = parseIssueDoc(issue);
-      return doc != null ? doc.covers.join(' ') : issue;
-    }).toList();
-
-    for (final ac in declared) {
-      final token = RegExp('\\b${RegExp.escape(ac)}\\b', caseSensitive: false);
-      final traced = traceTexts.any((t) => token.hasMatch(t));
-      if (!traced) {
-        violations.add(SpecificationViolation(
-          'SPEC_AC_NOT_TRACED',
-          '$ac is declared in specification.md but no derived issue references '
-              'it — every acceptance criterion must trace to an issue.',
-        ));
-      }
     }
   }
 

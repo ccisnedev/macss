@@ -6,6 +6,8 @@ import '../../assets.dart';
 import '../../templates/template_resolver.dart';
 import 'commands/check.dart';
 import 'commands/new.dart';
+import 'commands/publish.dart';
+import '../requisition/commands/export_template.dart';
 
 /// Registers the `specification` module — the QA-facing specification phase.
 ///
@@ -27,6 +29,30 @@ void buildSpecificationModule(ModuleBuilder m, {required Assets assets}) {
         'Scaffold a QA specification workspace under docs/requisitions/ '
         '(requisition.md + specification.md) and make it the active requisition',
     params: SpecificationNewInput.params,
+  );
+
+  m.command<ExportTemplateInput, ExportTemplateOutput>(
+    'export-template',
+    (req) => ExportTemplateCommand(
+      ExportTemplateInput.fromCliRequest(req),
+      resolver: resolver,
+      artifact: 'specification',
+    ),
+    description: 'Write the blank contract template',
+    params: ExportTemplateInput.params,
+  );
+
+  m.command<SpecificationPublishInput, SpecificationPublishOutput>(
+    'publish',
+    (req) => SpecificationPublishCommand(
+      SpecificationPublishInput.fromCliRequest(req),
+      workingDirectory: Directory.current.path,
+      runProcess: Process.run,
+      assets: assets,
+    ),
+    description:
+        'Add the contract to the issue — previews by default',
+    params: SpecificationPublishInput.params,
   );
 
   m.command<SpecificationCheckInput, SpecificationCheckOutput>(
