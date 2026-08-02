@@ -6,6 +6,8 @@ import '../../assets.dart';
 import '../../templates/template_resolver.dart';
 import 'commands/check.dart';
 import 'commands/new.dart';
+import 'commands/publish.dart';
+import '../requisition/commands/export_template.dart';
 
 /// Registers the `specification` module — the QA-facing specification phase.
 ///
@@ -17,16 +19,39 @@ void buildSpecificationModule(ModuleBuilder m, {required Assets assets}) {
   final resolver = TemplateResolver(assets);
 
   m.command<SpecificationNewInput, SpecificationNewOutput>(
-    'new <slug>',
+    'new',
     (req) => SpecificationNewCommand(
       SpecificationNewInput.fromCliRequest(req),
       resolver: resolver,
       workingDirectory: Directory.current.path,
     ),
     description:
-        'Scaffold a QA specification workspace under docs/requisitions/ '
-        '(requisition.md + specification.md) and make it the active requisition',
+        'Write the contract template into the active requisition',
     params: SpecificationNewInput.params,
+  );
+
+  m.command<ExportTemplateInput, ExportTemplateOutput>(
+    'export-template',
+    (req) => ExportTemplateCommand(
+      ExportTemplateInput.fromCliRequest(req),
+      resolver: resolver,
+      artifact: 'specification',
+    ),
+    description: 'Write the blank contract template',
+    params: ExportTemplateInput.params,
+  );
+
+  m.command<SpecificationPublishInput, SpecificationPublishOutput>(
+    'publish',
+    (req) => SpecificationPublishCommand(
+      SpecificationPublishInput.fromCliRequest(req),
+      workingDirectory: Directory.current.path,
+      runProcess: Process.run,
+      assets: assets,
+    ),
+    description:
+        'Add the contract to the issue — previews by default',
+    params: SpecificationPublishInput.params,
   );
 
   m.command<SpecificationCheckInput, SpecificationCheckOutput>(
@@ -34,6 +59,7 @@ void buildSpecificationModule(ModuleBuilder m, {required Assets assets}) {
     (req) => SpecificationCheckCommand(
       SpecificationCheckInput.fromCliRequest(req),
       workingDirectory: Directory.current.path,
+      assets: assets,
     ),
     description:
         'Run the specification_ready gate over the active requisition — '

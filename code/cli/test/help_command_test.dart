@@ -30,14 +30,19 @@ void main() {
         'api graphql compile',
         'specification new',
         'specification check',
-        'issue new',
-        'issue publish',
         'skill deploy',
         'skill list',
         'skill clean',
         'project create',
         'project check',
         'project adopt',
+        'requisition export-template',
+        'requisition new',
+        'requisition check',
+        'requisition publish',
+        'specification export-template',
+        'specification publish',
+        'dor check',
       ]) {
         expect(out, contains(route), reason: '$route must appear in help');
       }

@@ -33,6 +33,17 @@ _This specification is the **business agreement** — like a project charter —
 | ------------------- | -------------------- |
 | Committed delivery  | <!-- YYYY-MM-DD -->  |
 
+
+### How will we know it worked?
+
+<!-- The observable signal that the problem stated in §1 of the request is
+     solved. It is not an acceptance criterion ---those are checked at
+     delivery--- but what will be looked at afterwards to know it was worth
+     doing. If it cannot be written as something observable, the value was
+     vapour. -->
+
+> **Example:** *"No monthly close is redone because of lost records again."*
+
 ## 2. User Stories
 
 ### US-1: <!-- descriptive title -->

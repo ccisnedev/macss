@@ -4,132 +4,138 @@ import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
 import 'package:macss_cli/assets.dart';
-import 'package:macss_cli/templates/template_resolver.dart';
+import 'package:macss_cli/modules/requisition/commands/new.dart';
+import 'package:macss_cli/modules/requisition/issue_metadata.dart';
 import 'package:macss_cli/modules/specification/commands/new.dart';
+import 'package:macss_cli/templates/template_resolver.dart';
 
+/// `specification new` used to create the requisition **and** the specification
+/// in one go. That collapsed a real distinction: the requisition is a form the
+/// Product Owner fills, the specification is QA's contract — different authors,
+/// different moments.
+///
+/// It now adds only the contract, to a requisition that already exists.
 void main() {
-  // Real templates ship under the repo's assets/ (Directory.current is code/cli).
-  final resolver = TemplateResolver(Assets(root: Directory.current.path));
-
   late Directory tempDir;
-  final fixedNow = DateTime(2026, 7, 9);
+  late TemplateResolver resolver;
+
+  DateTime clock() => DateTime(2026, 8, 2);
+  const folder = 'docs/requisitions/20260802-demo';
 
   setUp(() {
     tempDir = Directory.systemTemp.createTempSync('macss_spec_new_');
+    resolver = TemplateResolver(Assets(root: Directory.current.path));
   });
 
   tearDown(() {
     if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
   });
 
-  SpecificationNewCommand cmd(String slug, {String lang = 'en'}) =>
-      SpecificationNewCommand(
-        SpecificationNewInput(slug: slug, lang: lang),
+  File file(String relative) =>
+      File(p.join(tempDir.path, p.joinAll(relative.split('/'))));
+
+  Future<void> openRequisition({String lang = 'es'}) => RequisitionNewCommand(
+        RequisitionNewInput(slug: 'demo', lang: lang),
         resolver: resolver,
         workingDirectory: tempDir.path,
-        now: () => fixedNow,
-      );
+        now: clock,
+      ).execute();
 
-  String read(String slug, String artifact) => File(
-        p.join(tempDir.path, 'docs', 'requisitions', '20260709-$slug',
-            '$artifact.md'),
-      ).readAsStringSync();
+  Future<SpecificationNewOutput> addContract({String? lang}) =>
+      SpecificationNewCommand(
+        SpecificationNewInput(lang: lang),
+        resolver: resolver,
+        workingDirectory: tempDir.path,
+        now: clock,
+      ).execute();
 
   group('SpecificationNewCommand', () {
-    test(
-        'scaffolds docs/requisitions/<YYYYMMDD>-<slug>/ with requisition.md + '
-        'specification.md', () async {
-      await cmd('invoice-form').execute();
+    test('adds the contract to the active requisition', () async {
+      await openRequisition();
 
-      final dir = Directory(
-          p.join(tempDir.path, 'docs', 'requisitions', '20260709-invoice-form'));
-      expect(dir.existsSync(), isTrue);
-      expect(read('invoice-form', 'requisition'), contains('# Requisition'));
+      await addContract();
+
+      expect(file('$folder/specification.md').existsSync(), isTrue);
+    });
+
+    test('does not touch the requisition form', () async {
+      await openRequisition();
+      file('$folder/requisition.md').writeAsStringSync('FILLED BY THE PO');
+
+      await addContract();
+
       expect(
-        read('invoice-form', 'specification'),
-        contains('# Specification'),
-      );
+          file('$folder/requisition.md').readAsStringSync(), 'FILLED BY THE PO');
     });
 
-    test('the dated folder prefix is compact YYYYMMDD (no hyphens in the date)',
-        () async {
-      await cmd('order').execute();
-      final base = Directory(p.join(tempDir.path, 'docs', 'requisitions'));
-      final names = base.listSync().map((e) => p.basename(e.path)).toList();
-      expect(names, contains('20260709-order'));
+    test('inherits the language the requisition was opened in', () async {
+      // A Spanish request should not yield an English contract.
+      await openRequisition(lang: 'es');
+
+      await addContract();
+
+      expect(file('$folder/specification.md').readAsStringSync(),
+          contains('Historias de Usuario'));
     });
 
-    test('records the active requisition in .macss/specification.yaml',
-        () async {
-      await cmd('pointer', lang: 'es').execute();
-      final yaml =
-          File(p.join(tempDir.path, '.macss', 'specification.yaml'))
-              .readAsStringSync();
-      expect(yaml, contains('slug: pointer'));
-      expect(yaml, contains('path: docs/requisitions/20260709-pointer'));
-      expect(yaml, contains('lang: es'));
+    test('--lang overrides the inherited language', () async {
+      await openRequisition(lang: 'es');
+
+      await addContract(lang: 'en');
+
+      expect(file('$folder/specification.md').readAsStringSync(),
+          contains('User Stories'));
     });
 
-    test('ensures .macss/ and docs/requisitions/ are git-ignored', () async {
-      await cmd('ignored').execute();
-      final gitignore =
-          File(p.join(tempDir.path, '.gitignore')).readAsStringSync();
-      expect(gitignore, contains('.macss/'));
-      expect(gitignore, contains('docs/requisitions/'));
+    test('replaces the {{DATE}} placeholder with today', () async {
+      await openRequisition();
+
+      await addContract();
+
+      final content = file('$folder/specification.md').readAsStringSync();
+      expect(content, contains('2026-08-02'));
+      expect(content, isNot(contains('{{DATE}}')));
     });
 
-    test('replaces the {{DATE}} placeholder with today (ISO date)', () async {
-      await cmd('dated').execute();
-      expect(read('dated', 'requisition'), contains('2026-07-09'));
-      expect(read('dated', 'requisition'), isNot(contains('{{DATE}}')));
-    });
+    test('is idempotent: an existing contract is never clobbered', () async {
+      await openRequisition();
+      await addContract();
+      file('$folder/specification.md').writeAsStringSync('WRITTEN BY QA');
 
-    test('--lang es scaffolds the Spanish specification', () async {
-      await cmd('factura', lang: 'es').execute();
+      final out = await addContract();
+
+      expect(out.message, contains('kept'));
       expect(
-        read('factura', 'specification'),
-        contains('# Especificación'),
+          file('$folder/specification.md').readAsStringSync(), 'WRITTEN BY QA');
+    });
+
+    test('output names the file and the next step', () async {
+      await openRequisition();
+
+      final out = await addContract();
+
+      expect(out.message, contains('specification.md'));
+      expect(out.message, contains('specification check'));
+    });
+
+    test('refuses to write a contract with nothing to contract about', () {
+      // No requisition open: there is no request to turn into an agreement.
+      final cmd = SpecificationNewCommand(
+        SpecificationNewInput(),
+        resolver: resolver,
+        workingDirectory: tempDir.path,
       );
+
+      expect(cmd.validate(), contains('requisition new'));
     });
 
-    test('is idempotent: an existing artifact is never clobbered', () async {
-      await cmd('keep').execute();
-      final file = File(p.join(
-          tempDir.path, 'docs', 'requisitions', '20260709-keep',
-          'requisition.md'));
-      file.writeAsStringSync('EDITED BY HUMAN');
+    test('the language comes from issue.yaml, not from a guess', () async {
+      await openRequisition(lang: 'es');
 
-      await cmd('keep').execute();
-
-      expect(file.readAsStringSync(), 'EDITED BY HUMAN');
-    });
-
-    test('output lists the created files and the next step', () async {
-      final out = await cmd('listed').execute();
-      expect(out.message,
-          contains('docs/requisitions/20260709-listed/requisition.md'));
-      expect(out.message,
-          contains('docs/requisitions/20260709-listed/specification.md'));
-      expect(out.exitCode, 0);
-    });
-
-    test('a fallback language surfaces a one-line notice in the output',
-        () async {
-      final out = await cmd('fallback', lang: 'pt').execute();
-      expect(out.message, contains('pt'));
-      expect(out.message, contains('English'));
-    });
-
-    test('validate rejects an empty slug', () {
-      expect(cmd('').validate(), isNotNull);
-    });
-
-    test('validate rejects a slug with illegal characters', () {
-      expect(cmd('Bad Slug!').validate(), isNotNull);
-    });
-
-    test('validate accepts a kebab-case slug', () {
-      expect(cmd('add-invoice-form').validate(), isNull);
+      expect(
+        IssueMetadata.read(p.dirname(file('$folder/x').path))!.lang,
+        'es',
+      );
     });
   });
 }

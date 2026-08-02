@@ -1,6 +1,6 @@
 /// `macss specification check [--slug <slug>]` — runs the `specification_ready`
 /// gate over the active requisition's `specification.md`
-/// (`.macss/specification.yaml`; `--slug` overrides).
+/// (`.macss/state.yaml`; `--slug` overrides).
 ///
 /// The CLI runs the gate; the model fixes exactly what it reports. Specification
 /// precedes implementation, whose gates belong to the inquiry FSM, so this is a
@@ -14,6 +14,8 @@ import 'package:cli_router/cli_router.dart';
 import 'package:modular_cli_sdk/modular_cli_sdk.dart';
 import 'package:path/path.dart' as p;
 
+import '../../../assets.dart';
+import '../../../src/vocabulary.dart';
 import '../slug.dart';
 import '../specification_gate.dart';
 import '../workspace.dart';
@@ -22,7 +24,7 @@ import '../workspace.dart';
 
 class SpecificationCheckInput extends Input {
   /// The requisition workspace override; `null` → the active requisition
-  /// recorded in `.macss/specification.yaml`.
+  /// recorded in `.macss/state.yaml`.
   final String? slug;
 
   SpecificationCheckInput({this.slug});
@@ -75,8 +77,10 @@ class SpecificationCheckCommand
   SpecificationCheckCommand(
     this.input, {
     required this.workingDirectory,
+    required Assets assets,
     SpecificationGate? gate,
-  }) : gate = gate ?? SpecificationGate();
+  }) : gate = gate ??
+            SpecificationGate(vocabulary: Vocabularies.fromAssets(assets));
 
   String? get _dir => resolveRequisitionDir(workingDirectory, input.slug);
 
@@ -103,10 +107,7 @@ class SpecificationCheckCommand
 
   @override
   Future<SpecificationCheckOutput> execute() async {
-    final result = gate.evaluate(
-      _specFile!.readAsStringSync(),
-      issues: _issueBodies(),
-    );
+    final result = gate.evaluate(_specFile!.readAsStringSync());
 
     if (result.passed) {
       return SpecificationCheckOutput(
@@ -123,21 +124,4 @@ class SpecificationCheckCommand
     return SpecificationCheckOutput(ready: false, message: lines.join('\n'));
   }
 
-  /// The contents of the `issue-*.md` files derived under the slug's workspace —
-  /// the gate reads them to verify AC → issue traceability.
-  List<String> _issueBodies() {
-    final d = _dir;
-    if (d == null) return const [];
-    final dir = Directory(d);
-    if (!dir.existsSync()) return const [];
-    return dir
-        .listSync()
-        .whereType<File>()
-        .where((f) {
-          final name = p.basename(f.path);
-          return name.startsWith('issue-') && name.endsWith('.md');
-        })
-        .map((f) => f.readAsStringSync())
-        .toList();
-  }
 }
