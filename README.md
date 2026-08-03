@@ -46,8 +46,22 @@ The `macss api graphql ...` CLI surface operates on `modular_api` projects.
 ### `modular_agent` — agent runtime (planned)
 
 The sibling of `modular_api`, for agents rather than APIs: scheduler, durable
-state, tool layer, memory, observability, and the agent's role expressed as
-versioned configuration. Its CLI surface will be `macss agent ...`.
+state, thinking layer, memory, calendar, observability, and the agent's role
+expressed as versioned configuration. Its CLI surface will be `macss agent ...`.
+
+`agent` becomes the fifth canonical layer, with the same module parity the other
+four already have — `db` / `api` / `app` / `cli` / `agent`, mirroring by name. An
+agent module is a vertical slice through **tools, skill, memory, policy and
+evals**, and extracting one produces another agent, the way extracting an API
+module produces a microservice.
+
+| Language | Package | Registry |
+|---|---|---|
+| Python | `macss-modular-agent` | PyPI |
+| TypeScript | `@macss/modular-agent` | npm |
+
+No Dart edition: the thinking-layer providers this depends on exist for Python
+and TypeScript, and none exists for Dart.
 
 **It does not exist yet, and that is deliberate.** It is being incubated in a
 laboratory — `cacsi-dev/helper`, a helpdesk agent — and gets extracted when a

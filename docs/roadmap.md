@@ -581,16 +581,135 @@ Enough is known to say what belongs in the runtime and what does not:
   because a helpdesk has many concurrent conversations with humans who answer slowly. An
   agent that implements code has one deep task and no such wait.
 
-### The open question this stage answers
+### How it earns the name: the five layers of an agent
 
-**Does MACSS need an agent archetype?** The layer model `infra → db → api → app` assumes a
-request-driven system. An agent inverts it: a long-running process that consumes work and
-acts. The laboratory already found the symptom — a directory named `api/` that exposes no
-API, and no use for `app/`, because an agent whose behavior is editable through a UI is an
-agent whose behavior is no longer in the repository.
+`modular_api` earns "modular" because a module is a **vertical slice** through every layer,
+and the proof is that extracting one leaves something that works alone. `modular_agent`
+has to meet the same test or the name is decoration.
 
-That question is answered by operating the thing, not by renaming directories. Until then
-`macss project check` keeps one canon, and helper carries a paragraph of explanation.
+An agent's horizontal layers are not an application's. They fall out of the questions that
+must be answered before it can act:
+
+| Layer | Question |
+|---|---|
+| **Tools** | What can it do? |
+| **Skill** | What does it know? |
+| **Memory** | What does it remember? |
+| **Policy** | What is it not permitted to do? |
+| **Evals** | How do we know it does it well? |
+
+A module is the vertical cut through those five, for **one domain**:
+
+```text
+code/agent/
+├── modules/
+│   ├── credits/
+│   │   ├── tools/          # bindings to the domain's CLI
+│   │   ├── skill.md        # the procedure, written for the model
+│   │   ├── memory/         # its tables, inside the memory schema
+│   │   ├── policy.yaml     # the grant: bounds, quotas, prohibitions
+│   │   └── evals/          # how this domain is verified
+│   └── accounts/
+└── roles/
+    └── operator.yaml       # modules: [credits, accounts]
+```
+
+### Parity: `agent` is the fifth canonical layer
+
+```text
+code/db/modules/credits      # the schema
+code/api/modules/credits     # the use cases
+code/app/modules/credits     # the screen
+code/cli/modules/credits     # the commands
+code/agent/modules/credits   # what the agent can do with them
+```
+
+Five layers, one name — which is what makes `agent` canonical rather than a folder someone
+added. The canon invariant extends on its own:
+
+> **If `agent/modules/X` exists, `cli/modules/X` must exist** — because the agent reaches
+> its domain through the CLI, and an agent module with no CLI to serve it is an agent with
+> no hands.
+
+A second invariant comes from ADR 0006 and is what makes the grant model verifiable rather
+than aspirational:
+
+> **If `agent/modules/X/tools/` exists, `agent/modules/X/policy.yaml` must exist.**
+> A tool without a declared policy is a capability nobody authorized.
+
+### The extraction test passes
+
+Lift `modules/credits` into a new project and you get a credits specialist: its own
+container, its own memory, its own grants, its own evals. **Extracting an agent module
+produces another agent** — the exact counterpart of extracting an API module into a
+microservice. Composing several produces a generalist. The role is the manifest that says
+which ones load.
+
+### Plugins are shipped; modules are written
+
+`modular_api` separates plugins (health, metrics, OpenAPI, GraphQL — technical
+capabilities) from modules (domain slices). `modular_agent` keeps the same split:
+
+- **Plugins ship with the package** — thinking-layer providers, memory backends, sensor
+  types (poll, webhook, queue), tool transports.
+- **Modules are written by whoever adopts it.** The framework never guesses a domain.
+- **The core is what nobody rewrites** — scheduler, durable state, the thinking port, the
+  module loader, observability, and the base `memory` schema.
+
+### It has no API of its own
+
+`modular_agent` exposes no service. It sits in its own loop waiting for events it can
+handle — the same way a person waits for work to arrive. Observability binds to localhost;
+there is no control endpoint, because behaviour is deployed rather than edited (ADR 0005,
+ADR 0019 in helper).
+
+### Working hours are a first-class concern
+
+If the agent behaves like a person doing a job, it needs what a person doing a job has: a
+schedule. The core carries a **calendar** — timezone, weekly shift, and non-working days
+including local holidays — and the scheduler will not dispatch user tasks outside it.
+
+This is not a courtesy. It bounds cost, it stops the agent from setting a response
+expectation the business cannot meet at 3am, and it makes the agent's behaviour legible to
+the humans working beside it. It also composes with ADR 0006: **a grant can be
+time-bounded**, so the calendar is part of the policy layer, not a separate feature.
+
+Two things stay outside the framework, deliberately: whether to auto-reply outside hours is
+a business decision that belongs to a role, and system tasks (`poll`, `self_check`) keep
+running off-hours so no event is lost.
+
+### Languages: Python and TypeScript
+
+`modular_api` ships in Dart, TypeScript and Python. `modular_agent` will ship in
+**Python and TypeScript only.**
+
+The reason is the thinking layer: its provider ecosystem is Python-first and TypeScript-
+second — Google's ADK, for instance, covers Python, TypeScript, Go and Java. **Dart has
+none.** A Dart edition would mean writing the provider layer from scratch before writing
+any agent, which is a different project. Go and Java are supported by providers but are not
+in the MACSS language set today.
+
+### Two deployment shapes, and neither is an exception
+
+The question that opened this stage — *does MACSS need a separate archetype for agents?* —
+resolves without one. `agent` is a canonical layer, and there are two shapes of project
+that use it:
+
+- **Agent in project.** `code/agent/` beside the other four layers, with full name parity.
+  This is the normal case, and `macss project check` verifies it like any other layer.
+- **Detached agent.** The domain belongs to a different product, so the project holds
+  `code/agent/` and a `code/db/` with the `runtime` and `memory` schemas, and **declares
+  its domain CLI as a dependency**. Parity is verified against an external CLI instead of
+  a sibling `code/cli/`.
+
+`cacsi-dev/helper` is the second shape: its domain is H.E.L.P., reached through `hd`. It is
+not an exception to the canon — it is the canon's second case, which is what the laboratory
+was for.
+
+What stays true in both: **an agent owns no domain.** Its `db` holds what the agent *is* —
+`runtime` (process control) and `memory` (what it knows) — never the business. That is the
+property that lets one framework serve every domain: same runtime, same memory, same
+observability, a different CLI.
 
 ## Long-Term Direction
 
