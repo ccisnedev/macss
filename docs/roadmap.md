@@ -11,6 +11,9 @@ Since 0.2.0 there is a second axis: MACSS is an architecture **and** an
 engineering methodology, and the CLI now carries the lifecycle stages the
 methodology defines. See **Stage 5 - Lifecycle Module Surface**.
 
+A third axis follows from the second: a methodology has to be teachable, not
+only executable. See **Stage 6 - The Written Record**.
+
 Current operational context:
 
 - `modular_api` has already achieved GraphQL integration.
@@ -189,7 +192,7 @@ Likely areas include:
 - templates and project scaffolding
 - prompts and future AI skills
 - workflow automation
-- future reference assets and book-related tooling
+- reference assets and book-related tooling — see **Stage 6**
 
 ## Stage 5 - Lifecycle Module Surface
 
@@ -228,7 +231,7 @@ serves each stage:
 | requisition | `macss requisition` | **shipped** (0.4.0) — the PO's form, published as the issue |
 | specification | `macss specification` | **shipped** (0.4.0) — the contract, appended to that same issue |
 | definition of ready | `macss dor` | **shipped** (0.4.0) — composes both gates plus "the issue exists" |
-| implementation | skills, for now | `macss-analyze` / `macss-plan` / `macss-execute` — the method, self-contained |
+| implementation | skills, for now | `macss-analyze` / `macss-plan` / `macss-execute` — **shipped** (0.5.0); `macss-review` planned, see below |
 | verification | `macss verification` | planned |
 | deploy | `macss deploy` | planned — delegates to `macss-devops` (Stage 3.5) |
 
@@ -241,6 +244,53 @@ issue could be authored independently of the request it carries.
 Shared verbs where they make sense: `new` (open the artifact), `check` (run the
 stage gate), `publish` (materialize it on GitHub, `--plan` then `--apply`).
 Every argument is explicit and named — `--issue 40`, never a positional.
+
+### Implementation is four phases, not three
+
+Implementation is the one stage MACSS serves with skills rather than commands,
+because what it needs is judgement rather than mechanism. Three of its phases
+ship today; the fourth is the gap.
+
+| Phase | Skill | Produces |
+|---|---|---|
+| analyze | `macss-analyze` | the diagnosis, as a comment on the issue |
+| plan | `macss-plan` | staged work, each stage with an executable verification |
+| execute | `macss-execute` | the code, under TDD, and the PR |
+| review | `macss-review` — **planned** | a verdict on that PR |
+
+The first three form a closed loop already: the diagnosis and the plan are
+published on the issue whose body froze at DoR, and the PR references it, so the
+chain reads request, contract, diagnosis, plan, code. What it does not have is
+anyone checking the last link.
+
+**The reviewer is an AI agent, and that is the point.** A human review is not
+reproducible: two reviewers, or the same reviewer twice, apply different
+standards to the same diff. An agent review is deterministic to the extent that
+its prompt is specific — which makes `macss-review` a *contract*, in the same
+sense the specification is a contract, and makes it improvable in the same way:
+when a defect class gets through, the prompt gains a rule and every future
+review inherits it.
+
+This is the same reason the gates verify artifacts rather than signatures. A
+signature records that someone looked; a gate records what was checked.
+
+Two things this must not become:
+
+- **A second opinion nobody reads.** GitHub already fires an automatic review on
+  PR creation. `macss-review` has to say something that review does not, or it
+  is noise with a MACSS logo on it. What it can say is what a generic reviewer
+  cannot know: whether the code satisfies *this issue's* acceptance criteria,
+  whether the plan's stages were actually verified, whether the diff strays
+  outside the scope the specification declared excluded.
+- **A gate that blocks on style.** Review reports; a human decides. The DoD
+  keeps its human approvals — QA verifying by checkout and the Product Owner
+  signing off on the acceptance criteria. `macss-review` sits before those, not
+  in place of them.
+
+The open question is what it reads. A review that only sees the diff cannot
+check any of the three things above. It needs the issue: the frozen body for the
+contract, the comments for the diagnosis and the plan. That is exactly why those
+were moved onto the issue in 0.5.0.
 
 ### The relationship with inquiry: laboratory and product
 
@@ -265,6 +315,12 @@ in the engineering handbook. What is never shared is the **contract**: no gate
 rule, event name or artifact schema is restated in MACSS. Doctrine can safely
 live in two places; a contract cannot. That is what lets inquiry rewrite its FSM
 without touching anything here.
+
+One-directional does not mean derivative. `review` has no counterpart in
+inquiry's state machine — the laboratory's states are `analyze`, `plan`,
+`execute` — so it is the first phase to originate in the product. Nothing about
+the relationship forbids that: MACSS may not *depend* on inquiry, which is a
+different claim from MACSS may not *lead* it.
 
 The cost is a manual sync point: a lab improvement reaches MACSS when someone
 ports it into a `SKILL.md`. That is deliberate, and it is what buys MACSS the
@@ -303,13 +359,86 @@ The root-level `macss create` alias shipped deprecated in 0.3.0 and was removed
 in 0.5.0: `project` is where scaffolding lives, and a second name for it only
 made the grammar ambiguous about which nouns own what.
 
+## Stage 6 - The Written Record: Two Books
+
+MACSS has a second laboratory, and it works exactly like the first.
+
+`cacsi-dev/handbook` is where the methodology is refined **against a real
+company** — a real Product Owner who finds the requisition form bureaucratic, a
+real QA who has to run the gate on a Friday, real deploys to real servers. That
+pressure is what makes the method true rather than tidy, and it is the same role
+inquiry plays for the CLI: the place where something is proven before it is
+inherited.
+
+| Laboratory | Product | Refined against |
+|---|---|---|
+| `inquiry` | the `macss` CLI | an FSM with enforced gates, instrumented |
+| `cacsi-dev/handbook` | the `macss` book | one company's actual practice |
+
+The rules carry over unchanged, because they are the same rules:
+
+- **One-directional.** The handbook never depends on the macss book; the macss
+  book never references the handbook. A public book citing a private one is a
+  dead link with extra steps.
+- **Doctrine is shared, specifics are not.** The lifecycle, the gates, the
+  one-requirement-one-issue model — those generalize. Santa Isabel's product
+  catalogue, `macss-devops` cmdlets, the `@cacsi-dev/approvers` team, the UAT
+  server names — those stay in the laboratory.
+- **Editorial pace, decided by a human.** A chapter reaches the macss book when
+  someone generalizes it, not automatically.
+
+### Book two: `macss`
+
+**This book already exists** — `code/book/`, and it is already generic: not one
+mention of CACSI or Santa Isabel in it. It is not a book to write from scratch;
+it is a book to **finish**.
+
+What it has: the architecture (Parts I and II), and the parts of the method that
+were always general — development flow, testing and quality gates, CI/CD,
+the human + AI delivery model, governance and ADRs.
+
+What it lacks is the lifecycle we spent 0.4.0 and 0.5.0 building commands for.
+The handbook now documents every stage from `need` to `cd`, plus the
+environments chapter; none of that has been generalized across yet. The gap is
+concrete: a reader of the macss book can learn the architecture and can run
+`macss requisition new`, but cannot read why the requisition is a form the
+Product Owner fills himself.
+
+### Book one: `codito`
+
+A glossary and the diagrams, written to be **understood on first reading** —
+the register of a children's book, deliberately.
+
+This is not a simplified duplicate of `glossary.md` (328 lines, already in book
+two). It is a different instrument for a different moment: what you hand someone
+on day one, before they can hold the whole model in their head. Book two defines
+terms for a reader who already accepted the architecture; codito has to make
+someone *want* to.
+
+Ordered first because it is read first, and because the constraint runs the
+useful direction: a term that cannot be drawn, or cannot be explained plainly,
+is usually a term that is not yet understood. Writing codito is a test of the
+vocabulary, and the vocabulary is already an asset the CLI ships
+(`assets/vocabulary/`) — which is where a drift guard would attach.
+
+### Open
+
+- Where codito lives. `code/book/` is a Pandoc pipeline for one book; a second
+  needs either a sibling directory or a build that takes a target.
+- Whether the shared diagrams (`code/book/src/diagrams/`) are duplicated or
+  referenced. They will drift if duplicated, and this repository has learned
+  that lesson more than once.
+- Language. The macss book is in Spanish; the repository's rule is English for
+  everything new. That contradiction is real and predates this stage.
+
 ## Long-Term Direction
 
 The repository is expected to remain the root of the architecture ecosystem.
 
 That means the long-term shape of MACSS is larger than a library and larger than
 the current CLI package. It is the place where the architecture, its tooling,
-its automation, and its educational assets converge.
+its automation, and its educational assets converge — the last of these being
+the two books of Stage 6.
 
 ## Immediate Next Step
 
