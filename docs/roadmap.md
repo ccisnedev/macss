@@ -674,9 +674,15 @@ expectation the business cannot meet at 3am, and it makes the agent's behaviour 
 the humans working beside it. It also composes with ADR 0006: **a grant can be
 time-bounded**, so the calendar is part of the policy layer, not a separate feature.
 
-Two things stay outside the framework, deliberately: whether to auto-reply outside hours is
-a business decision that belongs to a role, and system tasks (`poll`, `self_check`) keep
-running off-hours so no event is lost.
+System tasks (`poll`, `self_check`) keep running off-hours, so no event is lost: stopping
+the sensing loses work, stopping dispatch only defers it.
+
+**The out-of-hours notice is not the agent's job**, and that follows from ADR 0006 rule 7.
+If the agent is what says *I am not attending right now*, nothing gets said when the agent
+is broken rather than off-shift. The notice belongs to the facade — no model in the path,
+nothing to talk out of it, and it still works during a deploy. When the night shift needs
+to do more than announce itself, that *is* agent work, and the shape is a role rather than
+an exception: **the calendar selects the role, it does not filter tools.**
 
 ### Languages: Python and TypeScript
 
