@@ -14,6 +14,10 @@ methodology defines. See **Stage 5 - Lifecycle Module Surface**.
 A third axis follows from the second: a methodology has to be teachable, not
 only executable. See **Stage 6 - The Written Record**.
 
+The near-term focus of the methodology axis is **Stage 7 - Environments**. The
+lifecycle stages that remain unbuilt all operate against running systems, so
+they wait until dev, uat, prod and demo exist to operate against.
+
 Current operational context:
 
 - `modular_api` has already achieved GraphQL integration.
@@ -233,7 +237,7 @@ serves each stage:
 | definition of ready | `macss dor` | **shipped** (0.4.0) — composes both gates plus "the issue exists" |
 | implementation | skills | `macss-analyze` / `macss-plan` / `macss-execute` — **shipped** (0.5.0) |
 | ci | none — the platform's | GitHub Actions. MACSS states the expectation; it does not own the runner |
-| review | `macss-review` skill | planned — a gate, and it can return the work to implementation |
+| review | none — the platform's | a gate, methodological. Fires on the PR, so the instrument is platform review with custom instructions, not a MACSS command |
 | verification | `macss verification` | planned |
 | definition of done | `macss dod` | planned — composes review, verification and the human approvals |
 | deploy | `macss deploy` | planned — delegates to `macss-devops` (Stage 3.5) |
@@ -286,42 +290,65 @@ it returns to implementation with something to change. A returning issue does
 not re-open the requisition. The contract still holds; what changed is how the
 solution is built.
 
-### `macss-review`, the gate's instrument — planned
+### The review is methodological, and it is not a MACSS command
 
 **The reviewer is an AI agent, and that is the point.** A human review is not
 reproducible: two reviewers, or the same reviewer twice, apply different
 standards to the same diff. An agent review is deterministic to the extent that
-its prompt is specific — which makes `macss-review` a *contract*, in the same
-sense the specification is a contract, and makes it improvable in the same way:
-when a defect class gets through, the prompt gains a rule and every future
+its prompt is specific — which makes the review instructions a *contract*, in
+the same sense the specification is a contract, and improvable the same way:
+when a defect class gets through, the instructions gain a rule and every future
 review inherits it.
 
 This is the same reason the gates verify artifacts rather than signatures. A
 signature records that someone looked; a gate records what was checked.
 
-It also explains where the review's standards come from. They are not derived
-from the issue — they are the accumulated preferences of this codebase, written
-down. That makes them a MACSS asset in their own right, and it means the review
-prompt is the one artifact in the lifecycle that is **not** per-requirement.
+**There is no `macss review` command and no `macss-review` skill**, and the
+reason is a constraint the review has that no other stage does: **it has to fire
+when the pull request appears**, without anyone choosing to run it. A command
+requires someone to type it, and the person most likely to forget is the one who
+just wrote the code.
 
-Two things this must not become:
+That forces the instrument to live where pull requests live — the platform's own
+review, configured with custom instructions. Which means accepting the coupling
+that every other part of MACSS refuses: the skills are deliberately portable
+across assistants, and this one is not. The trade is deliberate. A portable
+review that runs when remembered is worth less than a coupled review that always
+runs.
 
-- **A second opinion nobody reads.** GitHub already fires an automatic review on
-  PR creation, and a generic reviewer will find generic things. `macss-review`
-  earns its place by knowing what that one cannot: whether the code satisfies
-  *this issue's* acceptance criteria, whether the plan's stages were actually
-  verified, whether the diff strays into scope the specification declared
-  excluded — and by holding the standards a generic reviewer has never been
-  told.
-- **A gate that blocks on taste.** Review reports; a human decides. The DoD
-  keeps its human approvals — QA verifying by checkout and the Product Owner
-  signing off on the acceptance criteria. `macss-review` sits before those, not
-  in place of them.
+So MACSS states the expectation and supplies the content; the platform supplies
+the trigger. The same shape as `ci` in the stage table: MACSS does not own the
+runner.
 
-The open question is what it reads. A review that only sees the diff cannot
-check the first three things above. It needs the issue: the frozen body for the
-contract, the comments for the diagnosis and the plan. That is exactly why those
-were moved onto the issue in 0.5.0.
+#### Two layers, because the standards have two sources
+
+- **Generic to MACSS.** Is this actually the architecture — the layer boundaries,
+  the request flow, the module model? A project can adopt the file structure and
+  violate the design inside it, and nothing else in the lifecycle would notice.
+- **Specific to the project.** Conventions, preferred abstractions, the patterns
+  this codebase already uses. Not knowable in advance, which is why the
+  instructions have to be **extensible** rather than fixed.
+
+The generic layer is a MACSS asset. The specific layer belongs to the project
+that owns the code, and the design has to let it extend without forking.
+
+#### Open
+
+- **How custom review instructions are configured.** GitHub Copilot's code
+  review reads repository instruction files; the exact filenames, the path
+  scoping, and whether they compose or override needs verifying against current
+  documentation before anything is written against it.
+- **Whether the review can read the issue.** A review that sees only the diff
+  cannot check whether the code satisfies *this issue's* acceptance criteria,
+  whether the plan's stages were verified, or whether the diff strays into scope
+  the specification excluded. Those are the checks worth having — a generic
+  reviewer already finds generic things — and they need the frozen body and the
+  comments. Whether platform review has that reach is the question that decides
+  how much of this is achievable.
+
+What it must not become is **a gate that blocks on taste**. Review reports; a
+human decides. The DoD keeps its human approvals — QA verifying by checkout and
+the Product Owner signing off on the acceptance criteria.
 
 ### The relationship with inquiry: laboratory and product
 
@@ -454,14 +481,53 @@ is usually a term that is not yet understood. Writing codito is a test of the
 vocabulary, and the vocabulary is already an asset the CLI ships
 (`assets/vocabulary/`) — which is where a drift guard would attach.
 
+### Language: the rule applies to the design, not to the content
+
+The apparent contradiction — a Spanish book in a repository whose rule is
+English for everything new — dissolves once the two are separated.
+
+**The design is language-agnostic and written in English.** Directory names,
+slugs, code, comments, commit messages, the check that walks the tree: none of
+them may assume a language exists, and all of them are written in one. That is
+why `SUMMARY.md` carries slugs and not titles: a title is content.
+
+**The content ships in English and Spanish**, with more possible later. Neither
+is the source and neither is the translation — they are editions. Adding a third
+is adding `src/<lang>/`, and nothing in the design learns its name, because
+`books_layout_test` enumerates the directory instead of listing what it expects.
+
+This is the same split the CLI already makes. `assets/vocabulary/<lang>.yaml`
+holds words; the gate that matches them holds none. Section numbers stayed out
+of the vocabulary files for exactly this reason — they are structure, not
+language.
+
 ### Open
 
-- Where codito lives, and under what layout — see below.
-- Whether the shared diagrams (`code/books/macss/diagrams/`) are duplicated or
-  referenced. They will drift if duplicated, and this repository has learned
-  that lesson more than once.
-- Language. The macss book is in Spanish; the repository's rule is English for
-  everything new. That contradiction is real and predates this stage.
+- Whether the shared diagrams (`code/books/macss/diagrams/`) stay shared. Their
+  labels are technical terms today, which is why one copy serves every edition;
+  a diagram that acquires prose would break that.
+- Which edition leads for a given chapter. The lifecycle chapters have to be
+  generalized out of the handbook, which is written in Spanish, so `es` will
+  usually be written first — but nothing in the design says it must be.
+
+## Stage 7 - Environments: dev, uat, prod, demo
+
+`verification`, `dod` and `deploy` stay planned, and deliberately so. Building
+commands for stages the method has not yet been exercised through would encode
+guesses as contracts — the opposite of how `requisition` and `specification`
+arrived, which was after the handbook had documented what they had to do.
+
+What comes before them is the ground they stand on: the four environments the
+handbook's environments chapter defines — **dev**, **uat**, **prod**, **demo**.
+
+They are what the remaining stages actually operate against. `verification` is
+QA checking out a branch and validating acceptance criteria *somewhere*, and the
+Product Owner signs off in **uat**. `deploy` promotes *between* environments,
+and cannot be specified without knowing what it promotes between. `dod` composes
+approvals that are given about a running system, not about a diff.
+
+Defining them is not CLI work yet. It is standing them up and using the method
+against them long enough to learn what a command would have to do.
 
 ## Long-Term Direction
 
