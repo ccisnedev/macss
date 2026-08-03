@@ -15,7 +15,7 @@ and the decision body is left as written because it records what was decided:
 
 ## Context
 
-`code/book/src/project-structure.md` states that the MACSS directory structure
+`code/books/macss/src/es/project-structure.md` states that the MACSS directory structure
 "is not decorative — it is architecture visible", and closes with four
 invariants written as rules:
 
@@ -98,6 +98,6 @@ different scopes.
 
 ## References
 
-- `code/book/src/project-structure.md` — the canon these commands verify
+- `code/books/macss/src/es/project-structure.md` — the canon these commands verify
 - `docs/roadmap.md`, Stage 5 — the inception stage and the `project` module
 - ADR 0002 — explicit flags over positional args, which `--path` follows
