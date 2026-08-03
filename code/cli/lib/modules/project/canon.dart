@@ -1,7 +1,7 @@
 /// What a MACSS project is made of, and how to tell whether one conforms.
 ///
 /// This is the single definition of the canon documented in
-/// `code/book/src/project-structure.md`. `project create` stamps it,
+/// `code/books/macss/src/es/project-structure.md`. `project create` stamps it,
 /// `project check` verifies it, and `project adopt` fills its gaps — so the
 /// three cannot disagree about what a MACSS project is. They used to: the book
 /// required a root `CHANGELOG.md` that `create` never produced, and nothing

@@ -18,7 +18,7 @@ contain multiple assets and companion surfaces, including:
 - CLI automation
 - prompts and future AI skills
 - future templates and reference assets
-- future book content under `code/book`
+- book content under `code/books/<name>`
 
 In this model, `modular_api` is a subsystem inside MACSS, not the umbrella
 product itself.

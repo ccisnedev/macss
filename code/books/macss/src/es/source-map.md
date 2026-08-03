@@ -4,15 +4,13 @@ Este apendice mapea el material canonico actual contra la estructura vigente del
 
 Primary architecture docs:
 
-- ../../docs/architecture.md
-- ../../docs/roadmap.md
+- docs/architecture.md
+- docs/roadmap.md
 
 Specification contracts:
 
-- ../../docs/spec/cli_spec.md
-- ../../docs/spec/plan.md
-- ../../docs/spec/api_graphql_cli_spec.md
-- ../../docs/spec/api_graphql_cli_plan.md
+- ninguno vigente. `docs/spec/` no existe; los contratos de comando viven en el
+  propio CLI, como parametros declarados, y en `docs/architecture.md`.
 
 Architecture analysis corpus:
 
@@ -20,20 +18,25 @@ Architecture analysis corpus:
 
 Book chapter filenames:
 
-- descriptive names only, no numeric prefix
-- SUMMARY.md controls reading order exclusively
+- descriptive slugs only, no numeric prefix
+- SUMMARY.md controls reading order exclusively, para todos los idiomas
+- cada slug resuelve a `src/<lang>/<slug>.md`
 - insert or remove chapters by editing SUMMARY.md only
+
+Rutas relativas a la raiz del repositorio, no a este archivo: el capitulo vive
+en `code/books/macss/src/es/` y contar niveles hacia arriba se rompe cada vez
+que el libro se mueve.
 
 Migrado a capitulos activos del libro:
 
-- ../../docs/analyse/architecture_research.md -> Parte I y Parte II
-- ../../docs/analyse/lengua_macss.md -> ./glossary.md
-- ../../docs/analyse/testing.md -> ./testing-and-gates.md
-- ../../docs/analyse/chapters.md -> ./SUMMARY.md
+- docs/analyse/architecture_research.md -> Parte I y Parte II
+- docs/analyse/lengua_macss.md -> glossary
+- docs/analyse/testing.md -> testing-and-gates
+- docs/analyse/chapters.md -> SUMMARY.md
 
 ADR log:
 
-- ../../docs/adr/
+- docs/adr/
 
 Ecosystem companion tooling outside this repository:
 
