@@ -82,6 +82,5 @@ compatible, and is left open.
 
 ## References
 
-- `docs/lifecycle-migration-plan.md` — the operational plan and migration catalog
 - `docs/roadmap.md`, Stage 5 — the lifecycle module surface
 - ccisnedev/macss#4, ccisnedev/inquiry#299 — the two halves of the handover
