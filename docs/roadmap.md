@@ -231,8 +231,11 @@ serves each stage:
 | requisition | `macss requisition` | **shipped** (0.4.0) — the PO's form, published as the issue |
 | specification | `macss specification` | **shipped** (0.4.0) — the contract, appended to that same issue |
 | definition of ready | `macss dor` | **shipped** (0.4.0) — composes both gates plus "the issue exists" |
-| implementation | skills, for now | `macss-analyze` / `macss-plan` / `macss-execute` — **shipped** (0.5.0); `macss-review` planned, see below |
+| implementation | skills | `macss-analyze` / `macss-plan` / `macss-execute` — **shipped** (0.5.0) |
+| ci | none — the platform's | GitHub Actions. MACSS states the expectation; it does not own the runner |
+| review | `macss-review` skill | planned — a gate, and it can return the work to implementation |
 | verification | `macss verification` | planned |
+| definition of done | `macss dod` | planned — composes review, verification and the human approvals |
 | deploy | `macss deploy` | planned — delegates to `macss-devops` (Stage 3.5) |
 
 There is no `macss issue` module. One requirement is one issue, and the issue is
@@ -245,23 +248,45 @@ Shared verbs where they make sense: `new` (open the artifact), `check` (run the
 stage gate), `publish` (materialize it on GitHub, `--plan` then `--apply`).
 Every argument is explicit and named — `--issue 40`, never a positional.
 
-### Implementation is four phases, not three
+### Implementation is three phases. Review is a gate outside it
 
 Implementation is the one stage MACSS serves with skills rather than commands,
-because what it needs is judgement rather than mechanism. Three of its phases
-ship today; the fourth is the gap.
+because what it needs is judgement rather than mechanism. It has **three**
+phases, and they are complete:
 
 | Phase | Skill | Produces |
 |---|---|---|
 | analyze | `macss-analyze` | the diagnosis, as a comment on the issue |
 | plan | `macss-plan` | staged work, each stage with an executable verification |
 | execute | `macss-execute` | the code, under TDD, and the PR |
-| review | `macss-review` — **planned** | a verdict on that PR |
 
-The first three form a closed loop already: the diagnosis and the plan are
-published on the issue whose body froze at DoR, and the PR references it, so the
-chain reads request, contract, diagnosis, plan, code. What it does not have is
-anyone checking the last link.
+They form a closed loop: the diagnosis and the plan are published on the issue
+whose body froze at DoR, and the PR references it, so the chain reads request,
+contract, diagnosis, plan, code. **When execute finishes, the problem is
+solved.** Nothing is pending inside implementation.
+
+**Review is a gate, not a fourth phase.** It sits outside implementation and can
+send the work back into it. The distinction is not bookkeeping — it is what the
+two things check:
+
+- Implementation answers *did we solve the problem the specification stated?*
+  That question is settled by the contract, and the contract was frozen at DoR.
+- Review answers *is this how we build things here?* Standards, conventions,
+  preferences, the shape of an abstraction, a pattern this codebase already
+  uses. **None of that is in the specification**, and none of it could be: it is
+  not knowable when the request is written.
+
+That is precisely why inquiry's state machine has no `review` state, and why
+that is correct rather than an omission. An FSM for the implementation stage
+should not contain a gate that belongs outside it — a state machine that models
+its own escape hatch stops being a model of the stage.
+
+So the loop is: implementation delivers → review judges → either it passes, or
+it returns to implementation with something to change. A returning issue does
+not re-open the requisition. The contract still holds; what changed is how the
+solution is built.
+
+### `macss-review`, the gate's instrument — planned
 
 **The reviewer is an AI agent, and that is the point.** A human review is not
 reproducible: two reviewers, or the same reviewer twice, apply different
@@ -274,21 +299,27 @@ review inherits it.
 This is the same reason the gates verify artifacts rather than signatures. A
 signature records that someone looked; a gate records what was checked.
 
+It also explains where the review's standards come from. They are not derived
+from the issue — they are the accumulated preferences of this codebase, written
+down. That makes them a MACSS asset in their own right, and it means the review
+prompt is the one artifact in the lifecycle that is **not** per-requirement.
+
 Two things this must not become:
 
 - **A second opinion nobody reads.** GitHub already fires an automatic review on
-  PR creation. `macss-review` has to say something that review does not, or it
-  is noise with a MACSS logo on it. What it can say is what a generic reviewer
-  cannot know: whether the code satisfies *this issue's* acceptance criteria,
-  whether the plan's stages were actually verified, whether the diff strays
-  outside the scope the specification declared excluded.
-- **A gate that blocks on style.** Review reports; a human decides. The DoD
+  PR creation, and a generic reviewer will find generic things. `macss-review`
+  earns its place by knowing what that one cannot: whether the code satisfies
+  *this issue's* acceptance criteria, whether the plan's stages were actually
+  verified, whether the diff strays into scope the specification declared
+  excluded — and by holding the standards a generic reviewer has never been
+  told.
+- **A gate that blocks on taste.** Review reports; a human decides. The DoD
   keeps its human approvals — QA verifying by checkout and the Product Owner
   signing off on the acceptance criteria. `macss-review` sits before those, not
   in place of them.
 
 The open question is what it reads. A review that only sees the diff cannot
-check any of the three things above. It needs the issue: the frozen body for the
+check the first three things above. It needs the issue: the frozen body for the
 contract, the comments for the diagnosis and the plan. That is exactly why those
 were moved onto the issue in 0.5.0.
 
@@ -316,11 +347,11 @@ rule, event name or artifact schema is restated in MACSS. Doctrine can safely
 live in two places; a contract cannot. That is what lets inquiry rewrite its FSM
 without touching anything here.
 
-One-directional does not mean derivative. `review` has no counterpart in
-inquiry's state machine — the laboratory's states are `analyze`, `plan`,
-`execute` — so it is the first phase to originate in the product. Nothing about
-the relationship forbids that: MACSS may not *depend* on inquiry, which is a
-different claim from MACSS may not *lead* it.
+`review` is a case worth naming, because its absence from inquiry looks like a
+gap and is not one. The laboratory's states are `analyze`, `plan`, `execute` —
+the implementation stage, and nothing else. A gate that sits outside that stage
+has no business inside a machine that models it. Both tools agree on the
+boundary; only MACSS also builds the thing on the far side of it.
 
 The cost is a manual sync point: a lab improvement reaches MACSS when someone
 ports it into a `SKILL.md`. That is deliberate, and it is what buys MACSS the
@@ -353,7 +384,7 @@ macss project adopt    # retrofit: bring an existing project to the canon
 already exists and should adopt MACSS?* Grouping all three under `project` also
 puts the canon's verification next to its materialization, which is what keeps
 `macss project create` producing a project that satisfies
-`code/book/src/project-structure.md`.
+`code/books/macss/src/es/project-structure.md`.
 
 The root-level `macss create` alias shipped deprecated in 0.3.0 and was removed
 in 0.5.0: `project` is where scaffolding lives, and a second name for it only
@@ -389,9 +420,9 @@ The rules carry over unchanged, because they are the same rules:
 
 ### Book two: `macss`
 
-**This book already exists** — `code/book/`, and it is already generic: not one
-mention of CACSI or Santa Isabel in it. It is not a book to write from scratch;
-it is a book to **finish**.
+**This book already exists** — now `code/books/macss/`, and it is already
+generic: not one mention of CACSI or Santa Isabel in it. It is not a book to
+write from scratch; it is a book to **finish**.
 
 What it has: the architecture (Parts I and II), and the parts of the method that
 were always general — development flow, testing and quality gates, CI/CD,
@@ -415,6 +446,8 @@ on day one, before they can hold the whole model in their head. Book two defines
 terms for a reader who already accepted the architecture; codito has to make
 someone *want* to.
 
+The layout exists (`code/books/codito/`); the content does not yet.
+
 Ordered first because it is read first, and because the constraint runs the
 useful direction: a term that cannot be drawn, or cannot be explained plainly,
 is usually a term that is not yet understood. Writing codito is a test of the
@@ -423,9 +456,8 @@ vocabulary, and the vocabulary is already an asset the CLI ships
 
 ### Open
 
-- Where codito lives. `code/book/` is a Pandoc pipeline for one book; a second
-  needs either a sibling directory or a build that takes a target.
-- Whether the shared diagrams (`code/book/src/diagrams/`) are duplicated or
+- Where codito lives, and under what layout — see below.
+- Whether the shared diagrams (`code/books/macss/diagrams/`) are duplicated or
   referenced. They will drift if duplicated, and this repository has learned
   that lesson more than once.
 - Language. The macss book is in Spanish; the repository's rule is English for
