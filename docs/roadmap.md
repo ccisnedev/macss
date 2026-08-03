@@ -18,6 +18,10 @@ The near-term focus of the methodology axis is **Stage 7 - Environments**. The
 lifecycle stages that remain unbuilt all operate against running systems, so
 they wait until dev, uat, prod and demo exist to operate against.
 
+A fourth axis is incubating, not being built: **Stage 8 - `modular_agent`**, the
+agent runtime that is `modular_api`'s sibling. It has a laboratory and a name,
+and deliberately no code in this repository yet.
+
 Current operational context:
 
 - `modular_api` has already achieved GraphQL integration.
@@ -528,6 +532,65 @@ approvals that are given about a running system, not about a diff.
 
 Defining them is not CLI work yet. It is standing them up and using the method
 against them long enough to learn what a command would have to do.
+
+## Stage 8 - `modular_agent`: the Agent Runtime
+
+MACSS has a second runtime product coming, and it is being incubated the same way the
+method was.
+
+`modular_api` ships what every API in the ecosystem always needs — separation of
+concerns, GraphQL, metrics, logs, OTel. **`modular_agent` is its sibling**: what every
+agent always needs — a scheduler, durable state, a tool layer, memory, observability, and
+the role expressed as versioned configuration. It will live in its own repository, as a
+runtime product user projects embed, and its CLI surface will be `macss agent ...`.
+
+### Why the name, and not a new brand
+
+`architecture.md` rule 5: do not create a new top-level product name when the capability
+is a subsystem. An agent runtime is an ecosystem component, exactly like `modular_api`,
+so it inherits the ecosystem's naming rather than opening a brand.
+
+Names for *roles* were rejected for the same reason. A runtime that can be a router, an
+operator or an implementer cannot be called `executor` — that collapses the runtime into
+one of its own roles.
+
+### A third laboratory
+
+| Laboratory | Product | Refined against |
+|---|---|---|
+| `inquiry` | the `macss` CLI | an FSM with enforced gates, instrumented |
+| `cacsi-dev/handbook` | the `macss` book | one company's actual practice |
+| **`cacsi-dev/helper`** | **`modular_agent`** | **a helpdesk agent running in production** |
+
+The rules carry over unchanged: one-directional, doctrine shared but never contracts, and
+promotion at editorial pace decided by a human.
+
+**Nothing is extracted yet, and that is the point.** `modular_agent` gets pulled out when
+a *second* agent demands it. Generalizing a framework from N=1 produces a framework shaped
+like its only case — here, a helpdesk.
+
+### What the laboratory has already established
+
+Enough is known to say what belongs in the runtime and what does not:
+
+- **Generalizes.** The harness / thinking-layer split behind a port; tools as CLI with a
+  discoverable catalogue; the role as versioned configuration; durable state with
+  recovery; **memory as a framework schema rather than a per-project design**;
+  observability and evals as gates.
+- **Does not generalize.** The priority scheduler with aging and blocking. It exists
+  because a helpdesk has many concurrent conversations with humans who answer slowly. An
+  agent that implements code has one deep task and no such wait.
+
+### The open question this stage answers
+
+**Does MACSS need an agent archetype?** The layer model `infra → db → api → app` assumes a
+request-driven system. An agent inverts it: a long-running process that consumes work and
+acts. The laboratory already found the symptom — a directory named `api/` that exposes no
+API, and no use for `app/`, because an agent whose behavior is editable through a UI is an
+agent whose behavior is no longer in the repository.
+
+That question is answered by operating the thing, not by renaming directories. Until then
+`macss project check` keeps one canon, and helper carries a paragraph of explanation.
 
 ## Long-Term Direction
 

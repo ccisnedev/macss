@@ -43,6 +43,17 @@ GraphQL provides the optional CQRS query side; REST-only APIs remain first-class
 
 The `macss api graphql ...` CLI surface operates on `modular_api` projects.
 
+### `modular_agent` — agent runtime (planned)
+
+The sibling of `modular_api`, for agents rather than APIs: scheduler, durable
+state, tool layer, memory, observability, and the agent's role expressed as
+versioned configuration. Its CLI surface will be `macss agent ...`.
+
+**It does not exist yet, and that is deliberate.** It is being incubated in a
+laboratory — `cacsi-dev/helper`, a helpdesk agent — and gets extracted when a
+second agent demands it. Generalizing a framework from one case produces a
+framework shaped like that case. See Stage 8 of the roadmap.
+
 ### `macss-devops` — PowerShell automation
 
 Published PowerShell module for DevOps automation across development, testing,
