@@ -2,8 +2,58 @@
 
 ## Purpose
 
-This document defines the architectural role of MACSS as an ecosystem root and
-the role of the `macss` CLI as the official companion tool of that ecosystem.
+This document states the premise MACSS is built on, and then the boundaries that
+follow from it: the role of MACSS as an ecosystem root, and the role of the
+`macss` CLI as the official companion tool of that ecosystem.
+
+The order matters. The naming, the layer model and the command grammar are
+consequences; read without the premise, they look like preference.
+
+## Premise
+
+**A MACSS project is one repository holding every layer of the system —
+`code/infra`, `code/db`, `code/api`, `code/app` — with `docs/` beside them.**
+One reading yields the whole: the schema behind an endpoint, the client that
+calls it, the infrastructure it runs on, and the decision record that says why.
+
+That completeness has a purpose. **The repository is written to be read by an
+agent**, not merely tolerated by one. Split repositories give each human a
+partial view; they give an agent no view at all, because it cannot open what was
+never handed to it and cannot know that something is missing.
+
+From that follows the delivery model:
+
+| Who | Does |
+|---|---|
+| Human | designs and specifies |
+| Agent | implements |
+| Human | verifies |
+
+And the constraint that governs it: **delegating implementation delegates work,
+not responsibility.** The engineer who specified the change and accepted the
+result answers for it. That is why the human verifies rather than merely
+receives, and why the gates verify artifacts rather than collect signatures — a
+signature records that someone looked, a gate records what was checked.
+
+Most of this document is downstream of that premise. Explicit flags
+(ADR 0002), an executable canon (ADR 0004) and a lifecycle whose every stage
+publishes its reasoning on the issue (ADR 0003) are all the same requirement
+applied at different altitudes: **machine-checkable and unambiguous are the same
+property.**
+
+The full statement, including what the premise costs and what it does not
+govern, is ADR 0005.
+
+## Two Things Named MACSS
+
+Both appear in this document, and prose that describes one names which:
+
+- **The MACSS architecture** — the structure a project instantiates, produced by
+  `macss project create` and verified by `macss project check`.
+- **The MACSS repository** — this ecosystem root, holding the CLI, the books,
+  the templates and the automation.
+
+The sections below are about the second.
 
 ## Product Boundary
 
