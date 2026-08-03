@@ -14,7 +14,7 @@ MACSS is the umbrella project for multiple development surfaces.
 - Architecture documentation and ecosystem conventions
 - The official `macss` companion CLI
 - Project scaffolding and templates
-- Reference content such as the book under `code/book`
+- Reference content such as the books under `code/books`
 - Future AI skills and companion automation
 - Ecosystem components such as `modular_api` and `macss-devops`
 

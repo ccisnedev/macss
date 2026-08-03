@@ -23,7 +23,7 @@ No es una convencion de nombres: es una restriccion estructural.
 The following diagram shows both paths — a write action through REST and a read
 action through GraphQL — from the same client.
 
-→ [diagrams/cqrs-flow.md](diagrams/cqrs-flow.md)
+→ [diagrams/cqrs-flow.md](../../diagrams/cqrs-flow.md)
 
 GraphQL is integrated as a subsystem capability in `modular_api`.
 The schema is generated automatically from Output DTOs.
