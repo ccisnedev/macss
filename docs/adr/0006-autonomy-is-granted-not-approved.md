@@ -106,6 +106,39 @@ to exist for real.
 Rate limits, a circuit breaker on error rate, and a way to halt the agent immediately.
 Autonomy without a stop is not autonomy; it is abandonment.
 
+### 7. Enforce by absence, not by instruction
+
+A restriction has three possible expressions, and only two of them are controls:
+
+| Expression | Example | What it is worth |
+|---|---|---|
+| **Instruction** | "do not act on holidays", in the system prompt | **Nothing as a control.** Negotiable with the prompt. Fine as quality guidance, never as a boundary |
+| **Refusal** | The tool exists; the facade rejects the call outside its window | A real control — but the model sees the tool, attempts it, spends tokens, and every caller must handle the failure |
+| **Absence** | The tool is not in the list. The process does not dispatch. The credential does not exist | **The strongest and the cheapest** |
+
+> **Prefer absence over refusal, and refusal over instruction. Never instruction alone.**
+
+**Worked example — working hours.** The wrong implementation is a prompt that says *do not
+attend on holidays* while every tool stays enabled: a single instruction stands between the
+agent and a full arsenal, and instructions are negotiable. The right one has the runtime
+not dispatch at all (absence) **and** the grant carry a time window the facade enforces
+(refusal). The prompt may still mention the schedule — for quality, never as the control.
+
+**Two barriers, and they are independent on purpose.** It is tempting to call the runtime's
+calendar a cost optimisation, since its visible effect is not spending tokens. That framing
+is wrong and the difference matters: if it is an optimisation, a bug that disables it is a
+cost bug; if it is a barrier, the same bug is a **security regression** — and gets tested as
+one. It is a barrier.
+
+**But only one barrier is authoritative.** The runtime's clock and the facade's clock can
+disagree — a timezone misconfigured on one side, a stale holiday file on the other. **The
+facade wins**, because it is the barrier the agent cannot reach or reason about.
+
+The corollary is about data custody: **the authoritative calendar lives with the facade**,
+not with the agent. A stale holiday file in the runtime costs tokens; the same file stale
+in the facade authorises what it should have refused. Only one of the two must be guarded
+as a security asset.
+
 ## Consequences
 
 **Removing per-act review raises the bar on everything else, it does not lower it.** The
@@ -116,7 +149,15 @@ produces an agent with authority and no accountability — the worst of the thre
 **Policy may never live in the prompt.** A policy expressed in the system prompt is
 negotiable with the prompt: an agent that can be asked to skip a check does not have that
 check. Policy lives in the facade that executes the tool, where the agent's own reasoning
-cannot reach it. This is why rule 1 names a file, not an instruction.
+cannot reach it. This is why rule 1 names a file, not an instruction — and it is the most
+common instance of rule 7.
+
+**Work that must happen while the agent is not working does not belong to the agent.** An
+out-of-hours notice is the clear case: if the agent is what says *I am not attending right
+now*, then nothing gets said when the agent is genuinely broken rather than merely
+off-shift, and the failure modes correlate — it goes silent exactly when speaking matters
+most. Such work belongs to the facade, where no model sits in the path and nothing can be
+talked out of it.
 
 **Approval as a mechanism disappears; escalation replaces it.** The resulting map has three
 outcomes and no waiting room:
