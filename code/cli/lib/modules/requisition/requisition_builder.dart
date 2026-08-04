@@ -23,7 +23,7 @@ void buildRequisitionModule(ModuleBuilder m, {required Assets assets}) {
       resolver: resolver,
       artifact: 'requisition',
     ),
-    description: 'Write the blank requisition form, to hand to the Product Owner',
+    description: 'Write the blank requisition form, to fill or to hand over',
     params: ExportTemplateInput.params,
   );
 
@@ -57,7 +57,7 @@ void buildRequisitionModule(ModuleBuilder m, {required Assets assets}) {
       RequisitionCheckInput.fromCliRequest(req),
       workingDirectory: Directory.current.path,
     ),
-    description: 'Verify the Product Owner filled the form',
+    description: 'Verify every section of the form is answered',
     params: RequisitionCheckInput.params,
   );
 }
