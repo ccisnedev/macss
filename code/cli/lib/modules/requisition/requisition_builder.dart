@@ -47,7 +47,7 @@ void buildRequisitionModule(ModuleBuilder m, {required Assets assets}) {
       runProcess: Process.run,
     ),
     description:
-        'Create or update the issue from the requisition — previews by default',
+        'Create or update the issue from the requisition — --plan or --apply',
     params: RequisitionPublishInput.params,
   );
 

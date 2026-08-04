@@ -12,6 +12,7 @@ import 'package:macss_cli/modules/requisition/issue_metadata.dart';
 import 'package:macss_cli/modules/requisition/commands/publish.dart';
 import 'package:macss_cli/modules/requisition/publisher.dart';
 import 'package:macss_cli/modules/requisition/requisition_builder.dart';
+import 'package:macss_cli/src/plan_apply.dart';
 import 'package:macss_cli/templates/template_resolver.dart';
 
 import 'support/memory_sink.dart';
@@ -35,13 +36,21 @@ void main() {
     if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
   });
 
-  Future<RequisitionNewOutput> open({String lang = 'es'}) =>
+  RequisitionNewCommand newCommand({
+    String lang = 'es',
+    ChangeFlags flags = const ChangeFlags(apply: true, autoapprove: true),
+    Approver? approver,
+  }) =>
       RequisitionNewCommand(
-        RequisitionNewInput(slug: 'demo', lang: lang),
+        RequisitionNewInput(slug: 'demo', lang: lang, flags: flags),
         resolver: resolver,
         workingDirectory: tempDir.path,
         now: clock,
-      ).execute();
+        approver: approver,
+      );
+
+  Future<RequisitionNewOutput> open({String lang = 'es'}) =>
+      newCommand(lang: lang).execute();
 
   File file(String relative) =>
       File(p.join(tempDir.path, p.joinAll(relative.split('/'))));
@@ -89,11 +98,36 @@ void main() {
 
     test('validate rejects an empty slug', () {
       final cmd = RequisitionNewCommand(
-        RequisitionNewInput(slug: '', lang: 'en'),
+        RequisitionNewInput(
+          slug: '',
+          lang: 'en',
+          flags: const ChangeFlags(apply: true, autoapprove: true),
+        ),
         resolver: resolver,
         workingDirectory: tempDir.path,
       );
       expect(cmd.validate(), contains('<slug> is required'));
+    });
+
+    test('a bare invocation opens nothing', () async {
+      final cmd = newCommand(flags: const ChangeFlags());
+
+      expect(cmd.validate(), contains('Choose --plan or --apply'));
+      expect(Directory(p.join(tempDir.path, 'docs')).existsSync(), isFalse);
+    });
+
+    test('--plan names every file it would open, and opens none', () async {
+      final out = await newCommand(flags: const ChangeFlags(plan: true))
+          .execute();
+
+      expect(file('$folder/requisition.md').existsSync(), isFalse);
+      expect(file('$folder/${IssueMetadata.fileName}').existsSync(), isFalse);
+      expect(out.planPath, isNotNull);
+
+      final plan = File(out.planPath!).readAsStringSync();
+      expect(plan, contains('requisition.md'));
+      expect(plan, contains(IssueMetadata.fileName));
+      expect(plan, contains('active requisition'));
     });
   });
 
@@ -168,11 +202,19 @@ void main() {
   });
 
   group('macss requisition export-template', () {
-    Future<ExportTemplateOutput> export({String lang = 'es'}) =>
+    Future<ExportTemplateOutput> export({
+      String lang = 'es',
+      ChangeFlags flags = const ChangeFlags(apply: true, autoapprove: true),
+    }) =>
         ExportTemplateCommand(
-          ExportTemplateInput(resolvedPath: tempDir.path, lang: lang),
+          ExportTemplateInput(
+            resolvedPath: tempDir.path,
+            lang: lang,
+            flags: flags,
+          ),
           resolver: resolver,
           artifact: 'requisition',
+          now: clock,
         ).execute();
 
     test('writes the blank form where asked', () async {
@@ -190,6 +232,14 @@ void main() {
 
       expect(file('docs').existsSync(), isFalse);
       expect(file('.macss').existsSync(), isFalse);
+    });
+
+    test('--plan names the form it would write, and writes none', () async {
+      final out = await export(flags: const ChangeFlags(plan: true));
+
+      expect(file('requisition.md').existsSync(), isFalse);
+      expect(out.planPath, isNotNull);
+      expect(File(out.planPath!).readAsStringSync(), contains('requisition'));
     });
 
     test('refuses to overwrite an existing file', () async {
@@ -217,15 +267,44 @@ void main() {
 
     setUp(() => calls = []);
 
-    Future<RequisitionPublishOutput> publish({
+    RequisitionPublishCommand publishCommand({
+      bool plan = false,
       bool apply = false,
+      bool autoapprove = true,
       ProcessRunner? run,
       String? repo,
+      Approver? approver,
     }) =>
         RequisitionPublishCommand(
-          RequisitionPublishInput(apply: apply, repo: repo),
+          RequisitionPublishInput(
+            flags: ChangeFlags(
+                plan: plan, apply: apply, autoapprove: autoapprove),
+            repo: repo,
+          ),
           workingDirectory: tempDir.path,
           runProcess: run ?? runner(),
+          approver: approver,
+          now: () => DateTime(2026, 8, 2, 9, 30, 15),
+        );
+
+    /// Defaults to `--apply --autoapprove`: most of these tests are about what
+    /// reaches `gh`, not about the approval, and an unattended default keeps
+    /// them from turning into approval tests by accident.
+    Future<RequisitionPublishOutput> publish({
+      bool plan = false,
+      bool apply = false,
+      bool autoapprove = true,
+      ProcessRunner? run,
+      String? repo,
+      Approver? approver,
+    }) =>
+        publishCommand(
+          plan: plan,
+          apply: apply,
+          autoapprove: autoapprove,
+          run: run,
+          repo: repo,
+          approver: approver,
         ).execute();
 
     Future<void> fillForm() async {
@@ -245,15 +324,64 @@ void main() {
       expect(calls, isEmpty, reason: 'gh must not be reached');
     });
 
-    test('previews by default and runs nothing', () async {
+    test('--plan reaches no gh and writes the plan file', () async {
       await open();
       await fillForm();
 
-      final out = await publish();
+      final out = await publish(plan: true);
 
       expect(out.message, contains('would create'));
       expect(out.message, contains('inferred by gh'));
       expect(calls, isEmpty);
+
+      expect(out.planPath, isNotNull);
+      final written = File(out.planPath!).readAsStringSync();
+      // The exact gh line is what actually reaches GitHub. A plan that hid it
+      // would ask for approval of something the reader cannot see.
+      expect(written, contains('gh issue create'));
+      expect(written, contains('macss requisition publish'));
+    });
+
+    test('a bare publish is a usage error and reaches no gh', () async {
+      await open();
+      await fillForm();
+
+      final error = publishCommand(autoapprove: false).validate();
+
+      expect(error, contains('Choose --plan or --apply'));
+      expect(calls, isEmpty);
+    });
+
+    test('--apply asks before anything reaches gh', () async {
+      await open();
+      await fillForm();
+      var shown = '';
+
+      await publish(
+        apply: true,
+        autoapprove: false,
+        approver: (plan) async {
+          shown = plan;
+          return true;
+        },
+      );
+
+      expect(shown, contains('gh issue create'));
+      expect(calls.single, containsAllInOrder(['gh', 'issue', 'create']));
+    });
+
+    test('a refusal reaches no gh and fails', () async {
+      await open();
+      await fillForm();
+
+      final out = await publish(
+        apply: true,
+        autoapprove: false,
+        approver: (_) async => false,
+      );
+
+      expect(out.ok, isFalse);
+      expect(calls, isEmpty, reason: 'nothing may reach GitHub after a refusal');
     });
 
     test('--apply creates the issue and records its number', () async {
@@ -327,10 +455,10 @@ void main() {
     test('the body grows when the specification appears', () async {
       await open();
       await fillForm();
-      final before = await publish();
+      final before = await publish(plan: true);
 
       file('$folder/specification.md').writeAsStringSync('# Contrato\n\nTexto.');
-      final after = await publish();
+      final after = await publish(plan: true);
 
       expect(before.message, contains('requisition.md'));
       expect(before.message, isNot(contains('specification.md')));
