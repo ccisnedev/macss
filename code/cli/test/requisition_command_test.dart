@@ -287,6 +287,43 @@ void main() {
       expect(calls.single, containsAllInOrder(['gh', 'issue', 'edit', '42']));
     });
 
+    // `gh issue create` takes --label; `gh issue edit` rejects it and takes
+    // --add-label. Sending --label to both is what shipped, so every update of
+    // a requisition that declared any label failed with `unknown flag:
+    // --label` — and only after the create path had already succeeded once.
+    test('creating an issue labels it with --label', () async {
+      await open();
+      await fillForm();
+      const IssueMetadata(title: 'Un título', labels: ['bug'], lang: 'es')
+          .write(p.dirname(file('$folder/x').path));
+
+      await publish(
+          apply: true, run: runner(stdout: 'https://github.com/o/r/issues/42'));
+
+      expect(calls.single, containsAllInOrder(['issue', 'create']));
+      expect(calls.single, containsAllInOrder(['--label', 'bug']));
+    });
+
+    test('editing an issue labels it with --add-label', () async {
+      await open();
+      await fillForm();
+      const IssueMetadata(
+        title: 'Un título',
+        labels: ['bug', 'app'],
+        lang: 'es',
+        issue: 42,
+      ).write(p.dirname(file('$folder/x').path));
+
+      final out = await publish(apply: true);
+
+      expect(out.ok, isTrue, reason: out.message);
+      expect(calls.single, containsAllInOrder(['issue', 'edit', '42']));
+      expect(calls.single, containsAllInOrder(['--add-label', 'bug']));
+      expect(calls.single, containsAllInOrder(['--add-label', 'app']));
+      expect(calls.single, isNot(contains('--label')),
+          reason: 'gh issue edit rejects --label');
+    });
+
     test('the body grows when the specification appears', () async {
       await open();
       await fillForm();
