@@ -7,6 +7,62 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+ADR 0004 named a `--plan` / `--apply` convention. Only `--apply` was ever built,
+with the absence of it standing in for the plan — so `project check`, the
+specification skill and the book all dictated `macss … --plan`, and every one of
+those invocations failed with `unknown option --plan`. The documents were right
+about what MACSS wanted; the binary had never caught up. ADR 0007 supersedes the
+old convention and this release implements it.
+
+### Changed — BREAKING
+- **Every command that changes state now requires `--plan` or `--apply`.**
+  Neither is a default and a bare invocation is a usage error. That covers
+  `project create`, `project adopt`, `requisition new`,
+  `requisition export-template`, `requisition publish`, `specification new`,
+  `specification export-template`, `specification publish`, `skill deploy`,
+  `skill clean`, `api graphql compile`, `upgrade` and `uninstall`. Read-only
+  commands — `check` in every module, `doctor`, `version`, `dor check`,
+  `skill list` — take neither and reject both.
+
+  Previously the absence of `--apply` meant "preview". That made not-writing the
+  outcome of forgetting a flag, so the safe path and the writing path were told
+  apart by an omission and the invocation recorded neither. Every bare
+  `macss project adopt` and `macss requisition publish` in a script will now
+  fail, loudly and with the two ways out named.
+
+- **`--plan` writes a plan file** under `.macss/plans/`, rather than printing a
+  preview that dies with the terminal. A plan can be attached to an issue,
+  diffed against a later run, or read by someone who was not at the keyboard —
+  which is what MACSS asks of every other artifact it produces. Plans are
+  written where the command was **invoked**, never inside the directory it
+  targets: writing into the target would itself be a change, and for
+  `project create` the target is what the command would bring into existence.
+
+- **`--apply` shows the plan and asks before writing.** Declining changes
+  nothing and exits non-zero. The plan it shows and the plan `--plan` writes are
+  the same computation rendered once, so they cannot drift.
+
+- **`--apply --autoapprove` applies without asking**, for agents and CI. When
+  `--apply` finds no terminal to ask from it refuses and names the flag, rather
+  than blocking on a read that will never return. `--yes` was rejected as the
+  name: it answers a prompt without saying what is being agreed to, and the flag
+  is not about the prompt — it transfers the approval from a human at the
+  keyboard to whoever wrote the invocation.
+
+- **The banner's quickstart now reads `macss project create --path=my-project
+  --apply`.** A newcomer's first command is where the convention is learned.
+
+### Changed
+- **The specification skill instructs `--apply --autoapprove`** wherever it
+  applies changes. A skill runs with nobody at the keyboard; a bare `--apply`
+  would strand it on a prompt.
+
+- **The guard on skills now checks flags, not just commands.** It stripped them,
+  and the comment explaining why used `macss requisition publish --plan` as its
+  example — the exact invocation that was broken. It passed for two releases
+  over a skill telling models to type a flag the CLI rejected. It now also fails
+  a skill that names `--apply` without `--autoapprove`.
+
 ### Fixed
 - **Republishing an issue no longer fails when the requisition declares
   labels.** `publish` sent `--label` to both `gh issue create` and `gh issue

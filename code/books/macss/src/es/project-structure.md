@@ -90,7 +90,7 @@ This structure is not something a team has to define from scratch.
 The command `macss project create` produces it.
 
 ```text
-macss project create --path=./my-project
+macss project create --path=./my-project --apply
 ```
 
 Running this command gives you a clean project workspace with:
@@ -138,8 +138,17 @@ inside a layer — is a warning, reported and left alone. Whether a
 For a project that predates MACSS and wants to adopt it:
 
 ```text
-macss project adopt --plan     # preview what would be created
-macss project adopt --apply    # create it
+macss project adopt --plan     # write the plan file; change nothing
+macss project adopt --apply    # show the plan, approve it, create the files
 ```
 
 `adopt` never removes or overwrites anything.
+
+Neither flag is a default: running `macss project adopt` on its own is an error
+that asks you to choose. This holds for every command that changes something,
+and it is deliberate — a default would decide for you, and the difference
+between writing and not writing would come down to a flag you forgot. `--plan`
+leaves a file under `.macss/plans/` that can be read, attached to an issue, or
+compared against a later run; `--apply` shows the same plan and asks before
+writing. Where nobody is at the keyboard — an agent, a CI job —
+`--apply --autoapprove` applies without asking, and says so in the command line.
