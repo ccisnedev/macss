@@ -34,7 +34,7 @@ void buildProjectModule(ModuleBuilder m, {required Assets assets}) {
     (req) =>
         ProjectAdoptCommand(ProjectAdoptInput.fromCliRequest(req), assets: assets),
     description:
-        'Create what an existing project is missing to follow the canon — previews by default',
+        'Create what an existing project is missing to follow the canon — --plan or --apply',
     params: ProjectAdoptInput.params,
   );
 }
