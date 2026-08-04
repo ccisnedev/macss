@@ -105,11 +105,18 @@ typedef Approver = Future<bool> Function(String renderedPlan);
 
 /// The default [Approver]: prints the plan and reads one line from stdin.
 ///
-/// When stdin is not a terminal there is nobody to answer, and blocking on a
-/// read that will never return is the one failure mode ADR 0007's rule 4
-/// exists to prevent. So it refuses instead of hanging, and names the flag
-/// that resolves it. An agent that forgot `--autoapprove` gets a message; it
-/// does not get a process that never exits.
+/// When there is nobody to answer, blocking on a read that will never return is
+/// the one failure mode ADR 0007's rule 4 exists to prevent. So it refuses
+/// instead of hanging, and names the flag that resolves it. An agent that
+/// forgot `--autoapprove` gets a message; it does not get a process that never
+/// exits.
+///
+/// Two things have to be treated as "nobody there", not one. `stdin.hasTerminal`
+/// is the cheap check, but it is not sufficient: a process whose stdout is piped
+/// can still report a terminal and then fail on the read itself — on Windows,
+/// with `StdinException: Error getting terminal line mode`. The read is
+/// therefore guarded too. Anything that stops an answer from arriving means the
+/// same thing, so it produces the same refusal.
 class ConsoleApprover {
   final IOSink out;
   final bool Function() hasTerminal;
@@ -132,7 +139,19 @@ class ConsoleApprover {
     }
 
     out.write('Apply this plan? [y/N] ');
-    final answer = readLine().trim().toLowerCase();
+
+    final String answer;
+    try {
+      answer = readLine().trim().toLowerCase();
+    } on Object {
+      // The terminal said it was there and then would not be read from. That
+      // is still nobody to approve, and it must not surface as a crash: a
+      // stack trace on a command that changes nothing reads like a failure to
+      // apply rather than a refusal to.
+      out.writeln();
+      throw const NoApproverAvailable();
+    }
+
     return answer == 'y' || answer == 'yes';
   }
 }
