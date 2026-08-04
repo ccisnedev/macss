@@ -1,4 +1,5 @@
 import 'package:test/test.dart';
+import 'package:macss_cli/src/plan_apply.dart';
 
 import 'package:macss_cli/macss_cli.dart';
 import 'package:macss_cli/modules/global/commands/upgrade.dart';
@@ -25,8 +26,17 @@ void main() {
     });
 
     test('UpgradeInput serializes correctly', () {
-      final input = UpgradeInput(installDir: '/fake/dir');
-      expect(input.toJson(), {'installDir': '/fake/dir'});
+      final input = UpgradeInput(
+        installDir: '/fake/dir',
+        flags: const ChangeFlags(apply: true, autoapprove: true),
+      );
+
+      expect(input.toJson(), {
+        'installDir': '/fake/dir',
+        'plan': false,
+        'apply': true,
+        'autoapprove': true,
+      });
     });
 
     test('UpgradeOutput reports no upgrade when already latest', () {

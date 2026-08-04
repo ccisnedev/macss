@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
+import 'package:macss_cli/src/plan_apply.dart';
 
 import 'package:macss_cli/macss_cli.dart';
 import 'package:macss_cli/modules/global/commands/uninstall.dart';
@@ -83,7 +84,7 @@ void main() {
     test('exits 0', () async {
       final ops = FakePlatformOps();
       final cmd = UninstallCommand(
-        UninstallInput(installDir: tempDir.path),
+        UninstallInput(installDir: tempDir.path, flags: const ChangeFlags(apply: true, autoapprove: true)),
         platformOps: ops,
       );
       final output = await cmd.execute();
@@ -93,7 +94,7 @@ void main() {
     test('message confirms uninstall', () async {
       final ops = FakePlatformOps();
       final cmd = UninstallCommand(
-        UninstallInput(installDir: tempDir.path),
+        UninstallInput(installDir: tempDir.path, flags: const ChangeFlags(apply: true, autoapprove: true)),
         platformOps: ops,
       );
       final output = await cmd.execute();
@@ -103,7 +104,7 @@ void main() {
     test('schedules deletion of install directory', () async {
       final ops = FakePlatformOps();
       final cmd = UninstallCommand(
-        UninstallInput(installDir: tempDir.path),
+        UninstallInput(installDir: tempDir.path, flags: const ChangeFlags(apply: true, autoapprove: true)),
         platformOps: ops,
       );
       await cmd.execute();
@@ -119,7 +120,7 @@ void main() {
 
       final ops = FakePlatformOps(fakeEnvValue: fakePath);
       final cmd = UninstallCommand(
-        UninstallInput(installDir: tempDir.path),
+        UninstallInput(installDir: tempDir.path, flags: const ChangeFlags(apply: true, autoapprove: true)),
         platformOps: ops,
       );
       await cmd.execute();
@@ -136,7 +137,7 @@ void main() {
 
       final ops = FakePlatformOps(fakeEnvValue: '$otherA$sep$otherB');
       final cmd = UninstallCommand(
-        UninstallInput(installDir: tempDir.path),
+        UninstallInput(installDir: tempDir.path, flags: const ChangeFlags(apply: true, autoapprove: true)),
         platformOps: ops,
       );
       await cmd.execute();

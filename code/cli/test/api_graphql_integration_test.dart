@@ -49,7 +49,7 @@ void main() {
       final stderr = MemorySink();
 
       final exitCode = await runMacss(
-        ['api', 'graphql', 'compile'],
+        ['api', 'graphql', 'compile', '--apply', '--autoapprove'],
         stdout: stdout.sink,
         stderr: stderr.sink,
         graphqlCompileRunner: _runner(),
@@ -69,7 +69,7 @@ void main() {
       final stderr = MemorySink();
 
       final exitCode = await runMacss(
-        ['api', 'graphql', 'compile', '--json'],
+        ['api', 'graphql', 'compile', '--json', '--apply', '--autoapprove'],
         stdout: stdout.sink,
         stderr: stderr.sink,
         graphqlCompileRunner: _runner(),
@@ -87,7 +87,7 @@ void main() {
       final stderr = MemorySink();
 
       final exitCode = await runMacss(
-        ['api', 'graphql', 'compile'],
+        ['api', 'graphql', 'compile', '--apply', '--autoapprove'],
         stdout: stdout.sink,
         stderr: stderr.sink,
         graphqlCompileRunner: _runner(),
