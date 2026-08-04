@@ -40,7 +40,11 @@ void main() {
 
   Future<void> scaffold() async {
     await CreateCommand(
-      CreateInput(resolvedPath: dest, workingDirectory: tempRoot.path),
+      CreateInput(
+        resolvedPath: dest,
+        workingDirectory: tempRoot.path,
+        flags: const ChangeFlags(apply: true, autoapprove: true),
+      ),
       assets: assets,
     ).execute();
   }
@@ -430,23 +434,39 @@ void main() {
 
     // The invocation `macss project check` has been dictating all along, and
     // which used to fail with `unknown option --plan`.
+    //
+    // Run from inside a scratch directory: the plan lands where the command was
+    // invoked, so a test that did not move would write into the repository.
     test('the command project check dictates is accepted', () async {
       Directory(dest).createSync(recursive: true);
+      final invokedFrom = Directory(p.join(tempRoot.path, 'elsewhere'))
+        ..createSync(recursive: true);
+      final previous = Directory.current;
+      Directory.current = invokedFrom;
 
-      final code = await makeCli().run(
-        ['project', 'adopt', '--path=$dest', '--plan'],
-        stdout: MemorySink().sink,
-        stderr: MemorySink().sink,
-      );
+      final int code;
+      try {
+        code = await makeCli().run(
+          ['project', 'adopt', '--path=$dest', '--plan'],
+          stdout: MemorySink().sink,
+          stderr: MemorySink().sink,
+        );
+      } finally {
+        Directory.current = previous;
+      }
 
       expect(code, ExitCode.ok);
       expect(File(p.join(dest, 'CHANGELOG.md')).existsSync(), isFalse);
-      expect(Directory(p.join(dest, '.macss', 'plans')).existsSync(), isTrue);
+      // The plan is the only thing written, and not into the target.
+      expect(Directory(p.join(dest, '.macss')).existsSync(), isFalse);
+      expect(
+          Directory(p.join(invokedFrom.path, '.macss', 'plans')).existsSync(),
+          isTrue);
     });
 
     test('create is reachable under the project module', () async {
       final code = await makeCli().run(
-        ['project', 'create', '--path=$dest'],
+        ['project', 'create', '--path=$dest', '--apply', '--autoapprove'],
         stdout: MemorySink().sink,
         stderr: MemorySink().sink,
       );
