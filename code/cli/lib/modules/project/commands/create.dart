@@ -34,9 +34,12 @@ class CreateInput extends Input {
     required this.flags,
   });
 
-  factory CreateInput.fromCliRequest(CliRequest req) {
+  factory CreateInput.fromCliRequest(
+    CliRequest req, {
+    String? workingDirectory,
+  }) {
     final rawPath = req.flagString('path', aliases: const ['p']);
-    final workingDirectory = Directory.current.path;
+    workingDirectory ??= Directory.current.path;
     final flags = ChangeFlags.fromCliRequest(req);
 
     if (rawPath == null) {

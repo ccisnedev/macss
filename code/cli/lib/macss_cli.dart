@@ -36,6 +36,7 @@ Future<int> runMacss(
   io.IOSink? stdout,
   io.IOSink? stderr,
   GraphqlCompileRunner? graphqlCompileRunner,
+  String? workingDirectory,
 }) async {
   final cli = ModularCli();
   final normalizedArgs = normalizeMacssArgs(args);
@@ -48,7 +49,11 @@ Future<int> runMacss(
   cli.module('', (m) => buildGlobalModule(m, assets: assets));
   cli.module(
     'api',
-    (m) => buildApiModule(m, runner: graphqlCompileRunner),
+    (m) => buildApiModule(
+      m,
+      runner: graphqlCompileRunner,
+      workingDirectory: workingDirectory,
+    ),
   );
   cli.module(
     'specification',

@@ -12,15 +12,12 @@ import 'support/memory_sink.dart';
 void main() {
   group('api graphql integration', () {
     late Directory tempDir;
-    late String originalWorkingDirectory;
     late Directory sourceRoot;
     late File metadataFile;
     late String outputDirectory;
 
     setUp(() {
-      originalWorkingDirectory = Directory.current.path;
       tempDir = Directory.systemTemp.createTempSync('macss_api_graphql_it_');
-      Directory.current = tempDir.path;
       sourceRoot = Directory(p.join(tempDir.path, 'code', 'db'))
         ..createSync(recursive: true);
       metadataFile = File(p.join(sourceRoot.path, 'graphql.metadata.jsonc'))
@@ -38,7 +35,6 @@ void main() {
     });
 
     tearDown(() {
-      Directory.current = originalWorkingDirectory;
       if (tempDir.existsSync()) {
         tempDir.deleteSync(recursive: true);
       }
@@ -50,6 +46,7 @@ void main() {
 
       final exitCode = await runMacss(
         ['api', 'graphql', 'compile', '--apply', '--autoapprove'],
+        workingDirectory: tempDir.path,
         stdout: stdout.sink,
         stderr: stderr.sink,
         graphqlCompileRunner: _runner(),
@@ -70,6 +67,7 @@ void main() {
 
       final exitCode = await runMacss(
         ['api', 'graphql', 'compile', '--json', '--apply', '--autoapprove'],
+        workingDirectory: tempDir.path,
         stdout: stdout.sink,
         stderr: stderr.sink,
         graphqlCompileRunner: _runner(),
@@ -88,6 +86,7 @@ void main() {
 
       final exitCode = await runMacss(
         ['api', 'graphql', 'compile', '--apply', '--autoapprove'],
+        workingDirectory: tempDir.path,
         stdout: stdout.sink,
         stderr: stderr.sink,
         graphqlCompileRunner: _runner(),
