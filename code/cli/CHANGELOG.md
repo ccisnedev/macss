@@ -63,7 +63,25 @@ old convention and this release implements it.
   over a skill telling models to type a flag the CLI rejected. It now also fails
   a skill that names `--apply` without `--autoapprove`.
 
+- **The analyst may fill the requisition; the Product Owner remains its
+  author.** The methodology said "Do not fill it for him", and the request
+  arrives by email or in a meeting from someone who will not then sit down to a
+  form — so the rule was broken on every requisition, including the ones that
+  produced this release. It is replaced by what it was actually protecting:
+  transcribe what he said, trace every line to a source, and ask him rather than
+  filling a gap yourself. The `requisition` module's descriptions and messages
+  no longer assume the form is handed over to be typed by him, and its gate is
+  stated as what it always checked — whether every section is answered, not who
+  answered it.
+
 ### Fixed
+- **Approval no longer crashes where a terminal is claimed but unreadable.**
+  `--apply` with stdout piped exited 255 with `StdinException: Error getting
+  terminal line mode` on Windows: `stdin.hasTerminal` reported a terminal and
+  the read then failed. Anything that stops an answer from arriving now produces
+  the same refusal, so a command that changed nothing cannot present itself as a
+  crash.
+
 - **Republishing an issue no longer fails when the requisition declares
   labels.** `publish` sent `--label` to both `gh issue create` and `gh issue
   edit`, but only `create` accepts it — `edit` takes `--add-label`. The create

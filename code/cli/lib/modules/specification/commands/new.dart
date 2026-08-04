@@ -2,8 +2,9 @@
 /// open requisition.
 ///
 /// It creates **only** `specification.md`. The requisition is a separate
-/// document with a separate author — a form the Product Owner fills — and
-/// creating both at once, as this command used to, collapsed that distinction.
+/// document with a separate author — the Product Owner's request, whoever
+/// transcribed it — and creating both at once, as this command used to,
+/// collapsed that distinction.
 ///
 /// It therefore requires a requisition to exist: a contract with nothing to
 /// contract about is not a document anyone can write.

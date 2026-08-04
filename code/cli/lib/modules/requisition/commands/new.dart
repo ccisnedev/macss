@@ -1,7 +1,12 @@
 /// `macss requisition new <slug> [--lang <lang>]` — opens a requisition.
 ///
-/// Writes the form the Product Owner fills, the issue metadata beside it, and
-/// records the requisition as the active one so later commands need no slug.
+/// Writes the form carrying the Product Owner's request, the issue metadata
+/// beside it, and records the requisition as the active one so later commands
+/// need no slug.
+///
+/// The analyst usually holds the pen: the request arrives by email or in a
+/// meeting, and is transcribed into the form. The Product Owner remains its
+/// author — what the form may contain is what he said, and nothing inferred.
 ///
 /// The specification is **not** created here: it belongs to a later stage, with
 /// a different author. `macss specification new` adds it once the request is in.
@@ -201,8 +206,8 @@ class RequisitionNewCommand
       ...steps,
       if (resolution.notice != null) '  note     ${resolution.notice}',
       '',
-      'Next: hand $relDir/requisition.md to the Product Owner, then '
-          '`macss requisition check`.',
+      'Next: fill $relDir/requisition.md with what the Product Owner sent, '
+          'then `macss requisition check`.',
     ];
     return RequisitionNewOutput(message: lines.join('\n'), relDir: relDir);
   }

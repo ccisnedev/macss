@@ -1,10 +1,10 @@
 /// `macss requisition export-template [--path <dir>] [--lang <lang>]` — writes
 /// the blank form.
 ///
-/// The requisition template is handed to the Product Owner once, usually
-/// rendered to PDF or DOCX. Producing it by scaffolding a throwaway requisition
-/// would litter `docs/requisitions/` and move the active pointer, so it gets its
-/// own command.
+/// A blank form, for the case where the Product Owner would rather fill one
+/// directly than be transcribed — usually rendered to PDF or DOCX first.
+/// Producing it by scaffolding a throwaway requisition would litter
+/// `docs/requisitions/` and move the active pointer, so it gets its own command.
 library;
 
 import 'dart:io';
