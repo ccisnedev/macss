@@ -66,13 +66,20 @@ class IssuePublisher {
   const IssuePublisher({required this.runProcess});
 
   /// The `gh` invocation that would run, without the body file.
+  ///
+  /// The two subcommands do not share a label flag. `gh issue create` takes
+  /// `--label`; `gh issue edit` rejects it and takes `--add-label`, which adds
+  /// without removing — so labels put on the issue by hand survive a
+  /// republish. Using `--label` for both is what shipped, and it made every
+  /// update fail once a requisition declared any label.
   List<String> plannedArgs(IssueMetadata meta, {String? repo}) => [
         'issue',
         if (meta.isPublished) ...['edit', '${meta.issue}'] else 'create',
         if (repo != null) ...['--repo', repo],
         '--title',
         meta.title,
-        for (final label in meta.labels) ...['--label', label],
+        for (final label in meta.labels)
+          ...[meta.isPublished ? '--add-label' : '--label', label],
       ];
 
   /// Runs `gh` with the assembled body written to a temp file.

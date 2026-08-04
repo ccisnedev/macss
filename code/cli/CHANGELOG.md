@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+- **Republishing an issue no longer fails when the requisition declares
+  labels.** `publish` sent `--label` to both `gh issue create` and `gh issue
+  edit`, but only `create` accepts it — `edit` takes `--add-label`. The create
+  path worked, so the break only surfaced on the second publish, which is
+  exactly when `specification publish` adds the contract to the issue. `edit`
+  now uses `--add-label`, which also leaves labels added by hand on GitHub
+  alone. Nothing covered `plannedArgs`; both label paths are now tested.
+
 ## [0.5.0]
 
 The skills are what a model actually executes. They had drifted from the CLI —
