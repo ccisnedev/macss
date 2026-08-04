@@ -146,9 +146,13 @@ the `macss-specification` skill and the book all dictate `--plan` today. They
 were written against the convention ADR 0004 declared. They become accurate
 without being edited — the binary catches up to them instead.
 
-**Two commands need a judgement this ADR does not make.** `upgrade` and
-`uninstall` act on the installed CLI rather than on a project, so where their
-plan file goes when there is no project directory is left to the implementation.
+**The plan is written where the command was invoked, never into its target.**
+This resolves what was left open here for `upgrade` and `uninstall`, and it
+turned out not to be special to them. A plan written into the target would
+itself be a change to the target, which is the one thing `--plan` promises not
+to make; for `project create` the target is what the command would bring into
+existence, and for `uninstall` it is what is about to be deleted. The invoking
+directory is the only place that is none of those things.
 
 ## References
 
