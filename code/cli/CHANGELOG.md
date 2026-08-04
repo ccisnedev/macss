@@ -5,7 +5,10 @@ All notable changes to this project will be documented in this file.
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.6.0]
+
+A breaking release on a minor bump: the project is still in the `0.x` series,
+where the leading zero is the signal that the interface is not yet settled.
 
 ADR 0004 named a `--plan` / `--apply` convention. Only `--apply` was ever built,
 with the absence of it standing in for the plan — so `project check`, the
