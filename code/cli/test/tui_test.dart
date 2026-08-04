@@ -196,14 +196,27 @@ void main() {
           arg.startsWith('--path') ? '--path=$dest' : arg,
       ];
 
+      // The advertised command asks before it writes, and there is no terminal
+      // here to answer. Standing in for the human is what lets this assert the
+      // quickstart actually scaffolds, rather than only that it parses.
+      var asked = false;
       final code =
           await (ModularCli()..module(
                 'project',
-                (m) => buildProjectModule(m, assets: assets),
+                (m) => buildProjectModule(
+                  m,
+                  assets: assets,
+                  approver: (_) async {
+                    asked = true;
+                    return true;
+                  },
+                ),
               ))
               .run(args, stdout: MemorySink().sink, stderr: MemorySink().sink);
 
       expect(code, ExitCode.ok, reason: 'quickstart was: $quickstartCommand');
+      expect(asked, isTrue,
+          reason: 'the quickstart must show what it will do before doing it');
       expect(File(p.join(dest, 'README.md')).existsSync(), isTrue);
     });
 

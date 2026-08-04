@@ -1,4 +1,5 @@
-/// `macss specification publish [--apply]` — adds the contract to the issue.
+/// `macss specification publish --plan|--apply` — adds the contract to the
+/// issue.
 ///
 /// The issue already exists: `requisition publish` created it carrying the
 /// request. This updates it so the body reads request first, contract second —
@@ -14,6 +15,7 @@ import 'package:modular_cli_sdk/modular_cli_sdk.dart';
 import 'package:path/path.dart' as p;
 
 import '../../../assets.dart';
+import '../../../src/plan_apply.dart';
 import '../../../src/vocabulary.dart';
 import '../../requisition/issue_metadata.dart';
 import '../../requisition/publisher.dart';
@@ -25,33 +27,42 @@ import '../workspace.dart';
 
 class SpecificationPublishInput extends Input {
   final String? slug;
-  final bool apply;
+  final ChangeFlags flags;
   final String? repo;
 
-  SpecificationPublishInput({this.slug, this.apply = false, this.repo});
+  SpecificationPublishInput({
+    this.slug,
+    this.flags = const ChangeFlags(),
+    this.repo,
+  });
 
   factory SpecificationPublishInput.fromCliRequest(CliRequest req) =>
       SpecificationPublishInput(
         slug: optionalSlug(req.flagString('slug')),
-        apply: req.flagBool('apply'),
+        flags: ChangeFlags.fromCliRequest(req),
         repo: req.flagString('repo'),
       );
 
   static final List<CliParam> params = [
     CliParam.string('slug',
         description: 'Requisition to publish; defaults to the active one'),
-    CliParam.boolean('apply',
-        description: 'Update the issue; without it, only previews'),
     CliParam.string('repo',
         description:
             'Target repository; by default gh infers it from this directory'),
+    ...ChangeFlags.params,
   ];
 
   @override
   List<CliParam> get schemaFields => params;
 
   @override
-  Map<String, dynamic> toJson() => {'slug': slug, 'apply': apply, 'repo': repo};
+  Map<String, dynamic> toJson() => {
+        'slug': slug,
+        'repo': repo,
+        'plan': flags.plan,
+        'apply': flags.apply,
+        'autoapprove': flags.autoapprove,
+      };
 }
 
 // ─── Output ─────────────────────────────────────────────────────────────────
@@ -59,11 +70,17 @@ class SpecificationPublishInput extends Input {
 class SpecificationPublishOutput extends Output {
   final String message;
   final bool ok;
+  final String? planPath;
 
-  SpecificationPublishOutput({required this.message, this.ok = true});
+  SpecificationPublishOutput({
+    required this.message,
+    this.ok = true,
+    this.planPath,
+  });
 
   @override
-  Map<String, dynamic> toJson() => {'ok': ok, 'message': message};
+  Map<String, dynamic> toJson() =>
+      {'ok': ok, 'message': message, if (planPath != null) 'planPath': planPath};
 
   @override
   int get exitCode => ok ? ExitCode.ok : ExitCode.genericError;
@@ -82,7 +99,12 @@ class SpecificationPublishCommand
 
   final String workingDirectory;
   final IssuePublisher publisher;
+
+  /// Whether the contract is worth publishing.
   final SpecificationGate gate;
+
+  /// Whether this run plans or applies.
+  final ChangeGate changeGate;
 
   SpecificationPublishCommand(
     this.input, {
@@ -90,7 +112,14 @@ class SpecificationPublishCommand
     required ProcessRunner runProcess,
     required Assets assets,
     SpecificationGate? gate,
+    Approver? approver,
+    DateTime Function()? now,
   })  : publisher = IssuePublisher(runProcess: runProcess),
+        changeGate = ChangeGate(
+          flags: input.flags,
+          approver: approver,
+          now: now,
+        ),
         gate = gate ??
             SpecificationGate(vocabulary: Vocabularies.fromAssets(assets));
 
@@ -111,7 +140,7 @@ class SpecificationPublishCommand
           '`macss requisition publish --apply` first, so there is an issue to '
           'add the contract to.';
     }
-    return null;
+    return input.flags.validate();
   }
 
   @override
@@ -142,18 +171,25 @@ class SpecificationPublishCommand
       );
     }
 
-    if (!input.apply) {
+    final decision = await changeGate.decide(
+      command: 'specification publish',
+      workingDirectory: workingDirectory,
+      body: [
+        'would update issue ${meta.issue}',
+        '',
+        '  body:   ${body.lines} lines from ${body.parts.join(' + ')}',
+        '',
+        'Would run:',
+        '  gh ${publisher.plannedArgs(meta, repo: input.repo).join(' ')} '
+            '--body-file <body>',
+      ].join('\n'),
+    );
+
+    if (!decision.proceed) {
       return SpecificationPublishOutput(
-        message: [
-          'Plan — would update issue ${meta.issue}',
-          '  body:   ${body.lines} lines from ${body.parts.join(' + ')}',
-          '',
-          'Would run:',
-          '  gh ${publisher.plannedArgs(meta, repo: input.repo).join(' ')} '
-              '--body-file <body>',
-          '',
-          'Re-run with --apply to update it.',
-        ].join('\n'),
+        message: decision.message!,
+        ok: !decision.blocked,
+        planPath: decision.planPath,
       );
     }
 

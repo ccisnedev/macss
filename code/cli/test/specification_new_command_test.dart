@@ -46,9 +46,12 @@ void main() {
         now: clock,
       ).execute();
 
-  Future<SpecificationNewOutput> addContract({String? lang}) =>
+  Future<SpecificationNewOutput> addContract({
+    String? lang,
+    ChangeFlags flags = const ChangeFlags(apply: true, autoapprove: true),
+  }) =>
       SpecificationNewCommand(
-        SpecificationNewInput(lang: lang),
+        SpecificationNewInput(lang: lang, flags: flags),
         resolver: resolver,
         workingDirectory: tempDir.path,
         now: clock,
@@ -126,7 +129,9 @@ void main() {
     test('refuses to write a contract with nothing to contract about', () {
       // No requisition open: there is no request to turn into an agreement.
       final cmd = SpecificationNewCommand(
-        SpecificationNewInput(),
+        SpecificationNewInput(
+          flags: const ChangeFlags(apply: true, autoapprove: true),
+        ),
         resolver: resolver,
         workingDirectory: tempDir.path,
       );
