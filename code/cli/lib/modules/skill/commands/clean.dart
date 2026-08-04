@@ -13,17 +13,21 @@ import 'package:modular_cli_sdk/modular_cli_sdk.dart';
 import 'package:path/path.dart' as p;
 
 import '../../../assets.dart';
+import '../../../src/plan_apply.dart';
 import '../host.dart';
 
 // ─── Input ──────────────────────────────────────────────────────────────────
 
 class SkillCleanInput extends Input {
   final String? host;
+  final ChangeFlags flags;
 
-  SkillCleanInput({this.host});
+  SkillCleanInput({this.host, this.flags = const ChangeFlags()});
 
-  factory SkillCleanInput.fromCliRequest(CliRequest req) =>
-      SkillCleanInput(host: req.flagString('host'));
+  factory SkillCleanInput.fromCliRequest(CliRequest req) => SkillCleanInput(
+        host: req.flagString('host'),
+        flags: ChangeFlags.fromCliRequest(req),
+      );
 
   static final List<CliParam> params = [
     CliParam.string(
@@ -32,13 +36,19 @@ class SkillCleanInput extends Input {
       description:
           'Clean this assistant only; defaults to every one installed',
     ),
+    ...ChangeFlags.params,
   ];
 
   @override
   List<CliParam> get schemaFields => params;
 
   @override
-  Map<String, dynamic> toJson() => {'host': host};
+  Map<String, dynamic> toJson() => {
+        'host': host,
+        'plan': flags.plan,
+        'apply': flags.apply,
+        'autoapprove': flags.autoapprove,
+      };
 }
 
 // ─── Output ─────────────────────────────────────────────────────────────────
@@ -72,15 +82,25 @@ class SkillCleanCommand implements Command<SkillCleanInput, SkillCleanOutput> {
 
   final Assets assets;
   final Map<String, String>? environment;
+  final Approver? approver;
+  final DateTime Function()? now;
+  final String workingDirectory;
 
-  SkillCleanCommand(this.input, {required this.assets, this.environment});
+  SkillCleanCommand(
+    this.input, {
+    required this.assets,
+    this.environment,
+    this.approver,
+    this.now,
+    String? workingDirectory,
+  }) : workingDirectory = workingDirectory ?? Directory.current.path;
 
   @override
   String? validate() {
     if (!assets.directoryExists('skills')) {
       return 'No skills found in the installed assets. Run: macss upgrade';
     }
-    return null;
+    return input.flags.validate();
   }
 
   @override
@@ -96,9 +116,7 @@ class SkillCleanCommand implements Command<SkillCleanInput, SkillCleanOutput> {
     }
 
     final names = assets.listDirectory('skills');
-    final steps = <String>[];
-    final removed = <String>[];
-
+    final resolved = <String, HostPaths>{};
     for (final host in hosts) {
       final paths = hostPaths(host, environment: environment);
       if (paths == null) {
@@ -108,10 +126,56 @@ class SkillCleanCommand implements Command<SkillCleanInput, SkillCleanOutput> {
           exitCode: ExitCode.genericError,
         );
       }
+      resolved[host] = paths;
+    }
 
-      steps.add('$host → ${paths.skillsDirectory}');
+    // The only command in the CLI whose whole purpose is to delete. Naming
+    // every directory it would remove, before removing any, is the least this
+    // convention is for.
+    final doomed = <String>[];
+    final preview = <String>[];
+    for (final entry in resolved.entries) {
+      preview.add('${entry.key} → ${entry.value.skillsDirectory}');
       for (final name in names) {
-        final dir = Directory(p.join(paths.skillsDirectory, name));
+        final dir = Directory(p.join(entry.value.skillsDirectory, name));
+        if (dir.existsSync()) {
+          preview.add('  remove   $name');
+          doomed.add(name);
+        } else {
+          preview.add('  absent   $name');
+        }
+      }
+    }
+
+    final decision = await ChangeGate(
+      flags: input.flags,
+      approver: approver,
+      now: now,
+    ).decide(
+      command: 'skill clean',
+      workingDirectory: workingDirectory,
+      body: [
+        doomed.isEmpty
+            ? 'would remove nothing — no MACSS skill is deployed:'
+            : 'would remove ${doomed.toSet().length} deployed MACSS skill(s):',
+        '',
+        ...preview,
+      ].join('\n'),
+    );
+
+    if (!decision.proceed) {
+      return SkillCleanOutput(
+        message: decision.message!,
+        exitCode: decision.blocked ? ExitCode.genericError : ExitCode.ok,
+      );
+    }
+
+    final steps = <String>[];
+    final removed = <String>[];
+    for (final entry in resolved.entries) {
+      steps.add('${entry.key} → ${entry.value.skillsDirectory}');
+      for (final name in names) {
+        final dir = Directory(p.join(entry.value.skillsDirectory, name));
         if (dir.existsSync()) {
           dir.deleteSync(recursive: true);
           steps.add('  removed  $name');

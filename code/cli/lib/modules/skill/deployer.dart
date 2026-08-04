@@ -24,9 +24,15 @@ const macssSkillNamespace = 'macss-';
 /// left by an older CLI is a defect rather than a user edit. A skill MACSS has
 /// dropped is **removed** for the same reason — deployment that can only add
 /// leaves frozen copies behind that nothing will ever update again.
+///
+/// With [dryRun] the same lines are produced and nothing is written. One
+/// function decides and reports, so what `--plan` promises and what `--apply`
+/// does cannot describe different things — a second traversal written to
+/// preview this one would be free to disagree with it.
 List<String> deploySkills({
   required Assets assets,
   required String targetDir,
+  bool dryRun = false,
 }) {
   final steps = <String>[];
   final shipped = assets.listDirectory('skills');
@@ -36,18 +42,20 @@ List<String> deploySkills({
     final file = File(p.join(targetDir, name, 'SKILL.md'));
 
     if (!file.existsSync()) {
-      file.parent.createSync(recursive: true);
-      file.writeAsStringSync(content);
-      steps.add('  created  $name');
+      if (!dryRun) {
+        file.parent.createSync(recursive: true);
+        file.writeAsStringSync(content);
+      }
+      steps.add('  ${dryRun ? 'create ' : 'created'}  $name');
     } else if (file.readAsStringSync() != content) {
-      file.writeAsStringSync(content);
-      steps.add('  updated  $name');
+      if (!dryRun) file.writeAsStringSync(content);
+      steps.add('  ${dryRun ? 'update ' : 'updated'}  $name');
     } else {
       steps.add('  exists   $name');
     }
   }
 
-  steps.addAll(_pruneRetired(targetDir, shipped.toSet()));
+  steps.addAll(_pruneRetired(targetDir, shipped.toSet(), dryRun: dryRun));
   return steps;
 }
 
@@ -60,7 +68,11 @@ List<String> deploySkills({
 ///
 /// Everything else in the directory is left alone: another tool's skills, and
 /// anything the user wrote.
-List<String> _pruneRetired(String targetDir, Set<String> shipped) {
+List<String> _pruneRetired(
+  String targetDir,
+  Set<String> shipped, {
+  bool dryRun = false,
+}) {
   final dir = Directory(targetDir);
   if (!dir.existsSync()) return const [];
 
@@ -69,10 +81,13 @@ List<String> _pruneRetired(String targetDir, Set<String> shipped) {
     final name = p.basename(entry.path);
     if (!name.startsWith(macssSkillNamespace)) continue;
     if (shipped.contains(name)) continue;
-    entry.deleteSync(recursive: true);
+    if (!dryRun) entry.deleteSync(recursive: true);
     retired.add(name);
   }
 
   retired.sort();
-  return retired.map((name) => '  removed  $name (no longer shipped)').toList();
+  return retired
+      .map((name) =>
+          '  ${dryRun ? 'remove ' : 'removed'}  $name (no longer shipped)')
+      .toList();
 }

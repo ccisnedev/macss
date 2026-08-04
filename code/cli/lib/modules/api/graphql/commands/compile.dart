@@ -10,6 +10,7 @@ import '../../../../src/api/graphql/compile_config.dart';
 import '../../../../src/api/graphql/compile_config_resolver.dart';
 import '../../../../src/api/graphql/compile_runner.dart';
 import '../../../../src/api/graphql/compile_validation.dart';
+import '../../../../src/plan_apply.dart';
 
 class GraphqlCompileInput extends Input {
   final String? sourceRoot;
@@ -17,6 +18,7 @@ class GraphqlCompileInput extends Input {
   final String? outputDirectory;
   final String? engine;
   final String workingDirectory;
+  final ChangeFlags flags;
 
   GraphqlCompileInput({
     required this.sourceRoot,
@@ -24,6 +26,7 @@ class GraphqlCompileInput extends Input {
     required this.outputDirectory,
     required this.engine,
     required this.workingDirectory,
+    this.flags = const ChangeFlags(),
   });
 
   factory GraphqlCompileInput.fromCliRequest(
@@ -36,6 +39,7 @@ class GraphqlCompileInput extends Input {
       outputDirectory: req.flagString('output'),
       engine: req.flagString('engine'),
       workingDirectory: workingDirectory ?? Directory.current.path,
+      flags: ChangeFlags.fromCliRequest(req),
     );
   }
 
@@ -58,6 +62,7 @@ class GraphqlCompileInput extends Input {
       'engine',
       description: 'GraphQL engine. Supported: sqlserver',
     ),
+    ...ChangeFlags.params,
   ];
 
   @override
@@ -70,6 +75,9 @@ class GraphqlCompileInput extends Input {
     'outputDirectory': outputDirectory,
     'engine': engine,
     'workingDirectory': workingDirectory,
+    'plan': flags.plan,
+    'apply': flags.apply,
+    'autoapprove': flags.autoapprove,
   };
 }
 
@@ -104,18 +112,22 @@ class GraphqlCompileCommand
 
   final GraphqlCompileConfigResolver configResolver;
   final GraphqlCompileRunner runner;
+  final Approver? approver;
+  final DateTime Function()? now;
 
   GraphqlCompileCommand(
     this.input, {
     GraphqlCompileConfigResolver? configResolver,
     GraphqlCompileRunner? runner,
+    this.approver,
+    this.now,
   }) : configResolver = configResolver ??
             GraphqlCompileConfigResolver(environment: Platform.environment),
        runner = runner ??
             ModularApiGraphqlCompileRunner(environment: Platform.environment);
 
   @override
-  String? validate() => null;
+  String? validate() => input.flags.validate();
 
   @override
   Future<GraphqlCompileOutput> execute() async {
@@ -133,6 +145,36 @@ class GraphqlCompileCommand
       return GraphqlCompileOutput(
         message: error.message,
         exitCode: 3,
+        resolvedConfig: resolved,
+      );
+    }
+
+    // The config is validated first: a plan built from a configuration that
+    // cannot compile would describe work that will never happen.
+    final decision = await ChangeGate(
+      flags: input.flags,
+      approver: approver,
+      now: now,
+    ).decide(
+      command: 'api graphql compile',
+      workingDirectory: input.workingDirectory,
+      body: [
+        'would compile GraphQL artifacts:',
+        '',
+        '  source   ${resolved.sourceRoot}',
+        '  metadata ${resolved.metadataFile}',
+        '  engine   ${resolved.engine}',
+        '  output   ${resolved.outputDirectory}',
+        '',
+        'The output directory is written by the compiler, so anything already '
+            'there is replaced by what this run produces.',
+      ].join('\n'),
+    );
+
+    if (!decision.proceed) {
+      return GraphqlCompileOutput(
+        message: decision.message!,
+        exitCode: decision.blocked ? ExitCode.genericError : ExitCode.ok,
         resolvedConfig: resolved,
       );
     }

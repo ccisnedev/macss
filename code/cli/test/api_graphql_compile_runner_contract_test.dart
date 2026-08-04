@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
+import 'package:macss_cli/src/plan_apply.dart';
 
 import 'package:macss_cli/modules/api/graphql/commands/compile.dart';
 import 'package:macss_cli/src/api/graphql/compile_config.dart';
@@ -49,6 +50,7 @@ void main() {
           outputDirectory: p.join(tempDir.path, 'artifacts', 'graphql'),
           engine: 'sqlserver',
           workingDirectory: tempDir.path,
+          flags: const ChangeFlags(apply: true, autoapprove: true),
         ),
         configResolver: GraphqlCompileConfigResolver(environment: const {}),
         runner: fakeRunner,
@@ -68,6 +70,7 @@ void main() {
           outputDirectory: p.join(tempDir.path, 'artifacts', 'graphql'),
           engine: 'postgres',
           workingDirectory: tempDir.path,
+          flags: const ChangeFlags(apply: true, autoapprove: true),
         ),
         configResolver: GraphqlCompileConfigResolver(environment: const {}),
         runner: fakeRunner,
@@ -89,6 +92,7 @@ void main() {
           outputDirectory: p.join(tempDir.path, 'artifacts', 'graphql'),
           engine: 'sqlserver',
           workingDirectory: tempDir.path,
+          flags: const ChangeFlags(apply: true, autoapprove: true),
         ),
         configResolver: GraphqlCompileConfigResolver(environment: const {}),
         runner: fakeRunner,
@@ -108,6 +112,7 @@ void main() {
           outputDirectory: p.join(tempDir.path, 'artifacts', 'graphql'),
           engine: 'sqlserver',
           workingDirectory: tempDir.path,
+          flags: const ChangeFlags(apply: true, autoapprove: true),
         ),
         configResolver: GraphqlCompileConfigResolver(environment: const {}),
         runner: fakeRunner,
