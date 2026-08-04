@@ -52,7 +52,9 @@ void main() {
       ).execute();
 
   Future<void> addContract() => SpecificationNewCommand(
-        SpecificationNewInput(),
+        SpecificationNewInput(
+          flags: const ChangeFlags(apply: true, autoapprove: true),
+        ),
         resolver: resolver,
         workingDirectory: tempDir.path,
         now: clock,

@@ -15,6 +15,7 @@ import 'package:cli_router/cli_router.dart';
 import 'package:modular_cli_sdk/modular_cli_sdk.dart';
 import 'package:path/path.dart' as p;
 
+import '../../../src/plan_apply.dart';
 import '../../../templates/template_resolver.dart';
 import '../../requisition/issue_metadata.dart';
 import '../slug.dart';
@@ -29,12 +30,15 @@ class SpecificationNewInput extends Input {
   /// Spanish request yields a Spanish contract.
   final String? lang;
 
-  SpecificationNewInput({this.slug, this.lang});
+  final ChangeFlags flags;
+
+  SpecificationNewInput({this.slug, this.lang, required this.flags});
 
   factory SpecificationNewInput.fromCliRequest(CliRequest req) =>
       SpecificationNewInput(
         slug: optionalSlug(req.flagString('slug')),
         lang: req.flagString('lang'),
+        flags: ChangeFlags.fromCliRequest(req),
       );
 
   static final List<CliParam> params = [
@@ -47,27 +51,40 @@ class SpecificationNewInput extends Input {
       allowed: ['en', 'es'],
       description: "Language of the contract; inherits the requisition's when omitted",
     ),
+    ...ChangeFlags.params,
   ];
 
   @override
   List<CliParam> get schemaFields => params;
 
   @override
-  Map<String, dynamic> toJson() => {'slug': slug, 'lang': lang};
+  Map<String, dynamic> toJson() => {
+        'slug': slug,
+        'lang': lang,
+        'plan': flags.plan,
+        'apply': flags.apply,
+        'autoapprove': flags.autoapprove,
+      };
 }
 
 // ─── Output ─────────────────────────────────────────────────────────────────
 
 class SpecificationNewOutput extends Output {
   final String message;
+  final String? planPath;
+  final bool blocked;
 
-  SpecificationNewOutput({required this.message});
+  SpecificationNewOutput({
+    required this.message,
+    this.planPath,
+    this.blocked = false,
+  });
 
   @override
-  Map<String, dynamic> toJson() => {'message': message};
+  Map<String, dynamic> toJson() => {'message': message, 'planPath': planPath};
 
   @override
-  int get exitCode => ExitCode.ok;
+  int get exitCode => blocked ? ExitCode.genericError : ExitCode.ok;
 
   @override
   String? toText() => message;
@@ -83,12 +100,14 @@ class SpecificationNewCommand
   final TemplateResolver resolver;
   final String workingDirectory;
   final DateTime Function() _now;
+  final Approver? approver;
 
   SpecificationNewCommand(
     this.input, {
     required this.resolver,
     required this.workingDirectory,
     DateTime Function()? now,
+    this.approver,
   }) : _now = now ?? DateTime.now;
 
   String? get _dir => resolveRequisitionDir(workingDirectory, input.slug);
@@ -99,7 +118,7 @@ class SpecificationNewCommand
       return 'No requisition found — run `macss requisition new <slug>` first, '
           'or point at one with --slug <slug>.';
     }
-    return null;
+    return input.flags.validate();
   }
 
   @override
@@ -111,6 +130,8 @@ class SpecificationNewCommand
     final relPath = p.posix.join(relDir, 'specification.md');
     final file = File(p.join(dir, 'specification.md'));
 
+    // Idempotence answers before the convention does: an existing contract is
+    // kept either way, so there is nothing to plan or approve.
     if (file.existsSync()) {
       return SpecificationNewOutput(
         message: '  kept     $relPath (already exists)',
@@ -119,6 +140,30 @@ class SpecificationNewCommand
 
     final lang = input.lang ?? IssueMetadata.read(dir)?.lang ?? 'en';
     final resolution = resolver.resolve('specification', lang: lang);
+
+    final decision = await ChangeGate(
+      flags: input.flags,
+      approver: approver,
+      now: _now,
+    ).decide(
+      command: 'specification new',
+      workingDirectory: workingDirectory,
+      body: [
+        'would add the contract to "${p.basename(dir)}":',
+        '',
+        '  create   $relPath ($lang)',
+        if (resolution.notice != null) '  note     ${resolution.notice}',
+      ].join('\n'),
+    );
+
+    if (!decision.proceed) {
+      return SpecificationNewOutput(
+        message: decision.message!,
+        planPath: decision.planPath,
+        blocked: decision.blocked,
+      );
+    }
+
     file.writeAsStringSync(
       resolution.content.replaceAll(
         '{{DATE}}',

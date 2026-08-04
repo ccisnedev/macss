@@ -96,7 +96,10 @@ const _wht = '\x1B[97m';
 /// the CLI rejects (ADR 0002 chose explicit flags), on the alias deprecated in
 /// favour of `project create`. The first command a new user was told to type
 /// exited 7.
-const quickstartCommand = 'macss project create --path=my-project';
+/// ADR 0007 added the second half: a command that changes things now says
+/// which of plan or apply it is doing, and the first one a new user types is
+/// no exception — it is where the convention is learned.
+const quickstartCommand = 'macss project create --path=my-project --apply';
 
 String _buildBanner(String version) {
   final logo =
