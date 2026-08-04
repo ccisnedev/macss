@@ -21,31 +21,52 @@ import 'support/memory_sink.dart';
 void main() {
   final assets = Assets(root: Directory.current.path);
 
-  /// Every route the CLI registers, from its own machine-readable catalogue.
-  Future<Set<String>> routes() async {
+  /// Every route the CLI registers, with the flags it declares, from its own
+  /// machine-readable catalogue.
+  Future<Map<String, Set<String>>> routes() async {
     final stdout = MemorySink();
     await runMacss(const ['help', '--json'],
         stdout: stdout.sink, stderr: MemorySink().sink);
 
     final catalog = jsonDecode(await stdout.text()) as Map<String, dynamic>;
-    return (catalog['commands'] as List)
-        .cast<Map<String, dynamic>>()
-        .map((c) => c['route'] as String)
+    return {
+      for (final c in (catalog['commands'] as List).cast<Map<String, dynamic>>())
         // Routes carry their positional placeholders (`new <slug>`); the skills
         // name the command, so compare on the command part.
-        .map((r) => r.split(' <').first.trim())
-        .toSet();
+        (c['route'] as String).split(' <').first.trim(): {
+          for (final param in (c['params'] as List? ?? const [])
+              .cast<Map<String, dynamic>>())
+            param['name'] as String,
+        },
+    };
   }
 
-  /// The `macss <module> <action>` invocations a skill text names.
-  Set<String> commandsNamedIn(String skill) => RegExp(r'`macss ([a-z][a-z -]*)`')
-      .allMatches(skill)
-      .map((m) => m.group(1)!.trim())
-      // Drop flags and arguments: `macss requisition publish --plan` names the
-      // command `requisition publish`.
-      .map((c) => c.split(' --').first.trim())
-      .where((c) => c.isNotEmpty)
-      .toSet();
+  /// One `macss …` invocation a skill text names: the command, and the long
+  /// flags passed to it.
+  ({String command, Set<String> flags}) parseInvocation(String invocation) {
+    final words = invocation.trim().split(RegExp(r'\s+'));
+    return (
+      command: words.takeWhile((w) => !w.startsWith('-')).join(' '),
+      flags: words
+          .where((w) => w.startsWith('--'))
+          .map((w) => w.substring(2).split('=').first)
+          .toSet(),
+    );
+  }
+
+  /// The `macss <module> <action> [--flags]` invocations a skill text names.
+  ///
+  /// Flags used to be dropped here, and the comment explaining why used
+  /// `macss requisition publish --plan` as its example — an invocation that
+  /// failed with `unknown option --plan` for two releases while this guard
+  /// passed. Checking the command but not the flags is checking half of what a
+  /// skill actually tells a model to type.
+  List<({String command, Set<String> flags})> commandsNamedIn(String skill) =>
+      RegExp(r'`macss ([a-z][a-z0-9 \-=]*)`')
+          .allMatches(skill)
+          .map((m) => parseInvocation(m.group(1)!))
+          .where((i) => i.command.isNotEmpty)
+          .toList();
 
   group('every command a skill names exists', () {
     final skills = assets.listDirectory('skills');
@@ -59,12 +80,44 @@ void main() {
         final text = assets.loadString('skills/$name/SKILL.md');
         final available = await routes();
 
-        for (final command in commandsNamedIn(text)) {
+        for (final invocation in commandsNamedIn(text)) {
           expect(
-            available,
-            contains(command),
-            reason: '$name tells the model to run `macss $command`, '
+            available.keys,
+            contains(invocation.command),
+            reason: '$name tells the model to run `macss ${invocation.command}`, '
                 'which the CLI does not accept',
+          );
+
+          for (final flag in invocation.flags) {
+            expect(
+              available[invocation.command],
+              contains(flag),
+              reason: '$name tells the model to run '
+                  '`macss ${invocation.command} --$flag`, and '
+                  '${invocation.command} declares no --$flag',
+            );
+          }
+        }
+      });
+    }
+  });
+
+  // Rule 4 of ADR 0007. A skill runs with nobody at the keyboard, so a bare
+  // --apply would block on a prompt that never gets answered.
+  group('no skill can strand itself waiting for an approval', () {
+    for (final name in assets.listDirectory('skills')) {
+      test(name, () {
+        final text = assets.loadString('skills/$name/SKILL.md');
+
+        for (final invocation in commandsNamedIn(text)) {
+          if (!invocation.flags.contains('apply')) continue;
+          expect(
+            invocation.flags,
+            contains('autoapprove'),
+            reason: '$name tells the model to run '
+                '`macss ${invocation.command} --apply` with no '
+                '--autoapprove; it would wait for an approval nobody is '
+                'there to give',
           );
         }
       });
@@ -72,15 +125,27 @@ void main() {
   });
 
   group('the parser reads what a skill actually looks like', () {
-    test('picks up a command with flags', () {
-      expect(
-        commandsNamedIn('run `macss requisition publish --apply` to create it'),
-        {'requisition publish'},
+    test('separates the command from the flags it carries', () {
+      final found = commandsNamedIn(
+        'run `macss requisition publish --apply --autoapprove` to create it',
       );
+
+      expect(found.single.command, 'requisition publish');
+      expect(found.single.flags, {'apply', 'autoapprove'});
     });
 
     test('picks up a bare command', () {
-      expect(commandsNamedIn('then `macss dor check`'), {'dor check'});
+      final found = commandsNamedIn('then `macss dor check`');
+
+      expect(found.single.command, 'dor check');
+      expect(found.single.flags, isEmpty);
+    });
+
+    test('reads a flag written with a value', () {
+      final found = commandsNamedIn('`macss skill deploy --host=claude`');
+
+      expect(found.single.command, 'skill deploy');
+      expect(found.single.flags, {'host'});
     });
 
     test('ignores prose that merely mentions macss', () {

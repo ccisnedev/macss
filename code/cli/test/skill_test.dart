@@ -9,6 +9,7 @@ import 'package:macss_cli/modules/skill/commands/deploy.dart';
 import 'package:macss_cli/modules/skill/commands/list.dart';
 import 'package:macss_cli/modules/skill/host.dart';
 import 'package:macss_cli/modules/skill/skill_builder.dart';
+import 'package:macss_cli/src/plan_apply.dart';
 import 'package:modular_cli_sdk/modular_cli_sdk.dart';
 
 import 'support/memory_sink.dart';
@@ -56,16 +57,32 @@ void main() {
             'SKILL.md'),
       );
 
-  SkillDeployCommand deployCmd({String? host}) => SkillDeployCommand(
-        SkillDeployInput(host: host),
+  SkillDeployCommand deployCmd({
+    String? host,
+    ChangeFlags flags = const ChangeFlags(apply: true, autoapprove: true),
+    Approver? approver,
+  }) =>
+      SkillDeployCommand(
+        SkillDeployInput(host: host, flags: flags),
         assets: assets,
         environment: env,
+        approver: approver,
+        workingDirectory: tempRoot.path,
+        now: () => DateTime(2026, 8, 4, 9, 30, 15),
       );
 
-  SkillCleanCommand cleanCmd({String? host}) => SkillCleanCommand(
-        SkillCleanInput(host: host),
+  SkillCleanCommand cleanCmd({
+    String? host,
+    ChangeFlags flags = const ChangeFlags(apply: true, autoapprove: true),
+    Approver? approver,
+  }) =>
+      SkillCleanCommand(
+        SkillCleanInput(host: host, flags: flags),
         assets: assets,
         environment: env,
+        approver: approver,
+        workingDirectory: tempRoot.path,
+        now: () => DateTime(2026, 8, 4, 9, 30, 15),
       );
 
   group('macss skill deploy', () {

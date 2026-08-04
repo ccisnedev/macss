@@ -1,12 +1,12 @@
-/// `macss project adopt [--path <dir>] [--plan|--apply]` — brings an existing
+/// `macss project adopt [--path <dir>] --plan|--apply` — brings an existing
 /// project up to the MACSS canon.
 ///
 /// This is the answer to "what if a project already exists and should adopt
 /// MACSS?", which `project create` cannot give: `create` assumes an empty
 /// directory, `adopt` works on one with history.
 ///
-/// Previews by default, following the same `--plan` / `--apply` convention as
-/// `macss issue publish`.
+/// Follows the `--plan` / `--apply` convention of ADR 0007: neither is a
+/// default, and a bare `adopt` is a usage error rather than a silent preview.
 ///
 /// **`adopt` never deletes.** It only creates what the canon requires and the
 /// project lacks. Anything extra is reported by `project check` as a warning and
@@ -21,46 +21,60 @@ import 'package:modular_cli_sdk/modular_cli_sdk.dart';
 import 'package:path/path.dart' as p;
 
 import '../../../assets.dart';
+import '../../../src/plan_apply.dart';
 import '../canon.dart';
 
 // ─── Input ──────────────────────────────────────────────────────────────────
 
 class ProjectAdoptInput extends Input {
   final String resolvedPath;
-  final bool apply;
 
-  ProjectAdoptInput({required this.resolvedPath, required this.apply});
+  /// Where the command was invoked — where the plan file goes. Not the same as
+  /// [resolvedPath], which `--path` can point anywhere: a plan written into the
+  /// target would be a change to the target, and `--plan` changes nothing.
+  final String workingDirectory;
 
-  factory ProjectAdoptInput.fromCliRequest(CliRequest req) {
+  final ChangeFlags flags;
+
+  ProjectAdoptInput({
+    required this.resolvedPath,
+    required this.flags,
+    String? workingDirectory,
+  }) : workingDirectory = workingDirectory ?? resolvedPath;
+
+  factory ProjectAdoptInput.fromCliRequest(
+    CliRequest req, {
+    String? workingDirectory,
+  }) {
+    final cwd = workingDirectory ?? Directory.current.path;
     final raw = req.flagString('path', aliases: const ['p']);
-    final cwd = Directory.current.path;
     return ProjectAdoptInput(
       resolvedPath:
           raw == null ? cwd : (p.isAbsolute(raw) ? raw : p.join(cwd, raw)),
-      apply: req.flagBool('apply'),
+      workingDirectory: cwd,
+      flags: ChangeFlags.fromCliRequest(req),
     );
   }
 
-  /// `--plan` is the default, so it is not declared: passing `--apply` is the
-  /// deliberate act. A bare `adopt` previews and writes nothing.
   static final List<CliParam> params = [
     CliParam.string(
       'path',
       abbr: 'p',
       description: 'Project directory to adopt; defaults to the current one',
     ),
-    CliParam.boolean(
-      'apply',
-      description: 'Create the missing files; without it, only previews',
-    ),
+    ...ChangeFlags.params,
   ];
 
   @override
   List<CliParam> get schemaFields => params;
 
   @override
-  Map<String, dynamic> toJson() =>
-      {'resolvedPath': resolvedPath, 'apply': apply};
+  Map<String, dynamic> toJson() => {
+        'resolvedPath': resolvedPath,
+        'plan': flags.plan,
+        'apply': flags.apply,
+        'autoapprove': flags.autoapprove,
+      };
 }
 
 // ─── Output ─────────────────────────────────────────────────────────────────
@@ -70,18 +84,33 @@ class ProjectAdoptOutput extends Output {
   final List<String> created;
   final bool applied;
 
+  /// Where the plan was written, when the caller asked for `--plan`.
+  final String? planPath;
+
+  /// True when `--apply` reached a human who said no. Not an error in the
+  /// command — the answer was taken and honoured — but a non-zero exit, so a
+  /// script cannot mistake a refusal for a change.
+  final bool declined;
+
   ProjectAdoptOutput({
     required this.message,
     required this.created,
     required this.applied,
+    this.planPath,
+    this.declined = false,
   });
 
   @override
-  Map<String, dynamic> toJson() =>
-      {'message': message, 'created': created, 'applied': applied};
+  Map<String, dynamic> toJson() => {
+        'message': message,
+        'created': created,
+        'applied': applied,
+        'planPath': planPath,
+        'declined': declined,
+      };
 
   @override
-  int get exitCode => ExitCode.ok;
+  int get exitCode => declined ? ExitCode.genericError : ExitCode.ok;
 
   @override
   String? toText() => message;
@@ -95,8 +124,16 @@ class ProjectAdoptCommand
   final ProjectAdoptInput input;
 
   final Assets assets;
+  final Approver approver;
+  final DateTime Function() now;
 
-  ProjectAdoptCommand(this.input, {required this.assets});
+  ProjectAdoptCommand(
+    this.input, {
+    required this.assets,
+    Approver? approver,
+    DateTime Function()? now,
+  })  : approver = approver ?? ConsoleApprover().call,
+        now = now ?? DateTime.now;
 
   @override
   String? validate() {
@@ -106,7 +143,7 @@ class ProjectAdoptCommand
     if (!Directory(input.resolvedPath).existsSync()) {
       return 'No such directory: "${input.resolvedPath}".';
     }
-    return null;
+    return input.flags.validate();
   }
 
   @override
@@ -114,6 +151,8 @@ class ProjectAdoptCommand
     final root = input.resolvedPath;
     final missing = missingCanonFiles(root);
 
+    // Nothing to change means nothing to plan. Writing an empty plan file
+    // would leave an artifact saying "no artifact was needed".
     if (missing.isEmpty) {
       return ProjectAdoptOutput(
         message: 'Nothing to adopt — every canonical file is already present.',
@@ -122,20 +161,36 @@ class ProjectAdoptCommand
       );
     }
 
-    if (!input.apply) {
-      final lines = [
-        'Plan — ${missing.length} file(s) would be created in $root:',
-        ...missing.map((f) => '  create   ${f.path}'),
-        '',
-        'Nothing else is touched: adopt never removes or overwrites. '
-            'Run `macss project check` for what needs your judgement.',
-        '',
-        'Re-run with --apply to create them.',
-      ];
+    // The one rendering, used by both modes. Rule 6 of ADR 0007: what `--apply`
+    // shows and what `--plan` writes are the same computation, rendered the
+    // same way. Two renderings would drift, and drift between the plan and the
+    // change is the whole failure this convention exists to prevent.
+    final body = [
+      '${missing.length} file(s) would be created in $root:',
+      '',
+      ...missing.map((f) => '  create   ${f.path}'),
+      '',
+      'Nothing else is touched: adopt never removes or overwrites. '
+          'Run `macss project check` for what needs your judgement.',
+    ].join('\n');
+
+    final decision = await ChangeGate(
+      flags: input.flags,
+      approver: approver,
+      now: now,
+    ).decide(
+      command: 'project adopt',
+      workingDirectory: input.workingDirectory,
+      body: body,
+    );
+
+    if (!decision.proceed) {
       return ProjectAdoptOutput(
-        message: lines.join('\n'),
+        message: decision.message!,
         created: const [],
         applied: false,
+        planPath: decision.planPath,
+        declined: decision.blocked,
       );
     }
 

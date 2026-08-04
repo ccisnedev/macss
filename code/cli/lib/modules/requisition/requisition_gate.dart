@@ -1,4 +1,8 @@
-/// The requisition gate — did the Product Owner actually fill the form?
+/// The requisition gate — is every section of the form actually answered?
+///
+/// It asks about the document, not about who typed it. The analyst usually
+/// transcribes what the Product Owner sent; the gate cannot tell, and should
+/// not care. What it can tell is whether a section was left as a placeholder.
 ///
 /// The requisition is a form handed to the business: what problem this solves,
 /// who it affects, what happens if it is not done, and how things work today

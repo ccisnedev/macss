@@ -7,6 +7,7 @@ import 'package:test/test.dart';
 import 'package:macss_cli/assets.dart';
 import 'package:macss_cli/modules/project/commands/create.dart';
 import 'package:macss_cli/modules/project/project_builder.dart';
+import 'package:macss_cli/src/plan_apply.dart';
 
 import 'support/memory_sink.dart';
 
@@ -85,10 +86,19 @@ void main() {
     if (tempRoot.existsSync()) tempRoot.deleteSync(recursive: true);
   });
 
-  CreateCommand makeCmd(String resolvedPath) => CreateCommand(
-    CreateInput(resolvedPath: resolvedPath, workingDirectory: tempRoot.path),
-    assets: assets,
-  );
+  CreateCommand makeCmd(
+    String resolvedPath, {
+    ChangeFlags flags = const ChangeFlags(apply: true, autoapprove: true),
+  }) =>
+      CreateCommand(
+        CreateInput(
+          resolvedPath: resolvedPath,
+          workingDirectory: tempRoot.path,
+          flags: flags,
+        ),
+        assets: assets,
+        now: () => DateTime(2026, 8, 4, 9, 30, 15),
+      );
 
   // Wires the real module with the test assets, so contract parsing (abbr,
   // rejection) is exercised through the registration that actually ships —
@@ -117,7 +127,7 @@ void main() {
       final dest = p.join(tempRoot.path, 'abbr-proj');
 
       final code = await makeCli().run(
-        ['project', 'create', '-p', dest],
+        ['project', 'create', '-p', dest, '--apply', '--autoapprove'],
         stdout: MemorySink().sink,
         stderr: MemorySink().sink,
       );
@@ -130,7 +140,7 @@ void main() {
       final dest = p.join(tempRoot.path, 'long-proj');
 
       final code = await makeCli().run(
-        ['project', 'create', '--path=$dest'],
+        ['project', 'create', '--path=$dest', '--apply', '--autoapprove'],
         stdout: MemorySink().sink,
         stderr: MemorySink().sink,
       );
@@ -138,12 +148,50 @@ void main() {
       expect(code, 0);
       expect(File(p.join(dest, 'README.md')).existsSync(), isTrue);
     });
+
+    // Scaffolding a whole project is the most consequential thing this CLI
+    // does. It used to happen on a bare invocation.
+    test('create with neither flag scaffolds nothing', () async {
+      final dest = p.join(tempRoot.path, 'unasked-proj');
+      final stderr = MemorySink();
+
+      final code = await makeCli().run(
+        ['project', 'create', '--path=$dest'],
+        stdout: MemorySink().sink,
+        stderr: stderr.sink,
+      );
+
+      expect(code, isNot(0));
+      expect(await stderr.text(), contains('--plan'));
+      expect(Directory(dest).existsSync(), isFalse);
+    });
+  });
+
+  group('macss project create --plan', () {
+    test('writes the plan where invoked, not into the target', () async {
+      final dest = p.join(tempRoot.path, 'planned-proj');
+
+      final out =
+          await makeCmd(dest, flags: const ChangeFlags(plan: true)).execute();
+
+      // The target is what `create` would bring into existence. Planning must
+      // not bring it into existence to say so.
+      expect(Directory(dest).existsSync(), isFalse);
+      expect(out.created, isFalse);
+      expect(out.planPath, isNotNull);
+      expect(p.isWithin(tempRoot.path, out.planPath!), isTrue);
+      expect(File(out.planPath!).readAsStringSync(), contains('README.md'));
+    });
   });
 
   group('macss project create', () {
     test('validate returns error when path is null', () {
       final cmd = CreateCommand(
-        CreateInput(resolvedPath: null, workingDirectory: tempRoot.path),
+        CreateInput(
+          resolvedPath: null,
+          workingDirectory: tempRoot.path,
+          flags: const ChangeFlags(apply: true, autoapprove: true),
+        ),
         assets: assets,
       );
       expect(cmd.validate(), isNotNull);

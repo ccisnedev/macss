@@ -14,10 +14,13 @@
 /// a user edit worth preserving.
 library;
 
+import 'dart:io';
+
 import 'package:cli_router/cli_router.dart';
 import 'package:modular_cli_sdk/modular_cli_sdk.dart';
 
 import '../../../assets.dart';
+import '../../../src/plan_apply.dart';
 import '../deployer.dart';
 import '../host.dart';
 
@@ -25,14 +28,17 @@ import '../host.dart';
 
 class SkillDeployInput extends Input {
   final String? host;
+  final ChangeFlags flags;
 
-  SkillDeployInput({this.host});
+  SkillDeployInput({this.host, this.flags = const ChangeFlags()});
 
-  factory SkillDeployInput.fromCliRequest(CliRequest req) =>
-      SkillDeployInput(host: req.flagString('host'));
+  factory SkillDeployInput.fromCliRequest(CliRequest req) => SkillDeployInput(
+        host: req.flagString('host'),
+        flags: ChangeFlags.fromCliRequest(req),
+      );
 
-  /// Declared contract: a single optional `--host`. Omitting it deploys to every
-  /// installed assistant, which is the common case.
+  /// Declared contract: an optional `--host`, plus the convention. Omitting
+  /// `--host` deploys to every installed assistant, which is the common case.
   static final List<CliParam> params = [
     CliParam.string(
       'host',
@@ -40,13 +46,19 @@ class SkillDeployInput extends Input {
       description:
           'Deploy to this assistant only; defaults to every one installed',
     ),
+    ...ChangeFlags.params,
   ];
 
   @override
   List<CliParam> get schemaFields => params;
 
   @override
-  Map<String, dynamic> toJson() => {'host': host};
+  Map<String, dynamic> toJson() => {
+        'host': host,
+        'plan': flags.plan,
+        'apply': flags.apply,
+        'autoapprove': flags.autoapprove,
+      };
 }
 
 // ─── Output ─────────────────────────────────────────────────────────────────
@@ -81,15 +93,28 @@ class SkillDeployCommand
 
   final Assets assets;
   final Map<String, String>? environment;
+  final Approver? approver;
+  final DateTime Function()? now;
 
-  SkillDeployCommand(this.input, {required this.assets, this.environment});
+  /// Where the plan file goes. `skill deploy` acts on the user's home rather
+  /// than on a project, so the plan belongs where the command was invoked.
+  final String workingDirectory;
+
+  SkillDeployCommand(
+    this.input, {
+    required this.assets,
+    this.environment,
+    this.approver,
+    this.now,
+    String? workingDirectory,
+  }) : workingDirectory = workingDirectory ?? Directory.current.path;
 
   @override
   String? validate() {
     if (!assets.directoryExists('skills')) {
       return 'No skills found in the installed assets. Run: macss upgrade';
     }
-    return null;
+    return input.flags.validate();
   }
 
   @override
@@ -107,7 +132,7 @@ class SkillDeployCommand
       );
     }
 
-    final steps = <String>[];
+    final resolved = <String, HostPaths>{};
     for (final host in hosts) {
       final paths = hostPaths(host, environment: environment);
       if (paths == null) {
@@ -117,9 +142,45 @@ class SkillDeployCommand
           exitCode: ExitCode.genericError,
         );
       }
-      steps.add('$host → ${paths.skillsDirectory}');
+      resolved[host] = paths;
+    }
+
+    // Deploying touches directories under the user's home that no repository
+    // records, and it removes retired skills as well as adding new ones. The
+    // dry run is the same traversal, so the plan names every removal too.
+    final preview = <String>[];
+    for (final entry in resolved.entries) {
+      preview.add('${entry.key} → ${entry.value.skillsDirectory}');
+      preview.addAll(deploySkills(
+        assets: assets,
+        targetDir: entry.value.skillsDirectory,
+        dryRun: true,
+      ));
+    }
+
+    final decision = await ChangeGate(
+      flags: input.flags,
+      approver: approver,
+      now: now,
+    ).decide(
+      command: 'skill deploy',
+      workingDirectory: workingDirectory,
+      body: ['would deploy the MACSS skills:', '', ...preview].join('\n'),
+    );
+
+    if (!decision.proceed) {
+      return SkillDeployOutput(
+        message: decision.message!,
+        hosts: hosts,
+        exitCode: decision.blocked ? ExitCode.genericError : ExitCode.ok,
+      );
+    }
+
+    final steps = <String>[];
+    for (final entry in resolved.entries) {
+      steps.add('${entry.key} → ${entry.value.skillsDirectory}');
       steps.addAll(
-        deploySkills(assets: assets, targetDir: paths.skillsDirectory),
+        deploySkills(assets: assets, targetDir: entry.value.skillsDirectory),
       );
     }
 
