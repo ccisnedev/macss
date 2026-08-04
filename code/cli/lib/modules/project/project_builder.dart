@@ -18,15 +18,23 @@ import 'commands/create.dart';
 /// runs the advertised command end to end has no terminal to answer from.
 /// Without it the guard could only assert that the command parses, which is
 /// weaker than asserting it does what it advertises.
+///
+/// [workingDirectory] is a seam for the same reason. It defaults to the
+/// process's, and a test that needs a different one must be able to say so
+/// rather than assign to `Directory.current` — that is process-wide state, and
+/// `dart test` loads suites concurrently in one process, so moving it under a
+/// sibling suite that resolves a relative path at load time makes that suite
+/// fail at random.
 void buildProjectModule(
   ModuleBuilder m, {
   required Assets assets,
   Approver? approver,
+  String? workingDirectory,
 }) {
   m.command<CreateInput, CreateOutput>(
     'create',
     (req) => CreateCommand(
-      CreateInput.fromCliRequest(req),
+      CreateInput.fromCliRequest(req, workingDirectory: workingDirectory),
       assets: assets,
       approver: approver,
     ),
@@ -45,7 +53,7 @@ void buildProjectModule(
   m.command<ProjectAdoptInput, ProjectAdoptOutput>(
     'adopt',
     (req) => ProjectAdoptCommand(
-      ProjectAdoptInput.fromCliRequest(req),
+      ProjectAdoptInput.fromCliRequest(req, workingDirectory: workingDirectory),
       assets: assets,
       approver: approver,
     ),

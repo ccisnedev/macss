@@ -15,6 +15,14 @@ import 'package:test/test.dart';
 /// is covered by the suite it ships with.
 void main() {
   // Tests run from code/cli; the books are two levels up.
+  //
+  // This path is relative, and it is enumerated below at **registration** time,
+  // not inside a test body — the groups are generated per book. So this suite
+  // reads the process's working directory as it loads. `dart test` loads suites
+  // concurrently in one process, which means any other suite that assigns to
+  // `Directory.current` can make this one fail to load, at random and with no
+  // hint of where it came from. One did, briefly. Inject a working directory
+  // instead of moving the process's.
   final booksRoot = Directory(p.join('..', 'books'));
 
   /// The chapter slugs `SUMMARY.md` declares, in order.

@@ -398,8 +398,15 @@ void main() {
   // Contract style: through a real ModularCli, so parse-time enforcement is
   // exercised end to end without the compiled binary.
   group('macss project contract', () {
-    ModularCli makeCli() => ModularCli()
-      ..module('project', (m) => buildProjectModule(m, assets: assets));
+    ModularCli makeCli({String? workingDirectory}) => ModularCli()
+      ..module(
+        'project',
+        (m) => buildProjectModule(
+          m,
+          assets: assets,
+          workingDirectory: workingDirectory,
+        ),
+      );
 
     test('check rejects an undeclared option', () async {
       final stderr = MemorySink();
@@ -435,25 +442,22 @@ void main() {
     // The invocation `macss project check` has been dictating all along, and
     // which used to fail with `unknown option --plan`.
     //
-    // Run from inside a scratch directory: the plan lands where the command was
-    // invoked, so a test that did not move would write into the repository.
+    // The plan lands where the command was invoked, so this needs an invoking
+    // directory of its own. It is injected rather than assigned to
+    // `Directory.current`: that is process-wide, `dart test` loads suites
+    // concurrently in one process, and moving it out from under
+    // `books_layout_test` — which resolves `../books` at load time — made that
+    // suite fail at random.
     test('the command project check dictates is accepted', () async {
       Directory(dest).createSync(recursive: true);
       final invokedFrom = Directory(p.join(tempRoot.path, 'elsewhere'))
         ..createSync(recursive: true);
-      final previous = Directory.current;
-      Directory.current = invokedFrom;
 
-      final int code;
-      try {
-        code = await makeCli().run(
-          ['project', 'adopt', '--path=$dest', '--plan'],
-          stdout: MemorySink().sink,
-          stderr: MemorySink().sink,
-        );
-      } finally {
-        Directory.current = previous;
-      }
+      final code = await makeCli(workingDirectory: invokedFrom.path).run(
+        ['project', 'adopt', '--path=$dest', '--plan'],
+        stdout: MemorySink().sink,
+        stderr: MemorySink().sink,
+      );
 
       expect(code, ExitCode.ok);
       expect(File(p.join(dest, 'CHANGELOG.md')).existsSync(), isFalse);

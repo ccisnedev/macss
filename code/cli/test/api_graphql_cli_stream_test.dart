@@ -9,16 +9,12 @@ import 'support/memory_sink.dart';
 void main() {
   group('api graphql cli streams', () {
     late Directory tempDir;
-    late String originalWorkingDirectory;
 
     setUp(() {
-      originalWorkingDirectory = Directory.current.path;
       tempDir = Directory.systemTemp.createTempSync('macss_cli_streams_');
-      Directory.current = tempDir.path;
     });
 
     tearDown(() {
-      Directory.current = originalWorkingDirectory;
       if (tempDir.existsSync()) {
         tempDir.deleteSync(recursive: true);
       }
@@ -30,6 +26,7 @@ void main() {
 
       final exitCode = await runMacss(
         ['api', 'graphql', 'compile', '--bogus'],
+        workingDirectory: tempDir.path,
         stdout: stdout.sink,
         stderr: stderr.sink,
       );
@@ -44,6 +41,7 @@ void main() {
 
       final exitCode = await runMacss(
         ['api', 'graphql', 'compile', '--help'],
+        workingDirectory: tempDir.path,
         stdout: stdout.sink,
         stderr: stderr.sink,
       );
@@ -59,6 +57,7 @@ void main() {
 
       final exitCode = await runMacss(
         ['api', 'graphql', 'compile', '--help', '--json'],
+        workingDirectory: tempDir.path,
         stdout: stdout.sink,
         stderr: stderr.sink,
       );
@@ -78,6 +77,7 @@ void main() {
 
       final exitCode = await runMacss(
         ['api', 'graphql', 'compile', '--apply', '--autoapprove'],
+        workingDirectory: tempDir.path,
         stdout: stdout.sink,
         stderr: stderr.sink,
       );

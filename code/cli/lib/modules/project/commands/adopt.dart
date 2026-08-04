@@ -42,9 +42,12 @@ class ProjectAdoptInput extends Input {
     String? workingDirectory,
   }) : workingDirectory = workingDirectory ?? resolvedPath;
 
-  factory ProjectAdoptInput.fromCliRequest(CliRequest req) {
+  factory ProjectAdoptInput.fromCliRequest(
+    CliRequest req, {
+    String? workingDirectory,
+  }) {
+    final cwd = workingDirectory ?? Directory.current.path;
     final raw = req.flagString('path', aliases: const ['p']);
-    final cwd = Directory.current.path;
     return ProjectAdoptInput(
       resolvedPath:
           raw == null ? cwd : (p.isAbsolute(raw) ? raw : p.join(cwd, raw)),
