@@ -1,5 +1,5 @@
-/// `macss requisition check [--slug <slug>]` — did the Product Owner fill the
-/// form?
+/// `macss requisition check [--slug <slug>]` — is every section of the form
+/// answered?
 ///
 /// Runs the requisition gate over the active requisition. It judges presence,
 /// not quality: what catches a pretty phrase is the next stage, where QA has to

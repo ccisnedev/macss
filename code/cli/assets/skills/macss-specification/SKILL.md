@@ -20,11 +20,18 @@ of, run a throwaway experiment: read the database, run code in a container,
 probe the API. These validate a decision and are then discarded — they are not
 product code.
 
-**The request is not yours to write.** `requisition.md` is a form the Product
-Owner fills: what problem this solves, who it affects, what happens if it is not
-done, and how things work today versus how they should. Do not fill it for him.
-A request written by the person interpreting it starts the analysis on a
-translation.
+**You hold the pen; the request is still his.** The Product Owner sends the
+requirement by his own means — email, a meeting, a message — and does not sit
+down to a form afterwards. So you fill `requisition.md`, with what he sent:
+what problem this solves, who it affects, what happens if it is not done, and
+how things work today versus how they should.
+
+**Transcribe, never redact.** Put down what he said and nothing else. Do not
+complete a gap, do not interpret what he meant, do not add scope. Everything the
+request says must be traceable to a source you can name. When a section has no
+answer, ask him and transcribe the reply — a request written by the person
+interpreting it starts the analysis on a translation, and inferring what he
+would have said is exactly that.
 
 **The contract is yours.** `specification.md` is a lean business charter in the
 domain's language — not an implementation document. Technical decisions belong
@@ -32,31 +39,41 @@ in the issue body, with a re-checkable handle.
 
 ## Steps
 
-1. `macss requisition new <slug>` (add `--lang es` for Spanish) — scaffolds
-   `docs/requisitions/<YYYYMMDD>-<slug>/` with the form and its issue metadata,
-   and records it as the **active requisition**, so later commands need no slug.
-   Inputs and outputs are files on disk, not your memory.
-2. Hand `requisition.md` to the Product Owner and gather his answers from **all**
-   the sources — email, meeting, chat. Capture exactly what was asked; do not
-   invent scope.
-   (`macss requisition export-template` writes a blank form if you need one to
-   send before opening a requisition.)
-3. `macss requisition check` — verifies he answered every section. Fix exactly
+Every command that changes anything takes `--plan` or `--apply`; neither is a
+default and a bare invocation is an error (ADR 0007). `--plan` writes a plan
+file and touches nothing else. `--apply` shows the same plan and asks before
+writing — and **you have no terminal to answer from**, so every `--apply` below
+carries `--autoapprove`. Without it the command waits for an approval nobody is
+there to give. Show the plan to the human and get their word before you pass it.
+
+1. `macss requisition new <slug> --apply --autoapprove` (add `--lang es` for
+   Spanish) — scaffolds `docs/requisitions/<YYYYMMDD>-<slug>/` with the form and
+   its issue metadata, and records it as the **active requisition**, so later
+   commands need no slug. Inputs and outputs are files on disk, not your memory.
+2. Fill `requisition.md` with what the Product Owner sent, gathering from **all**
+   the sources — email, meeting, chat. Transcribe; do not invent scope. Where he
+   left a section unanswered, ask him rather than filling it in yourself.
+   (`macss requisition export-template --apply --autoapprove` writes a blank
+   form if you would rather send him one to fill directly.)
+3. `macss requisition check` — verifies every section is answered. Fix exactly
    what it reports.
-4. `macss requisition publish --plan`, then `--apply` once the human approves.
-   This creates the GitHub issue carrying the request, and records its number.
+4. `macss requisition publish --plan`, show the plan to the human, then
+   `macss requisition publish --apply --autoapprove` once they approve. This
+   creates the GitHub issue carrying the request, and records its number.
    **From here the requirement has a consultable home**, and everything that
    follows is published on top of it.
-5. `macss specification new` — scaffolds the contract template into the same
-   requisition, in the language the request was written in.
+5. `macss specification new --apply --autoapprove` — scaffolds the contract
+   template into the same requisition, in the language the request was written
+   in.
 6. Fill `specification.md`: the committed delivery date, user stories each
    carrying at least one Given-When-Then acceptance criterion, an explicit scope
    that states what is **excluded**, the domain glossary and business rules, and
    the observable signal that will tell you it worked.
 7. `macss specification check` — runs the gate. Fix exactly what it reports, one
    violation at a time, until it exits 0. Do not skip a violation.
-8. `macss specification publish --apply` — updates the issue so its body reads
-   request first, contract second.
+8. `macss specification publish --plan`, then
+   `macss specification publish --apply --autoapprove` once the human approves —
+   updates the issue so its body reads request first, contract second.
 9. `macss dor check` — the Definition of Ready. It composes the two checks and
    adds that the issue is published. When it exits 0, present the issue to the
    human for approval.
@@ -73,7 +90,8 @@ specifying. No gate can judge prose; this translation is what catches it.
 
 ## Done when
 
-- [ ] The Product Owner answered the request himself, from every source.
+- [ ] The request says what the Product Owner said, and every line of it can be
+      traced to a source he gave.
 - [ ] The issue is published and carries request plus contract.
 - [ ] `macss dor check` exits 0.
 - [ ] The issue is presented to the human for approval.

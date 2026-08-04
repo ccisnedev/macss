@@ -49,8 +49,7 @@ void buildSpecificationModule(ModuleBuilder m, {required Assets assets}) {
       runProcess: Process.run,
       assets: assets,
     ),
-    description:
-        'Add the contract to the issue — previews by default',
+    description: 'Add the contract to the issue — --plan or --apply',
     params: SpecificationPublishInput.params,
   );
 

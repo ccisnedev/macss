@@ -1,7 +1,12 @@
 /// `macss requisition new <slug> [--lang <lang>]` — opens a requisition.
 ///
-/// Writes the form the Product Owner fills, the issue metadata beside it, and
-/// records the requisition as the active one so later commands need no slug.
+/// Writes the form carrying the Product Owner's request, the issue metadata
+/// beside it, and records the requisition as the active one so later commands
+/// need no slug.
+///
+/// The analyst usually holds the pen: the request arrives by email or in a
+/// meeting, and is transcribed into the form. The Product Owner remains its
+/// author — what the form may contain is what he said, and nothing inferred.
 ///
 /// The specification is **not** created here: it belongs to a later stage, with
 /// a different author. `macss specification new` adds it once the request is in.
@@ -14,6 +19,7 @@ import 'package:modular_cli_sdk/modular_cli_sdk.dart';
 import 'package:path/path.dart' as p;
 
 import '../../../src/gitignore.dart';
+import '../../../src/plan_apply.dart';
 import '../../../templates/template_resolver.dart';
 import '../../specification/slug.dart';
 import '../../specification/workspace.dart';
@@ -24,13 +30,19 @@ import '../issue_metadata.dart';
 class RequisitionNewInput extends Input {
   final String slug;
   final String lang;
+  final ChangeFlags flags;
 
-  RequisitionNewInput({required this.slug, required this.lang});
+  RequisitionNewInput({
+    required this.slug,
+    required this.lang,
+    required this.flags,
+  });
 
   factory RequisitionNewInput.fromCliRequest(CliRequest req) =>
       RequisitionNewInput(
         slug: normalizeSlug(req.param('slug') ?? ''),
         lang: req.flagString('lang') ?? 'en',
+        flags: ChangeFlags.fromCliRequest(req),
       );
 
   static final List<CliParam> params = [
@@ -41,13 +53,20 @@ class RequisitionNewInput extends Input {
       defaultValue: 'en',
       description: 'Language of the form handed to the Product Owner',
     ),
+    ...ChangeFlags.params,
   ];
 
   @override
   List<CliParam> get schemaFields => params;
 
   @override
-  Map<String, dynamic> toJson() => {'slug': slug, 'lang': lang};
+  Map<String, dynamic> toJson() => {
+        'slug': slug,
+        'lang': lang,
+        'plan': flags.plan,
+        'apply': flags.apply,
+        'autoapprove': flags.autoapprove,
+      };
 }
 
 // ─── Output ─────────────────────────────────────────────────────────────────
@@ -55,14 +74,22 @@ class RequisitionNewInput extends Input {
 class RequisitionNewOutput extends Output {
   final String message;
   final String relDir;
+  final String? planPath;
+  final bool blocked;
 
-  RequisitionNewOutput({required this.message, required this.relDir});
+  RequisitionNewOutput({
+    required this.message,
+    required this.relDir,
+    this.planPath,
+    this.blocked = false,
+  });
 
   @override
-  Map<String, dynamic> toJson() => {'message': message, 'dir': relDir};
+  Map<String, dynamic> toJson() =>
+      {'message': message, 'dir': relDir, 'planPath': planPath};
 
   @override
-  int get exitCode => ExitCode.ok;
+  int get exitCode => blocked ? ExitCode.genericError : ExitCode.ok;
 
   @override
   String? toText() => message;
@@ -78,12 +105,14 @@ class RequisitionNewCommand
   final TemplateResolver resolver;
   final String workingDirectory;
   final DateTime Function() now;
+  final Approver? approver;
 
   RequisitionNewCommand(
     this.input, {
     required this.resolver,
     required this.workingDirectory,
     DateTime Function()? now,
+    this.approver,
   }) : now = now ?? DateTime.now;
 
   @override
@@ -91,11 +120,52 @@ class RequisitionNewCommand
     if (input.slug.isEmpty) {
       return 'A <slug> is required: macss requisition new <slug>';
     }
-    return null;
+    return input.flags.validate();
   }
 
   @override
   Future<RequisitionNewOutput> execute() async {
+    final stamp = now();
+    final folder = datedFolder(input.slug, stamp);
+    final dir = requisitionDir(workingDirectory, folder);
+    final relDir = requisitionRelDir(folder);
+
+    // What opening a requisition would touch, decided before it touches
+    // anything. `new` is idempotent, so an existing file is named as kept.
+    final formExists = File(p.join(dir, 'requisition.md')).existsSync();
+    final metaExists = File(IssueMetadata.pathIn(dir)).existsSync();
+    final body = [
+      'would open the requisition "${input.slug}" at $relDir:',
+      '',
+      formExists
+          ? '  keep     $relDir/requisition.md (already exists)'
+          : '  create   $relDir/requisition.md',
+      metaExists
+          ? '  keep     $relDir/${IssueMetadata.fileName}'
+          : '  create   $relDir/${IssueMetadata.fileName}',
+      '  record   $relDir as the active requisition',
+      '  ensure   the MACSS workspace is git-ignored',
+    ].join('\n');
+
+    final decision = await ChangeGate(
+      flags: input.flags,
+      approver: approver,
+      now: now,
+    ).decide(
+      command: 'requisition new',
+      workingDirectory: workingDirectory,
+      body: body,
+    );
+
+    if (!decision.proceed) {
+      return RequisitionNewOutput(
+        message: decision.message!,
+        relDir: relDir,
+        planPath: decision.planPath,
+        blocked: decision.blocked,
+      );
+    }
+
     final steps = <String>[];
 
     // The workspace is local and reproducible; keep it out of version control
@@ -103,10 +173,6 @@ class RequisitionNewCommand
     final gitignore = ensureGitignoreEntries(workingDirectory);
     if (gitignore != null) steps.add('  $gitignore');
 
-    final stamp = now();
-    final folder = datedFolder(input.slug, stamp);
-    final dir = requisitionDir(workingDirectory, folder);
-    final relDir = requisitionRelDir(folder);
     Directory(dir).createSync(recursive: true);
 
     final resolution = resolver.resolve('requisition', lang: input.lang);
@@ -140,8 +206,8 @@ class RequisitionNewCommand
       ...steps,
       if (resolution.notice != null) '  note     ${resolution.notice}',
       '',
-      'Next: hand $relDir/requisition.md to the Product Owner, then '
-          '`macss requisition check`.',
+      'Next: fill $relDir/requisition.md with what the Product Owner sent, '
+          'then `macss requisition check`.',
     ];
     return RequisitionNewOutput(message: lines.join('\n'), relDir: relDir);
   }
