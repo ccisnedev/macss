@@ -1,11 +1,13 @@
-/// `macss requisition publish [--apply] [--repo <owner/repo>]` — materializes
-/// the requisition as an issue.
+/// `macss requisition publish --plan|--apply [--repo <owner/repo>]` —
+/// materializes the requisition as an issue.
 ///
 /// Creates the issue the first time and updates it afterwards, so the same
 /// command serves both moments: the request is published as soon as the Product
 /// Owner delivers it, and the body grows when the specification is written.
 ///
-/// Previews by default. `--apply` is the deliberate act.
+/// Follows the `--plan` / `--apply` convention of ADR 0007. This is the command
+/// the specification skill has been instructing as `--plan` since 0.5.0, an
+/// invocation that until now failed with `unknown option --plan`.
 library;
 
 import 'dart:io';
@@ -14,6 +16,7 @@ import 'package:cli_router/cli_router.dart';
 import 'package:modular_cli_sdk/modular_cli_sdk.dart';
 import 'package:path/path.dart' as p;
 
+import '../../../src/plan_apply.dart';
 import '../../specification/slug.dart';
 import '../../specification/workspace.dart';
 import '../issue_metadata.dart';
@@ -24,42 +27,46 @@ import '../requisition_gate.dart';
 
 class RequisitionPublishInput extends Input {
   final String? slug;
-  final bool apply;
+  final ChangeFlags flags;
   final String? repo;
 
-  RequisitionPublishInput({this.slug, this.apply = false, this.repo});
+  RequisitionPublishInput({
+    this.slug,
+    this.flags = const ChangeFlags(),
+    this.repo,
+  });
 
   factory RequisitionPublishInput.fromCliRequest(CliRequest req) =>
       RequisitionPublishInput(
         slug: optionalSlug(req.flagString('slug')),
-        apply: req.flagBool('apply'),
+        flags: ChangeFlags.fromCliRequest(req),
         repo: req.flagString('repo'),
       );
 
-  /// `--plan` is the default and so is not declared: passing `--apply` is what
-  /// takes the action.
   static final List<CliParam> params = [
     CliParam.string(
       'slug',
       description: 'Requisition to publish; defaults to the active one',
-    ),
-    CliParam.boolean(
-      'apply',
-      description: 'Create or update the issue; without it, only previews',
     ),
     CliParam.string(
       'repo',
       description:
           'Target repository; by default gh infers it from this directory',
     ),
+    ...ChangeFlags.params,
   ];
 
   @override
   List<CliParam> get schemaFields => params;
 
   @override
-  Map<String, dynamic> toJson() =>
-      {'slug': slug, 'apply': apply, 'repo': repo};
+  Map<String, dynamic> toJson() => {
+        'slug': slug,
+        'repo': repo,
+        'plan': flags.plan,
+        'apply': flags.apply,
+        'autoapprove': flags.autoapprove,
+      };
 }
 
 // ─── Output ─────────────────────────────────────────────────────────────────
@@ -68,12 +75,22 @@ class RequisitionPublishOutput extends Output {
   final String message;
   final bool ok;
   final int? issue;
+  final String? planPath;
 
-  RequisitionPublishOutput({required this.message, this.ok = true, this.issue});
+  RequisitionPublishOutput({
+    required this.message,
+    this.ok = true,
+    this.issue,
+    this.planPath,
+  });
 
   @override
-  Map<String, dynamic> toJson() =>
-      {'ok': ok, 'message': message, if (issue != null) 'issue': issue};
+  Map<String, dynamic> toJson() => {
+        'ok': ok,
+        'message': message,
+        if (issue != null) 'issue': issue,
+        if (planPath != null) 'planPath': planPath,
+      };
 
   @override
   int get exitCode => ok ? ExitCode.ok : ExitCode.genericError;
@@ -91,14 +108,27 @@ class RequisitionPublishCommand
 
   final String workingDirectory;
   final IssuePublisher publisher;
+
+  /// Whether the Product Owner's form is answered at all.
   final RequisitionGate gate;
+
+  /// Whether this run plans or applies. A different gate on a different
+  /// question, which is why the two are not one.
+  final ChangeGate changeGate;
 
   RequisitionPublishCommand(
     this.input, {
     required this.workingDirectory,
     required ProcessRunner runProcess,
     this.gate = const RequisitionGate(),
-  }) : publisher = IssuePublisher(runProcess: runProcess);
+    Approver? approver,
+    DateTime Function()? now,
+  })  : publisher = IssuePublisher(runProcess: runProcess),
+        changeGate = ChangeGate(
+          flags: input.flags,
+          approver: approver,
+          now: now,
+        );
 
   String? get _dir => resolveRequisitionDir(workingDirectory, input.slug);
 
@@ -112,7 +142,7 @@ class RequisitionPublishCommand
     if (IssueMetadata.read(dir) == null) {
       return 'No ${IssueMetadata.fileName} in ${p.basename(dir)}.';
     }
-    return null;
+    return input.flags.validate();
   }
 
   @override
@@ -148,22 +178,34 @@ class RequisitionPublishCommand
     }
 
     final verb = meta.isPublished ? 'update' : 'create';
-    if (!input.apply) {
+
+    // One rendering, handed either to the plan file or to the approver. The
+    // exact `gh` line is part of it: what reaches GitHub is the thing being
+    // approved, and a reviewer who cannot see the command cannot judge it.
+    final planBody = [
+      'would $verb the issue for "${p.basename(dir)}"',
+      '',
+      '  title:  ${meta.title}',
+      '  labels: ${meta.labels.isEmpty ? '(none)' : meta.labels.join(', ')}',
+      '  body:   ${body.lines} lines from ${body.parts.join(' + ')}',
+      if (input.repo == null) '  repo:   inferred by gh from this directory',
+      '',
+      'Would run:',
+      '  gh ${publisher.plannedArgs(meta, repo: input.repo).join(' ')} '
+          '--body-file <body>',
+    ].join('\n');
+
+    final decision = await changeGate.decide(
+      command: 'requisition publish',
+      workingDirectory: workingDirectory,
+      body: planBody,
+    );
+
+    if (!decision.proceed) {
       return RequisitionPublishOutput(
-        message: [
-          'Plan — would $verb the issue for "${p.basename(dir)}"',
-          '  title:  ${meta.title}',
-          '  labels: ${meta.labels.isEmpty ? '(none)' : meta.labels.join(', ')}',
-          '  body:   ${body.lines} lines from ${body.parts.join(' + ')}',
-          if (input.repo == null)
-            '  repo:   inferred by gh from this directory',
-          '',
-          'Would run:',
-          '  gh ${publisher.plannedArgs(meta, repo: input.repo).join(' ')} '
-              '--body-file <body>',
-          '',
-          'Re-run with --apply to $verb it.',
-        ].join('\n'),
+        message: decision.message!,
+        ok: !decision.blocked,
+        planPath: decision.planPath,
       );
     }
 

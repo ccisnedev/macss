@@ -7,6 +7,7 @@ import 'package:macss_cli/assets.dart';
 import 'package:macss_cli/modules/requisition/commands/new.dart';
 import 'package:macss_cli/modules/requisition/issue_metadata.dart';
 import 'package:macss_cli/modules/specification/commands/new.dart';
+import 'package:macss_cli/src/plan_apply.dart';
 import 'package:macss_cli/templates/template_resolver.dart';
 
 /// `specification new` used to create the requisition **and** the specification
@@ -35,7 +36,11 @@ void main() {
       File(p.join(tempDir.path, p.joinAll(relative.split('/'))));
 
   Future<void> openRequisition({String lang = 'es'}) => RequisitionNewCommand(
-        RequisitionNewInput(slug: 'demo', lang: lang),
+        RequisitionNewInput(
+          slug: 'demo',
+          lang: lang,
+          flags: const ChangeFlags(apply: true, autoapprove: true),
+        ),
         resolver: resolver,
         workingDirectory: tempDir.path,
         now: clock,
