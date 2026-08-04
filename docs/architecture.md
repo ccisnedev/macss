@@ -164,15 +164,15 @@ This gives a consistent grammar:
 
 Examples:
 
-- `macss project create --path=.`
+- `macss project create --path=. --apply`
 - `macss project check`
-- `macss requisition new <slug>`
+- `macss requisition new <slug> --apply`
 - `macss requisition publish --apply`
 - `macss specification check`
 - `macss dor check`
-- `macss skill deploy`
-- `macss api graphql compile`
-- `macss db migrate`
+- `macss skill deploy --apply`
+- `macss api graphql compile --apply`
+- `macss db migrate --apply` *(planned; the `db` module does not exist yet)*
 
 Rule 3 is load-bearing, not cosmetic. When `create` needed a module of its own,
 `init` was rejected for it — `init` is a verb, so it cannot name a module without

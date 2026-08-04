@@ -120,18 +120,26 @@ The naming model is:
 Examples:
 
 ```text
-macss project create --path=.
+macss project create --path=. --apply
 macss project check
-macss requisition new <slug>
+macss requisition new <slug> --apply
+macss requisition publish --plan
 macss requisition publish --apply
 macss specification check
 macss dor check
-macss skill deploy
+macss skill deploy --apply
 macss doctor
-macss api graphql compile
+macss api graphql compile --apply
 
 ma project check              # the alias resolves to the same binary
 ```
+
+Every command that changes something takes `--plan` or `--apply`, and neither is
+a default — a bare invocation is an error that asks you to choose. `--plan`
+writes a plan file under `.macss/plans/` and touches nothing else; `--apply`
+shows the same plan and asks before writing. Add `--autoapprove` to `--apply`
+where nobody is at the keyboard. Commands that only read — `check`, `doctor`,
+`version`, `dor check` — take neither.
 
 The installers create `ma` alongside `macss`: a symlink on Linux, a `ma.cmd`
 shim on Windows that invokes the `macss.exe` sitting next to it rather than

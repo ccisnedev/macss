@@ -32,31 +32,41 @@ in the issue body, with a re-checkable handle.
 
 ## Steps
 
-1. `macss requisition new <slug>` (add `--lang es` for Spanish) — scaffolds
-   `docs/requisitions/<YYYYMMDD>-<slug>/` with the form and its issue metadata,
-   and records it as the **active requisition**, so later commands need no slug.
-   Inputs and outputs are files on disk, not your memory.
+Every command that changes anything takes `--plan` or `--apply`; neither is a
+default and a bare invocation is an error (ADR 0007). `--plan` writes a plan
+file and touches nothing else. `--apply` shows the same plan and asks before
+writing — and **you have no terminal to answer from**, so every `--apply` below
+carries `--autoapprove`. Without it the command waits for an approval nobody is
+there to give. Show the plan to the human and get their word before you pass it.
+
+1. `macss requisition new <slug> --apply --autoapprove` (add `--lang es` for
+   Spanish) — scaffolds `docs/requisitions/<YYYYMMDD>-<slug>/` with the form and
+   its issue metadata, and records it as the **active requisition**, so later
+   commands need no slug. Inputs and outputs are files on disk, not your memory.
 2. Hand `requisition.md` to the Product Owner and gather his answers from **all**
    the sources — email, meeting, chat. Capture exactly what was asked; do not
    invent scope.
-   (`macss requisition export-template` writes a blank form if you need one to
-   send before opening a requisition.)
+   (`macss requisition export-template --apply --autoapprove` writes a blank
+   form if you need one to send before opening a requisition.)
 3. `macss requisition check` — verifies he answered every section. Fix exactly
    what it reports.
-4. `macss requisition publish --plan`, then `--apply` once the human approves.
-   This creates the GitHub issue carrying the request, and records its number.
+4. `macss requisition publish --plan`, show the plan to the human, then
+   `macss requisition publish --apply --autoapprove` once they approve. This
+   creates the GitHub issue carrying the request, and records its number.
    **From here the requirement has a consultable home**, and everything that
    follows is published on top of it.
-5. `macss specification new` — scaffolds the contract template into the same
-   requisition, in the language the request was written in.
+5. `macss specification new --apply --autoapprove` — scaffolds the contract
+   template into the same requisition, in the language the request was written
+   in.
 6. Fill `specification.md`: the committed delivery date, user stories each
    carrying at least one Given-When-Then acceptance criterion, an explicit scope
    that states what is **excluded**, the domain glossary and business rules, and
    the observable signal that will tell you it worked.
 7. `macss specification check` — runs the gate. Fix exactly what it reports, one
    violation at a time, until it exits 0. Do not skip a violation.
-8. `macss specification publish --apply` — updates the issue so its body reads
-   request first, contract second.
+8. `macss specification publish --plan`, then
+   `macss specification publish --apply --autoapprove` once the human approves —
+   updates the issue so its body reads request first, contract second.
 9. `macss dor check` — the Definition of Ready. It composes the two checks and
    adds that the issue is published. When it exits 0, present the issue to the
    human for approval.
