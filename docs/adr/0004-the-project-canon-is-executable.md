@@ -12,6 +12,11 @@ and the decision body is left as written because it records what was decided:
 - `macss issue publish`, cited here for the `--plan` / `--apply` convention, no
   longer exists. The convention outlived it: `requisition publish` and
   `specification publish` follow it.
+- The `--plan` / `--apply` convention this ADR names was never implemented as
+  named — only `--apply` was ever declared, and "previews by default" took the
+  place of `--plan`. ADR 0007 supersedes it and makes both flags mandatory and
+  explicit. Read "previews by default" here as a record of what was built, not
+  of what is.
 
 ## Context
 
