@@ -28,9 +28,19 @@ import '../canon.dart';
 
 class ProjectAdoptInput extends Input {
   final String resolvedPath;
+
+  /// Where the command was invoked — where the plan file goes. Not the same as
+  /// [resolvedPath], which `--path` can point anywhere: a plan written into the
+  /// target would be a change to the target, and `--plan` changes nothing.
+  final String workingDirectory;
+
   final ChangeFlags flags;
 
-  ProjectAdoptInput({required this.resolvedPath, required this.flags});
+  ProjectAdoptInput({
+    required this.resolvedPath,
+    required this.flags,
+    String? workingDirectory,
+  }) : workingDirectory = workingDirectory ?? resolvedPath;
 
   factory ProjectAdoptInput.fromCliRequest(CliRequest req) {
     final raw = req.flagString('path', aliases: const ['p']);
@@ -38,6 +48,7 @@ class ProjectAdoptInput extends Input {
     return ProjectAdoptInput(
       resolvedPath:
           raw == null ? cwd : (p.isAbsolute(raw) ? raw : p.join(cwd, raw)),
+      workingDirectory: cwd,
       flags: ChangeFlags.fromCliRequest(req),
     );
   }
@@ -166,7 +177,7 @@ class ProjectAdoptCommand
       now: now,
     ).decide(
       command: 'project adopt',
-      workingDirectory: root,
+      workingDirectory: input.workingDirectory,
       body: body,
     );
 

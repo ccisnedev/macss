@@ -242,6 +242,12 @@ class ChangeGate {
 /// `.macss/` is the local workspace the CLI already owns and already
 /// git-ignores. A plan records an intention, not history — committing plans
 /// would leave a second, staler description of every change beside the change.
+///
+/// The plan is written where the command was **invoked**, never inside the
+/// directory it targets. Writing it into the target would itself be a change,
+/// which is the one thing `--plan` promises not to make — and for `project
+/// create` the target does not exist yet, so planning would create the very
+/// directory it says it would only create under `--apply`.
 class PlanFile {
   /// Where plans live, relative to the directory the command works on.
   static const directory = '.macss/plans';
