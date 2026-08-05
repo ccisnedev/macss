@@ -22,6 +22,11 @@ A fourth axis is incubating, not being built: **Stage 8 - `modular_agent`**, the
 agent runtime that is `modular_api`'s sibling. It has a laboratory and a name,
 and deliberately no code in this repository yet.
 
+Running underneath all of them is **Stage 6.5 - Accountability Engineering**,
+which is not scheduled and is not optional. The method already says a human
+answers for what an agent produced; it does not yet say how a human keeps up
+with one. Until it does, every stage above ships a discipline it cannot enforce.
+
 Current operational context:
 
 - `modular_api` has already achieved GraphQL integration.
@@ -282,6 +287,9 @@ Each human gate is the provisional stand-in for a gate not yet expressible. As
 the rules harden, the human stops re-reading what a machine can assert and
 their attention moves to what no rule can judge. The gates lighten with
 evidence, not by decree.
+
+None of them lighten into nothing. What a human approval is *for* — and why it
+must not decay into typing `ok` — is Stage 6.5.
 
 **There is no `macss pr` module either, for the same reason.** ADR 0008 mirrors
 the issue side onto the pull-request side: `delivery publish` creates the PR,
@@ -592,6 +600,99 @@ language.
 - Which edition leads for a given chapter. The lifecycle chapters have to be
   generalized out of the handbook, which is written in Spanish, so `es` will
   usually be written first — but nothing in the design says it must be.
+
+## Stage 6.5 - Accountability Engineering
+
+The premise of this method is that a human answers for what an agent produced
+(ADR 0005 §4), and that the answering is constituted by having written the
+document that decides (ADR 0008 §1). Both are true and neither is yet a
+practice. What follows is the work that turns them into one.
+
+None of it is scheduled. It is written down because it was identified precisely,
+and because the alternative — leaving it as an intention — is the failure mode
+the method exists to prevent.
+
+### The problem, stated as it was observed
+
+**An agent produces faster than a human can absorb, so approval degrades into
+assent.** The agent investigates, processes, decides a dozen things on the way,
+and presents a paragraph of conclusions. The human reads the paragraph and types
+`ok`. The approval is real; the understanding is not. Everything the agent did
+and everything it stated on the way is discarded, and what survives is a final
+statement nobody examined.
+
+This is not a failure of diligence and cannot be fixed by asking for more of it.
+It is a rate mismatch, and ADR 0006 already names why exhortation will not close
+it: *"Prefer absence over refusal, and refusal over instruction. Never
+instruction alone."* "Read it carefully" is an instruction.
+
+It was observed here. The session that produced 0.6.0, ADR 0007, ADR 0008 and
+ADR 0009 generated more artifacts in a day than could be read in one, and the
+human's role compressed toward approving what was proposed. The doctrine written
+during that session is sound. The way it was written is the thing this stage has
+to fix.
+
+**Autopilot is admissible only for the mechanical.** Where the work is
+genuinely mechanical, automation is not merely acceptable but desirable —
+scaffolding a directory, running a gate, rendering a template. Everywhere else
+the agent is the vehicle and the human is the pilot, actively, throughout. A
+pilot who wakes up at the destination did not fly.
+
+### `specification.md` has to be written as a conversation
+
+The specification is one of the two documents that carry the signature, so it is
+the first place this bites. It is a **Deweyan inquiry** — a problem is felt
+before it is stated, and stating it is most of the work — and it has to be
+conducted as **Socratic conversation**: the agent asking, the human answering,
+the understanding built rather than delivered.
+
+What that rules out is the current shape: an agent that reads the requisition,
+resolves the ambiguities on its own reasonable judgement, and hands back a
+finished contract. Every judgement it resolved silently is a decision the human
+is about to sign without having made.
+
+The `macss-specification` skill describes the artifact and the gate. It does not
+describe how the conversation should go, which is why the conversation defaults
+to the agent's pace. That is the gap.
+
+### Verification cannot be run at full speed either
+
+The same problem at the other end of the pair, and worse, because verification is
+where a claim becomes a signature. An agent that verifies at its own pace
+produces a table of green checks that a human confirms without re-checking any of
+them — which is the rubber stamp ADR 0006 describes, wearing the costume of
+evidence.
+
+What is needed is a method that keeps the work joint: the agent gathering and
+presenting evidence, the human judging it, criterion by criterion, at a pace at
+which judging is possible.
+
+### `dor sign` and `dod sign`: the gates become a state machine
+
+ADR 0005 recorded that today's gates *"record what was checked; none records who
+checked it."* The instrument is a signature, and modelling the lifecycle as a
+finite state machine is what gives it teeth.
+
+- A gate that passes does not advance the state. It makes signing **possible**.
+  The gate checks the artifact; the signature attaches the person. Signing
+  instead of checking would be the rubber stamp; signing only after checking is
+  the pair working as intended.
+- **The signature covers a content hash**, not a moment. If the signed body
+  changes, the signature is void and the machine falls back to the previous
+  state on its own. That is what turns "the body freezes at DoR" from a
+  convention anyone can quietly break into a mechanism that breaks first.
+- `inquiry` is already a state machine and already reasons about which states
+  belong to which stage. It is the obvious place to learn from.
+
+### Why this is the whole point
+
+The purpose is synergy rather than replacement. An agent that does the work and
+hands over conclusions replaces the engineer and leaves the accountability
+stranded on someone who no longer understands what they are accountable for. An
+agent that is a vehicle multiplies an engineer who still flies.
+
+That is the difference this stage has to build, and the reason none of the
+preceding stages is finished without it.
 
 ## Stage 7 - Environments: dev, uat, prod, demo
 
