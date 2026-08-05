@@ -542,9 +542,22 @@ The apparent contradiction — a Spanish book in a repository whose rule is
 English for everything new — dissolves once the two are separated.
 
 **The design is language-agnostic and written in English.** Directory names,
-slugs, code, comments, commit messages, the check that walks the tree: none of
-them may assume a language exists, and all of them are written in one. That is
-why `SUMMARY.md` carries slugs and not titles: a title is content.
+slugs, code, comments, commit messages, **pull request titles and bodies**, the
+check that walks the tree: none of them may assume a language exists, and all of
+them are written in one. That is why `SUMMARY.md` carries slugs and not titles:
+a title is content.
+
+Pull requests were not on that list until one was written in Spanish and had to
+be rewritten. They belong on it, and ADR 0008 makes the omission worse than
+cosmetic: the body of a pull request is now an artifact the method produces
+(`delivery.md` + `verification.md`), not free prose someone types.
+
+**The language boundary falls between the issue and the pull request.** The
+issue carries the business conversation and follows the requester's language, so
+`requisition.md` and `specification.md` take `--lang`. The pull request carries
+the engineering record, so `delivery.md` and `verification.md` are always
+English and take no `--lang` at all. A document that is both a MACSS artifact
+and a code-level one is governed by the stricter of the two rules.
 
 **The content ships in English and Spanish**, with more possible later. Neither
 is the source and neither is the translation — they are editions. Adding a third

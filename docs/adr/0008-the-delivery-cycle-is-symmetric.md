@@ -83,14 +83,26 @@ write them, iterating, with the agent. The distinction is the whole of ADR
 0006: approving a document you did not shape is the rubber stamp, arriving by a
 different door.
 
-### 3. There is no `macss pr` module
+### 3. The pair also draws the language boundary
+
+`requisition.md` and `specification.md` follow the requester's language, because
+the issue carries a business conversation and the Product Owner does not owe
+anyone English. `delivery.md` and `verification.md` are always **English** and
+take no `--lang`, because the pull request is the engineering record, which the
+roadmap's language rule already governs.
+
+The boundary is the same line the pairs draw, which is why it is stated here
+rather than left to each module. A document that is both a MACSS artifact and a
+code-level one takes the stricter rule.
+
+### 4. There is no `macss pr` module
 
 For the reason there is no `macss issue` module. The roadmap states it for the
 issue: *"the issue is a consequence of publishing the requisition, not a
 separate artifact someone composes."* The same holds here — the pull request is
 a consequence of publishing the delivery.
 
-### 4. The modules mirror the ones that exist
+### 5. The modules mirror the ones that exist
 
 ```text
 macss delivery      new / check / --plan / --apply    → creates the pull request
@@ -101,7 +113,7 @@ macss dod check                                       → composes both, and rev
 Same verbs, same convention (ADR 0007), same shape: `new` opens the artifact,
 `check` runs the stage gate, `publish` materializes it on GitHub.
 
-### 5. `dod check` starts at its floor, and the floor is not arbitrary
+### 6. `dod check` starts at its floor, and the floor is not arbitrary
 
 The minimum meaningful gate is **every acceptance criterion declared in
 `specification.md` is named in `verification.md`, and each carries a pointer to
@@ -125,7 +137,7 @@ quality". What catches a false claim is the person who wrote the document, and
 that is not a weakness of the gate: it is where the signature was placed on
 purpose.
 
-### 6. Who executes each stage
+### 7. Who executes each stage
 
 | Stage | Executed by |
 |---|---|
@@ -142,7 +154,7 @@ The verifying agent must not be the implementing one. An agent that checks its
 own work confirms its own assumptions; the point of the separation is a reader
 that never saw the reasoning, only the frozen contract and the diff.
 
-### 7. The merge asks about conformance, not quality
+### 8. The merge asks about conformance, not quality
 
 By ADR 0006, the accountable act is the grant — here, signing the
 specification. The merge then asks whether the delivery stayed inside what was
@@ -176,6 +188,17 @@ review *"fires on the PR"* on the platform. That dependency is the hard part of
 the stage and is deliberately out of the floor described in §5 — the first
 `dod check` composes the delivery gate, the verification gate, and a published
 pull request. Review joins it when the platform integration exists.
+
+**`dod check` has to be a gate, not a habit, and there is already evidence.**
+The first pull request delivered under this ADR — `modular_cli_sdk#14` — was
+verified and merged **without a `verification.md`**. Not by disagreement: the
+author intended to write one and forgot. That is the ordinary outcome, and ADR
+0006 already names the rule it breaks — *"prefer absence over refusal, refusal
+over instruction, and never instruction alone."* "Remember to write the
+verification" is an instruction. What makes it hold is a gate that does not pass
+without it, and until `macss dod check` exists this ADR describes a discipline
+the method expects and cannot enforce — the same honest gap ADR 0005 recorded
+about accountability, one level down.
 
 **ADR 0005's table gains a row and loses one.** "Human verifies" becomes
 "agent verifies, human writes the verification and signs it". The
