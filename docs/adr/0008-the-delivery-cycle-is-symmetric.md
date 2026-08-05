@@ -52,8 +52,8 @@ the whole method.
 
 What a person cannot delegate is not the judgement. It is answering for the
 result. Those are different things, and ADR 0005 §4 already said so — *"The
-agent wrote it is not available as an explanation"* — while §3 assigned the
-wrong activity to protect it.
+agent wrote it is not available as an explanation"* — while ADR 0005 §3 assigned
+the wrong activity to protect it.
 
 ## Decision
 
