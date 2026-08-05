@@ -242,8 +242,9 @@ serves each stage:
 | implementation | skills | `macss-analyze` / `macss-plan` / `macss-execute` — **shipped** (0.5.0) |
 | ci | none — the platform's | GitHub Actions. MACSS states the expectation; it does not own the runner |
 | review | none — the platform's | a gate, methodological. Fires on the PR, so the instrument is platform review with custom instructions, not a MACSS command |
-| verification | `macss verification` | planned |
-| definition of done | `macss dod` | planned — composes review, verification and the human approvals |
+| delivery | `macss delivery` | planned (ADR 0008) — what was built, published as the PR |
+| verification | `macss verification` | planned (ADR 0008) — the evidence, appended to that same PR |
+| definition of done | `macss dod` | planned — composes both gates plus "the PR exists"; review joins when the platform integration exists |
 | deploy | `macss deploy` | planned — delegates to `macss-devops` (Stage 3.5) |
 
 There is no `macss issue` module. One requirement is one issue, and the issue is
@@ -251,6 +252,13 @@ a **consequence** of publishing the requisition, not a separate artifact someone
 composes: `requisition publish` creates it, `specification publish` appends the
 contract to it, and at DoR the body freezes. A module for it would imply the
 issue could be authored independently of the request it carries.
+
+**There is no `macss pr` module either, for the same reason.** ADR 0008 mirrors
+the issue side onto the pull-request side: `delivery publish` creates the PR,
+`verification publish` appends the evidence, and at DoD the body freezes. The
+two sides read as one shape — `requisition ↔ delivery`,
+`specification ↔ verification`, `dor ↔ dod` — and the human writes and signs
+the second document of each pair, which is where accountability lives.
 
 Shared verbs where they make sense: `new` (open the artifact), `check` (run the
 stage gate), `publish` (materialize it on GitHub, `--plan` then `--apply`).
@@ -266,7 +274,7 @@ phases, and they are complete:
 |---|---|---|
 | analyze | `macss-analyze` | the diagnosis, as a comment on the issue |
 | plan | `macss-plan` | staged work, each stage with an executable verification |
-| execute | `macss-execute` | the code, under TDD, and the PR |
+| execute | `macss-execute` | the code, under TDD, and `delivery.md` — the PR follows from publishing it (ADR 0008) |
 
 They form a closed loop: the diagnosis and the plan are published on the issue
 whose body froze at DoR, and the PR references it, so the chain reads request,
