@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+- **An incomplete invocation now says so, instead of claiming the command does
+  not exist.** `macss project` answered `unknown command 'project'` followed by
+  the whole catalogue; the name was real, and what was missing was the action.
+  It now names the completions and only those:
+
+  ```
+  ❯ macss project
+  Error: 'project' is not a complete command.
+
+  Commands:
+    project create  Scaffold a new MACSS project
+    project check   Diagnose a project against the MACSS canon …
+  ```
+
+  The fix is `modular_cli_sdk` 0.3.4 and the constraint moves with it. Nothing
+  in this CLI changed: the SDK asks its catalogue whether what was typed
+  continues into a registered route, which also covers `macss api graphql` —
+  not a module, but the first segment of `api graphql compile`.
+
 ## [0.6.0]
 
 A breaking release on a minor bump: the project is still in the `0.x` series,
