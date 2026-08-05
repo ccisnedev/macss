@@ -83,17 +83,21 @@ write them, iterating, with the agent. The distinction is the whole of ADR
 0006: approving a document you did not shape is the rubber stamp, arriving by a
 different door.
 
-### 3. The pair also draws the language boundary
+### 3. The language belongs to the project, not to the artifact
 
-`requisition.md` and `specification.md` follow the requester's language, because
-the issue carries a business conversation and the Product Owner does not owe
-anyone English. `delivery.md` and `verification.md` are always **English** and
-take no `--lang`, because the pull request is the engineering record, which the
-roadmap's language rule already governs.
+All four documents are written in **one** language, and which one is a property
+of the project rather than of any document's position in the cycle. A project
+whose Product Owner writes Spanish has a Spanish requisition, and a Spanish
+verification with it; a project written in English has all four in English.
 
-The boundary is the same line the pairs draw, which is why it is stated here
-rather than left to each module. A document that is both a MACSS artifact and a
-code-level one takes the stricter rule.
+Drawing the boundary between the issue and the pull request was considered and
+is wrong. It would leave one requirement described in two languages, split at
+the point where a reader most needs to follow the thread — from the criterion
+that was agreed to the evidence that it holds.
+
+This is a rule about the **artifacts**. It does not touch the one the roadmap
+already states for the design: directory names, slugs, code, comments and commit
+messages are English in every project, whatever language its documents are in.
 
 ### 4. There is no `macss pr` module
 
@@ -188,6 +192,14 @@ review *"fires on the PR"* on the platform. That dependency is the hard part of
 the stage and is deliberately out of the floor described in §5 — the first
 `dod check` composes the delivery gate, the verification gate, and a published
 pull request. Review joins it when the platform integration exists.
+
+**The language rule needs an instrument too.** §3 says a project's artifacts are
+all in one language, and nothing enforces it: `--lang` is passed per requisition,
+so a project can drift one issue at a time and no gate can see it. The first
+requisition opened in `modular_cli_sdk` — an English repository — was opened with
+`--lang es` against the command's own default. A project that declared its
+language once, the way `specification new` already inherits from `issue.yaml`,
+would make that impossible rather than merely wrong.
 
 **`dod check` has to be a gate, not a habit, and there is already evidence.**
 The first pull request delivered under this ADR — `modular_cli_sdk#14` — was
