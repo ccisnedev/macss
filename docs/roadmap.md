@@ -22,6 +22,11 @@ A fourth axis is incubating, not being built: **Stage 8 - `modular_agent`**, the
 agent runtime that is `modular_api`'s sibling. It has a laboratory and a name,
 and deliberately no code in this repository yet.
 
+Running underneath all of them is **Stage 6.5 - Accountability Engineering**,
+which is not scheduled and is not optional. The method already says a human
+answers for what an agent produced; it does not yet say how a human keeps up
+with one. Until it does, every stage above ships a discipline it cannot enforce.
+
 Current operational context:
 
 - `modular_api` has already achieved GraphQL integration.
@@ -618,8 +623,8 @@ statement nobody examined.
 
 This is not a failure of diligence and cannot be fixed by asking for more of it.
 It is a rate mismatch, and ADR 0006 already names why exhortation will not close
-it: *prefer absence over refusal, refusal over instruction, and never instruction
-alone.* "Read it carefully" is an instruction.
+it: *"Prefer absence over refusal, and refusal over instruction. Never
+instruction alone."* "Read it carefully" is an instruction.
 
 It was observed here. The session that produced 0.6.0, ADR 0007, ADR 0008 and
 ADR 0009 generated more artifacts in a day than could be read in one, and the
