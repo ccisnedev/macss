@@ -106,6 +106,12 @@ project that can answer "what language is this?" differently on Tuesday does not
 have an answer. This file is **versioned**, so the answer is the same for
 everyone who clones the repository rather than a property of one machine.
 
+**The default is English**, both for a project that has not said and for
+`export-requisition` run without a flag. It is the language the design is written
+in, so a project that never chose is consistent with the rest of the method
+rather than with whoever happened to run the first command. Spanish is a
+deliberate act; English is what you get by not acting.
+
 There is exactly one exception, and it is not a weakening. `export-requisition`
 writes a blank form at a path that **need not be a MACSS project at all** — there
 is no config to read, because there is no project. It takes `--lang`, and it is
