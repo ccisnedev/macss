@@ -239,11 +239,12 @@ serves each stage:
 | requisition | `macss requisition` | **shipped** (0.4.0) — the PO's form, published as the issue |
 | specification | `macss specification` | **shipped** (0.4.0) — the contract, appended to that same issue |
 | definition of ready | `macss dor` | **shipped** (0.4.0) — composes both gates plus "the issue exists" |
-| implementation | skills | `macss-analyze` / `macss-plan` / `macss-execute` — **shipped** (0.5.0) |
+| implementation | skills + `macss diagnosis`, `macss plan` | `macss-analyze` / `macss-plan` / `macss-execute` — **shipped** (0.5.0). The two documents the phases produce become artifacts with modules of their own; `execute` produces code, so it gets none |
 | ci | none — the platform's | GitHub Actions. MACSS states the expectation; it does not own the runner |
 | review | none — the platform's | a gate, methodological. Fires on the PR, so the instrument is platform review with custom instructions, not a MACSS command |
-| verification | `macss verification` | planned |
-| definition of done | `macss dod` | planned — composes review, verification and the human approvals |
+| delivery | `macss delivery` | planned (ADR 0008) — what was built, published as the PR |
+| verification | `macss verification` | planned (ADR 0008) — the evidence, appended to that same PR |
+| definition of done | `macss dod` | planned — composes both gates plus "the PR exists"; review joins when the platform integration exists |
 | deploy | `macss deploy` | planned — delegates to `macss-devops` (Stage 3.5) |
 
 There is no `macss issue` module. One requirement is one issue, and the issue is
@@ -252,9 +253,59 @@ composes: `requisition publish` creates it, `specification publish` appends the
 contract to it, and at DoR the body freezes. A module for it would imply the
 issue could be authored independently of the request it carries.
 
+### `diagnosis check` and `plan check` are deliberately unwritten
+
+`macss diagnosis` and `macss plan` ship with `new` and `publish` and **without a
+`check`**. That is not an oversight to be filled in later by guessing: it is a
+gap held open on purpose.
+
+A human approves `diagnosis.md` and `plan.md` today. What that human looks at,
+over many approvals, is what those gates will one day assert. Writing the rules
+now would mean inventing them from a design rather than learning them from
+practice — and a gate that asserts the wrong thing is worse than one that does
+not exist, because it manufactures confidence.
+
+The precedent is `requisition check`. It did not begin as a rule; it began as a
+person reading a form and noticing that the same sections were the ones left
+blank. The rule is what that noticing hardened into.
+
+Two candidates are already visible and neither is committed to:
+
+- **`diagnosis check`** — every acceptance criterion has a declared method of
+  evidence. That is what the analyze phase now exists to decide, so it is the
+  first thing a gate could assert.
+- **`plan check`** — every acceptance criterion is covered by at least one
+  phase, and every phase carries an executable verification. The `macss-plan`
+  skill already requires both in its *Done when*; nothing checks them.
+
+Each human gate is the provisional stand-in for a gate not yet expressible. As
+the rules harden, the human stops re-reading what a machine can assert and
+their attention moves to what no rule can judge. The gates lighten with
+evidence, not by decree.
+
+**There is no `macss pr` module either, for the same reason.** ADR 0008 mirrors
+the issue side onto the pull-request side: `delivery publish` creates the PR,
+`verification publish` appends the evidence, and at DoD the body freezes. The
+two sides read as one shape — `requisition ↔ delivery`,
+`specification ↔ verification`, `dor ↔ dod` — and the human writes and signs
+the second document of each pair, which is where accountability lives.
+
 Shared verbs where they make sense: `new` (open the artifact), `check` (run the
 stage gate), `publish` (materialize it on GitHub, `--plan` then `--apply`).
 Every argument is explicit and named — `--issue 40`, never a positional.
+
+**Every lifecycle module is a noun naming a document**, and every one is flat:
+`requisition`, `specification`, `diagnosis`, `plan`, `delivery`, `verification`.
+Grouping the implementation ones under an `implementation` module was
+considered and rejected — rule 3 reserves modules and surfaces for nouns, and
+`analyze` and `execute` are verbs. It is the same reason `init` could not name
+the module that became `project`. The artifacts already carry the nouns, which
+is why they are `diagnosis.md` and `plan.md` rather than `analyze.md`.
+
+The nesting has a second cost, measured rather than assumed: `macss api graphql
+--help` fails today with `unknown command`. The surface position has no working
+help at all, so a module-level fix does not reach it. Two new commands parked
+there would be the only ones in the CLI that cannot be asked what they do.
 
 ### Implementation is three phases. Review is a gate outside it
 
@@ -266,7 +317,7 @@ phases, and they are complete:
 |---|---|---|
 | analyze | `macss-analyze` | the diagnosis, as a comment on the issue |
 | plan | `macss-plan` | staged work, each stage with an executable verification |
-| execute | `macss-execute` | the code, under TDD, and the PR |
+| execute | `macss-execute` | the code, under TDD, and `delivery.md` — the PR follows from publishing it (ADR 0008) |
 
 They form a closed loop: the diagnosis and the plan are published on the issue
 whose body froze at DoR, and the PR references it, so the chain reads request,
@@ -494,6 +545,34 @@ English for everything new — dissolves once the two are separated.
 slugs, code, comments, commit messages, the check that walks the tree: none of
 them may assume a language exists, and all of them are written in one. That is
 why `SUMMARY.md` carries slugs and not titles: a title is content.
+
+**A project's artifacts are all in one language, and it is the project's.**
+`requisition.md`, `specification.md`, `delivery.md` and `verification.md` are
+written in whatever language the project speaks — Spanish where the Product
+Owner writes Spanish, English where the project is English. `--lang` exists so
+that a *project* can be in Spanish, not so that documents within one can differ
+from each other.
+
+This was learned by breaking it. `modular_cli_sdk` is an English project and its
+first requisition was opened with `--lang es`, against the command's own default,
+producing a Spanish request and contract for a repository whose every other word
+is English. The mechanism was right and the invocation was wrong.
+
+**The project says it once, in `.macss/config.yaml`.** Every command that opens a
+document reads the language from there, and none of them takes `--lang`: a
+setting passed per invocation is one that can differ per invocation, and a
+project that answers "what language is this?" differently on Tuesday has no
+answer. The file is versioned, so the answer travels with the repository instead
+of living on one machine — which makes `config.yaml` the first thing in `.macss/`
+that must be committed, and the exception any wholesale ignore has to carry.
+
+**One command keeps `--lang`, and it is the only export worth having.**
+`export-requisition` writes a blank form at a path that need not be a MACSS
+project, so there is no config for it to read. It is also the only export that
+earns its place: of the four documents, the requisition is the one handed to
+somebody outside the team — it is this method's issue template. A blank
+specification, delivery or verification would be a form for work nobody outside
+is doing, which is why `specification export-template` goes.
 
 **The content ships in English and Spanish**, with more possible later. Neither
 is the source and neither is the translation — they are editions. Adding a third

@@ -4,7 +4,13 @@ Date: 2026-08-03
 
 ## Status
 
-Accepted
+Accepted, with one part superseded. **Section 3's third row — "Human
+verifies" — is replaced by ADR 0008.** Verification is performed by an agent
+that did not implement; what the human does is write the `verification.md` that
+decides, with an agent, and sign it. The correction is to *which activity*
+carries the accountability §4 describes, not to §4 itself.
+
+ADR 0008 also delivers the instrument this ADR's consequences deferred.
 
 ## Context
 
