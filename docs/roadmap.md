@@ -558,11 +558,21 @@ first requisition was opened with `--lang es`, against the command's own default
 producing a Spanish request and contract for a repository whose every other word
 is English. The mechanism was right and the invocation was wrong.
 
-**Today nothing enforces it.** `--lang` is passed per requisition, so one project
-can drift across languages one issue at a time, and `requisition check` cannot
-see it. A project that declared its language once — the way `specification new`
-already inherits from `issue.yaml` rather than asking again — would make the
-drift impossible instead of merely discouraged.
+**The project says it once, in `.macss/config.yaml`.** Every command that opens a
+document reads the language from there, and none of them takes `--lang`: a
+setting passed per invocation is one that can differ per invocation, and a
+project that answers "what language is this?" differently on Tuesday has no
+answer. The file is versioned, so the answer travels with the repository instead
+of living on one machine — which makes `config.yaml` the first thing in `.macss/`
+that must be committed, and the exception any wholesale ignore has to carry.
+
+**One command keeps `--lang`, and it is the only export worth having.**
+`export-requisition` writes a blank form at a path that need not be a MACSS
+project, so there is no config for it to read. It is also the only export that
+earns its place: of the four documents, the requisition is the one handed to
+somebody outside the team — it is this method's issue template. A blank
+specification, delivery or verification would be a form for work nobody outside
+is doing, which is why `specification export-template` goes.
 
 **The content ships in English and Spanish**, with more possible later. Neither
 is the source and neither is the translation — they are editions. Adding a third

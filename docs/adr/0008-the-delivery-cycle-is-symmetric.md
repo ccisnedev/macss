@@ -99,6 +99,24 @@ This is a rule about the **artifacts**. It does not touch the one the roadmap
 already states for the design: directory names, slugs, code, comments and commit
 messages are English in every project, whatever language its documents are in.
 
+**The project says it once, in `.macss/config.yaml`.** Every command that opens
+a document reads the language from there and none of them takes `--lang`. A
+setting passed per invocation is a setting that can differ per invocation, and a
+project that can answer "what language is this?" differently on Tuesday does not
+have an answer. This file is **versioned**, so the answer is the same for
+everyone who clones the repository rather than a property of one machine.
+
+There is exactly one exception, and it is not a weakening. `export-requisition`
+writes a blank form at a path that **need not be a MACSS project at all** — there
+is no config to read, because there is no project. It takes `--lang`, and it is
+the only command that does.
+
+That is also the only export worth having. Of the four documents, the requisition
+is the one handed to somebody outside the team: the Product Owner fills it, or it
+is transcribed from what he sent. The other three never leave. `requisition.md`
+is, in effect, this method's issue template — and a template for a contract, a
+delivery or a verification would be a form for work nobody outside is doing.
+
 ### 4. There is no `macss pr` module
 
 For the reason there is no `macss issue` module. The roadmap states it for the
@@ -193,13 +211,23 @@ the stage and is deliberately out of the floor described in §5 — the first
 `dod check` composes the delivery gate, the verification gate, and a published
 pull request. Review joins it when the platform integration exists.
 
-**The language rule needs an instrument too.** §3 says a project's artifacts are
-all in one language, and nothing enforces it: `--lang` is passed per requisition,
-so a project can drift one issue at a time and no gate can see it. The first
-requisition opened in `modular_cli_sdk` — an English repository — was opened with
-`--lang es` against the command's own default. A project that declared its
-language once, the way `specification new` already inherits from `issue.yaml`,
-would make that impossible rather than merely wrong.
+**`.macss/` stops being entirely machine-local.** It has held only the active
+pointer and, since ADR 0007, the plan files — all of it reproducible, none of it
+worth committing. `config.yaml` is the first thing in there that must travel with
+the repository, because a project's language is not a property of one developer's
+checkout. Anything that git-ignores the workspace wholesale has to except it.
+
+**`--lang` disappears from every command except one.** It is removed from
+`requisition new` and `specification new`, which read the config instead, and
+survives only on `export-requisition`, which by definition runs where no config
+exists. `specification export-template` is removed outright: the requisition is
+the only document that leaves the team, so it is the only one worth exporting.
+Both are breaking changes to a shipped CLI.
+
+**The rule that produced this was found by breaking it.** The first requisition
+opened in `modular_cli_sdk` — an English repository — was opened with `--lang es`,
+against the command's own default, and nothing objected. That is what a setting
+with no single source of truth costs.
 
 **`dod check` has to be a gate, not a habit, and there is already evidence.**
 The first pull request delivered under this ADR — `modular_cli_sdk#14` — was
