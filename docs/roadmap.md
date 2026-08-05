@@ -239,7 +239,7 @@ serves each stage:
 | requisition | `macss requisition` | **shipped** (0.4.0) — the PO's form, published as the issue |
 | specification | `macss specification` | **shipped** (0.4.0) — the contract, appended to that same issue |
 | definition of ready | `macss dor` | **shipped** (0.4.0) — composes both gates plus "the issue exists" |
-| implementation | skills | `macss-analyze` / `macss-plan` / `macss-execute` — **shipped** (0.5.0) |
+| implementation | skills + `macss diagnosis`, `macss plan` | `macss-analyze` / `macss-plan` / `macss-execute` — **shipped** (0.5.0). The two documents the phases produce become artifacts with modules of their own; `execute` produces code, so it gets none |
 | ci | none — the platform's | GitHub Actions. MACSS states the expectation; it does not own the runner |
 | review | none — the platform's | a gate, methodological. Fires on the PR, so the instrument is platform review with custom instructions, not a MACSS command |
 | delivery | `macss delivery` | planned (ADR 0008) — what was built, published as the PR |
@@ -253,6 +253,36 @@ composes: `requisition publish` creates it, `specification publish` appends the
 contract to it, and at DoR the body freezes. A module for it would imply the
 issue could be authored independently of the request it carries.
 
+### `diagnosis check` and `plan check` are deliberately unwritten
+
+`macss diagnosis` and `macss plan` ship with `new` and `publish` and **without a
+`check`**. That is not an oversight to be filled in later by guessing: it is a
+gap held open on purpose.
+
+A human approves `diagnosis.md` and `plan.md` today. What that human looks at,
+over many approvals, is what those gates will one day assert. Writing the rules
+now would mean inventing them from a design rather than learning them from
+practice — and a gate that asserts the wrong thing is worse than one that does
+not exist, because it manufactures confidence.
+
+The precedent is `requisition check`. It did not begin as a rule; it began as a
+person reading a form and noticing that the same sections were the ones left
+blank. The rule is what that noticing hardened into.
+
+Two candidates are already visible and neither is committed to:
+
+- **`diagnosis check`** — every acceptance criterion has a declared method of
+  evidence. That is what the analyze phase now exists to decide, so it is the
+  first thing a gate could assert.
+- **`plan check`** — every acceptance criterion is covered by at least one
+  phase, and every phase carries an executable verification. The `macss-plan`
+  skill already requires both in its *Done when*; nothing checks them.
+
+Each human gate is the provisional stand-in for a gate not yet expressible. As
+the rules harden, the human stops re-reading what a machine can assert and
+their attention moves to what no rule can judge. The gates lighten with
+evidence, not by decree.
+
 **There is no `macss pr` module either, for the same reason.** ADR 0008 mirrors
 the issue side onto the pull-request side: `delivery publish` creates the PR,
 `verification publish` appends the evidence, and at DoD the body freezes. The
@@ -263,6 +293,19 @@ the second document of each pair, which is where accountability lives.
 Shared verbs where they make sense: `new` (open the artifact), `check` (run the
 stage gate), `publish` (materialize it on GitHub, `--plan` then `--apply`).
 Every argument is explicit and named — `--issue 40`, never a positional.
+
+**Every lifecycle module is a noun naming a document**, and every one is flat:
+`requisition`, `specification`, `diagnosis`, `plan`, `delivery`, `verification`.
+Grouping the implementation ones under an `implementation` module was
+considered and rejected — rule 3 reserves modules and surfaces for nouns, and
+`analyze` and `execute` are verbs. It is the same reason `init` could not name
+the module that became `project`. The artifacts already carry the nouns, which
+is why they are `diagnosis.md` and `plan.md` rather than `analyze.md`.
+
+The nesting has a second cost, measured rather than assumed: `macss api graphql
+--help` fails today with `unknown command`. The surface position has no working
+help at all, so a module-level fix does not reach it. Two new commands parked
+there would be the only ones in the CLI that cannot be asked what they do.
 
 ### Implementation is three phases. Review is a gate outside it
 
