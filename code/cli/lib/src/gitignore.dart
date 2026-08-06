@@ -73,8 +73,12 @@ List<String> retiredGitignoreEntriesIn(
   final gitignore = File('$root/.gitignore');
   if (!gitignore.existsSync()) return const [];
 
-  final lines = gitignore.readAsLinesSync().map((l) => l.trim());
-  return entries.where(lines.contains).toList();
+  final lines = gitignore.readAsLinesSync();
+  final present = {
+    for (final block in _managedBlocks(lines))
+      for (final i in block.entries) lines[i].trim(),
+  };
+  return entries.where(present.contains).toList();
 }
 
 /// Removes [entries] from `<root>/.gitignore`, and nothing else.
@@ -95,38 +99,75 @@ String? removeGitignoreEntries(
   if (!gitignore.existsSync()) return null;
 
   final lines = gitignore.readAsLinesSync();
-  final kept = <String>[];
-  var removed = 0;
+  final blocks = _managedBlocks(lines);
 
-  for (var i = 0; i < lines.length; i++) {
-    if (entries.contains(lines[i].trim())) {
-      removed++;
-      continue;
-    }
-    // A header whose every entry has just been retired describes nothing.
-    if (lines[i].trim() == _header && _headerIsNowEmpty(lines, i, entries)) {
-      continue;
-    }
-    kept.add(lines[i]);
+  final doomed = <int>{};
+  for (final block in blocks) {
+    final retiring =
+        block.entries.where((i) => entries.contains(lines[i].trim()));
+    doomed.addAll(retiring);
+    // A header left describing nothing goes with its entries.
+    if (retiring.length == block.entries.length) doomed.add(block.header);
   }
 
-  if (removed == 0) return null;
+  if (doomed.isEmpty) return null;
 
+  final kept = [
+    for (var i = 0; i < lines.length; i++)
+      if (!doomed.contains(i)) lines[i],
+  ];
   while (kept.isNotEmpty && kept.last.trim().isEmpty) {
     kept.removeLast();
   }
   gitignore.writeAsStringSync('${kept.join('\n')}\n');
-  return 'Retired ${removed == 1 ? 'an entry' : '$removed entries'} '
+
+  final count = doomed.where((i) => lines[i].trim() != _header).length;
+  return 'Retired ${count == 1 ? 'an entry' : '$count entries'} '
       'from .gitignore';
 }
 
-/// Whether every line under the header at [index], up to the next blank line or
-/// comment, is being retired.
-bool _headerIsNowEmpty(List<String> lines, int index, List<String> entries) {
-  for (var i = index + 1; i < lines.length; i++) {
-    final line = lines[i].trim();
-    if (line.isEmpty || line.startsWith('#')) return true;
-    if (!entries.contains(line)) return false;
+/// One MACSS-managed block: the header line, and the entry lines under it.
+class _ManagedBlock {
+  final int header;
+  final List<int> entries;
+  const _ManagedBlock(this.header, this.entries);
+}
+
+/// Every MACSS-managed block in [lines].
+///
+/// A block runs from the MACSS header to the first blank line or the next
+/// comment. **That boundary is the entire licence for touching this file.** The
+/// same text written by the project, in the project's own section, is a decision
+/// a human made — and ADR 0004's "adopt never deletes" exists to protect exactly
+/// that. An earlier version of this matched the line anywhere in the file, which
+/// deleted the project's copy along with ours.
+List<_ManagedBlock> _managedBlocks(List<String> lines) {
+  final blocks = <_ManagedBlock>[];
+  var header = -1;
+  var entries = <int>[];
+
+  void close() {
+    if (header >= 0) blocks.add(_ManagedBlock(header, entries));
+    header = -1;
+    entries = <int>[];
   }
-  return true;
+
+  for (var i = 0; i < lines.length; i++) {
+    final line = lines[i].trim();
+
+    if (line == _header) {
+      close();
+      header = i;
+      continue;
+    }
+    if (header < 0) continue;
+    if (line.isEmpty || line.startsWith('#')) {
+      close();
+      continue;
+    }
+    entries.add(i);
+  }
+  close();
+
+  return blocks;
 }

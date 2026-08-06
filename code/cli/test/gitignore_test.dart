@@ -73,6 +73,39 @@ void main() {
       expect(gitignore().readAsStringSync(), startsWith(foreign));
     });
 
+    // The licence is "MACSS retires what MACSS wrote", and what MACSS wrote is
+    // what sits under its header. The same line written by the project, in the
+    // project's own section, is a human decision — the exact thing ADR 0004
+    // protects when it says adopt never deletes.
+    test('the same entry outside the MACSS header is the project own', () {
+      write('# my own rules\n'
+          '.macss/\n'
+          '\n'
+          '# MACSS — local workspace (git-ignored)\n'
+          'docs/requisitions/\n');
+
+      final status = removeGitignoreEntries(root.path);
+
+      expect(status, isNull, reason: 'there was nothing of ours to retire');
+      expect(gitignore().readAsStringSync(), contains('.macss/'));
+    });
+
+    test('retires under the header and leaves the copy outside it', () {
+      write('# my own rules\n'
+          '.macss/\n'
+          '\n'
+          '# MACSS — local workspace (git-ignored)\n'
+          '.macss/\n'
+          'docs/requisitions/\n');
+
+      removeGitignoreEntries(root.path);
+
+      final after = gitignore().readAsStringSync();
+      expect(RegExp(r'^\.macss/$', multiLine: true).allMatches(after).length, 1,
+          reason: 'ours goes, theirs stays');
+      expect(after, contains('# my own rules'));
+    });
+
     test('a rule that merely mentions the text is not an entry', () {
       write('# MACSS — local workspace (git-ignored)\n'
           'docs/requisitions/\n'
