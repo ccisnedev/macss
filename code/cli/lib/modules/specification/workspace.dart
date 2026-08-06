@@ -14,6 +14,8 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
+import '../../src/workspace_dir.dart';
+
 /// The two path segments under the project root where requisitions live.
 const _base = ['docs', 'requisitions'];
 
@@ -120,8 +122,9 @@ void writeActiveRequisition(
   required String lang,
   required String isoDate,
 }) {
-  final dir = Directory(p.join(root, '.macss'));
-  if (!dir.existsSync()) dir.createSync(recursive: true);
+  // Through `ensureWorkspace`: the pointer and the plan files are two paths
+  // into the same directory, and both must find it already ignoring itself.
+  ensureWorkspace(root);
   File(p.join(root, '.macss', 'state.yaml')).writeAsStringSync(
     '# MACSS — active requisition pointer (local; git-ignored)\n'
     'slug: $slug\n'
