@@ -7,6 +7,46 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- **`macss requisition list`** — every requisition in the project, with the
+  active one marked, how far each has got, and the issue carrying it. Until now
+  the only way to see what existed was to list `docs/requisitions/` and read
+  folder names, which said nothing else.
+
+  It reads what is on disk and does not run the stage gates: a row says "has a
+  contract", not "the contract passes". Running three gates per row would be
+  slow and could fail for reasons that have nothing to do with listing. It also
+  shows a pointer aimed at a folder that is gone, rather than omitting it — a
+  listing that hides a broken state is how it becomes trusted and wrong.
+
+- **`macss requisition activate <slug>`** — choose the requisition the following
+  commands act on. This was a hand edit of `.macss/state.yaml`, keeping two keys
+  consistent with each other and with a folder name, checked by nothing. It was
+  the only unguarded operation in a CLI that will not even choose between
+  `--plan` and `--apply` for you, and it now follows that convention like
+  everything else that writes.
+
+  The name comes from the vocabulary already in the code: the pointer records
+  the **active** requisition. `set` would not say what is being set, and git's
+  `checkout` carries a meaning that does not apply.
+
+### Changed — BREAKING
+- **An ambiguous `--slug` is refused instead of resolved.** Two requisitions can
+  answer to one slug: the date prefix makes folder *names* unique, not slugs.
+  The resolver used to sort the matches and return the newest, silently. That is
+  a default that invents a decision, which ADR 0009 forbids.
+
+  It now resolves to nothing and the command reports both candidates. This
+  reaches **every command that takes `--slug`** — `requisition check`,
+  `requisition publish`, `specification new`, `specification check`,
+  `specification publish` and `dor check` — none of which this change is named
+  after. Where they used to proceed on a guess, they now refuse and name the
+  candidates.
+
+  A test asserted the old behaviour explicitly: *"multiple dated matches →
+  newest (lexically last) wins"*. The suite was defending the defect, which is
+  the second time that has happened in this cycle.
+
 ### Changed
 - **An incomplete invocation now says so, instead of claiming the command does
   not exist.** `macss project` answered `unknown command 'project'` followed by

@@ -64,10 +64,18 @@ void main() {
       expect(resolveRequisitionDir(root(), 'gamma'), dir.path);
     });
 
-    test('multiple dated matches → newest (lexically last) wins', () {
+    // This used to assert that the newest match wins. That was the resolver
+    // choosing for the caller: the date prefix makes folder *names* unique, not
+    // slugs, and picking one of two is a decision the caller is entitled to
+    // make — forbidden by ADR 0009, and ruled out by #31's own words, *"refuses
+    // and shows the candidates rather than guessing"*.
+    test('multiple dated matches → nothing, so the caller can report both', () {
       mkReq('docs/requisitions/20260101-dup');
-      final newer = mkReq('docs/requisitions/20261231-dup');
-      expect(resolveRequisitionDir(root(), 'dup'), newer.path);
+      mkReq('docs/requisitions/20261231-dup');
+
+      expect(resolveRequisitionDir(root(), 'dup'), isNull);
+      expect(requisitionsMatching(root(), 'dup'),
+          ['20260101-dup', '20261231-dup']);
     });
 
     test('falls back to legacy repo-root requisitions/<slug>/', () {
