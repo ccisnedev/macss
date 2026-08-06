@@ -71,12 +71,22 @@ void main() {
       expect(file('$folder/specification.md').existsSync(), isFalse);
     });
 
-    test('keeps the workspace out of version control', () async {
+    test('keeps the authoring workspace out of version control', () async {
       await open();
 
-      final gitignore = file('.gitignore').readAsStringSync();
-      expect(gitignore, contains('.macss/'));
-      expect(gitignore, contains('docs/requisitions/'));
+      expect(file('.gitignore').readAsStringSync(),
+          contains('docs/requisitions/'));
+    });
+
+    // `.macss/` is deliberately absent from the root. It carries its own
+    // .gitignore, and a rule at this level would make that one dead letter —
+    // git does not descend into an excluded directory, so nothing inside could
+    // be re-included and the project configuration could never be versioned.
+    test('leaves the ignoring of .macss/ to .macss/ itself', () async {
+      await open();
+
+      expect(file('.gitignore').readAsStringSync(), isNot(contains('.macss/')));
+      expect(file('.macss/.gitignore').existsSync(), isTrue);
     });
 
     test('is idempotent — a second run keeps what is there', () async {
