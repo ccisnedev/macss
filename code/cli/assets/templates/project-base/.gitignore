@@ -1,6 +1,6 @@
-# MACSS — local workspace (git-ignored)
-# Both are machine-written and reproducible from the CLI.
-.macss/
+# MACSS — the requisitions authoring workspace, machine-written and
+# reproducible from the CLI. The .macss/ workspace is not listed here: it
+# carries its own .gitignore, which a rule at this level would render dead.
 docs/requisitions/
 
 # Dependencies

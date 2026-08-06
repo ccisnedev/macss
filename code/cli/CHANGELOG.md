@@ -7,6 +7,33 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed — BREAKING
+- **`.macss/` now ignores itself, and the project root stops hiding it.** A
+  `--plan` in a project that had never opened a requisition created the
+  workspace with nothing ignoring it: only `requisition new` knew about the
+  ignore rule. The rule now lives inside the directory it governs, written
+  wherever the workspace is created, so both paths into it — the active-
+  requisition pointer and the plan files — find it already ignoring itself.
+
+  It is an **allowlist**: everything ignored, exceptions named. The two designs
+  fail differently. A denylist forgets in silence — anything MACSS invents there
+  later is committed until somebody remembers to add it. An allowlist forgets in
+  the open: somebody clones, a file is missing, it is noticed. `!.gitignore` is
+  part of it, or the file that makes every other rule work is never committed.
+
+  **`.macss/` is removed from the project root's `.gitignore`**, and `project
+  adopt` retires it from projects that already carry it. That is not tidying:
+  git does not descend into an excluded directory, so while the root excluded
+  `.macss/` the inner rule was dead letter and nothing there could ever be
+  versioned. Verified against real git rather than by reading the file back.
+
+  **`adopt` removes something for the first time.** ADR 0004 said it never
+  deletes, and that stands for anything the project wrote — the licence here is
+  the one `skill deploy` already uses to prune its own namespace: an entry under
+  the MACSS header is machine-written output, not a user edit. Nothing outside
+  that header is touched, and the retirement appears in the plan like every
+  other change.
+
 ### Changed
 - **An incomplete invocation now says so, instead of claiming the command does
   not exist.** `macss project` answered `unknown command 'project'` followed by

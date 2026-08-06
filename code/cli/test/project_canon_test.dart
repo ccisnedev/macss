@@ -385,6 +385,53 @@ void main() {
       expect(out.message, contains('Nothing to adopt'));
     });
 
+    // The one thing adopt removes. ADR 0004 said it never deletes; that held
+    // until the workspace began carrying its own ignore rule, which a root-level
+    // `.macss/` renders dead letter — git does not descend into an excluded
+    // directory, so the project's configuration could never be versioned.
+    test('retires the obsolete workspace entry MACSS itself wrote', () async {
+      await scaffold();
+      final gitignore = File(p.join(dest, '.gitignore'));
+      gitignore.writeAsStringSync('node_modules/\n'
+          '\n'
+          '# MACSS — local workspace (git-ignored)\n'
+          '.macss/\n'
+          'docs/requisitions/\n');
+
+      final out = await adopt(apply: true, autoapprove: true);
+
+      final after = gitignore.readAsStringSync();
+      expect(after, isNot(contains('.macss/')));
+      expect(after, contains('docs/requisitions/'));
+      expect(after, contains('node_modules/'),
+          reason: 'what the project wrote is not ours to remove');
+      expect(out.message, contains('retired'));
+    });
+
+    test('names the retirement in the plan before doing it', () async {
+      await scaffold();
+      File(p.join(dest, '.gitignore')).writeAsStringSync(
+          '# MACSS — local workspace (git-ignored)\n.macss/\n');
+
+      final out = await adopt(plan: true);
+
+      expect(out.message, contains('retire'));
+      expect(File(p.join(dest, '.gitignore')).readAsStringSync(),
+          contains('.macss/'),
+          reason: 'a plan changes nothing');
+    });
+
+    test('a project with nothing missing but a stale entry is not a no-op',
+        () async {
+      await scaffold();
+      File(p.join(dest, '.gitignore')).writeAsStringSync(
+          '# MACSS — local workspace (git-ignored)\n.macss/\n');
+
+      final out = await adopt(apply: true, autoapprove: true);
+
+      expect(out.message, isNot(contains('Nothing to adopt')));
+    });
+
     test('nothing to adopt writes no plan file either', () async {
       await scaffold();
 

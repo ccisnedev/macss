@@ -8,10 +8,22 @@
 /// Follows the `--plan` / `--apply` convention of ADR 0007: neither is a
 /// default, and a bare `adopt` is a usage error rather than a silent preview.
 ///
-/// **`adopt` never deletes.** It only creates what the canon requires and the
-/// project lacks. Anything extra is reported by `project check` as a warning and
-/// left alone: a `code/legacy/` directory may be deliberate debt, and a tool has
-/// no context to decide that.
+/// **`adopt` never deletes anything the project wrote.** It creates what the
+/// canon requires and the project lacks, and never overwrites. Anything extra is
+/// reported by `project check` as a warning and left alone: a `code/legacy/`
+/// directory may be deliberate debt, and a tool has no context to decide that.
+///
+/// It does retire **`.gitignore` entries MACSS itself wrote and no longer
+/// manages**. ADR 0004 said "adopt never deletes" flatly, and that was true
+/// until the workspace began carrying its own ignore rule: while the project
+/// root excludes `.macss/`, git never descends into it, so the inner rule is
+/// dead letter and the project's configuration cannot be versioned. Leaving the
+/// stale entry would mean shipping a directory that cannot do its job.
+///
+/// The licence is the same one `skill deploy` uses to prune its own namespace:
+/// an entry under the MACSS header is machine-written output, not a user edit.
+/// Nothing outside that header is touched, and the retirement appears in the
+/// plan like every other change (ADR 0007).
 library;
 
 import 'dart:io';
@@ -21,6 +33,7 @@ import 'package:modular_cli_sdk/modular_cli_sdk.dart';
 import 'package:path/path.dart' as p;
 
 import '../../../assets.dart';
+import '../../../src/gitignore.dart';
 import '../../../src/plan_apply.dart';
 import '../canon.dart';
 
@@ -150,10 +163,11 @@ class ProjectAdoptCommand
   Future<ProjectAdoptOutput> execute() async {
     final root = input.resolvedPath;
     final missing = missingCanonFiles(root);
+    final retired = retiredGitignoreEntriesIn(root);
 
     // Nothing to change means nothing to plan. Writing an empty plan file
     // would leave an artifact saying "no artifact was needed".
-    if (missing.isEmpty) {
+    if (missing.isEmpty && retired.isEmpty) {
       return ProjectAdoptOutput(
         message: 'Nothing to adopt — every canonical file is already present.',
         created: const [],
@@ -165,12 +179,29 @@ class ProjectAdoptCommand
     // shows and what `--plan` writes are the same computation, rendered the
     // same way. Two renderings would drift, and drift between the plan and the
     // change is the whole failure this convention exists to prevent.
+    //
+    // The retirement is named here rather than done quietly on apply: it is the
+    // one thing `adopt` removes, so it is the one thing a reader most needs the
+    // plan to have told them about.
     final body = [
-      '${missing.length} file(s) would be created in $root:',
+      if (missing.isNotEmpty) ...[
+        '${missing.length} file(s) would be created in $root:',
+        '',
+        ...missing.map((f) => '  create   ${f.path}'),
+      ],
+      if (retired.isNotEmpty) ...[
+        if (missing.isNotEmpty) '',
+        'Obsolete MACSS entries would be retired from $root/.gitignore:',
+        '',
+        ...retired.map((e) => '  retire   $e'),
+        '',
+        'The workspace now carries its own .gitignore. While the project root '
+            'excludes it, git does not descend into it, so that rule cannot '
+            'take effect and the project configuration cannot be versioned.',
+      ],
       '',
-      ...missing.map((f) => '  create   ${f.path}'),
-      '',
-      'Nothing else is touched: adopt never removes or overwrites. '
+      'Nothing else is touched: adopt creates what the canon requires, never '
+          'overwrites, and removes only entries MACSS itself wrote. '
           'Run `macss project check` for what needs your judgement.',
     ].join('\n');
 
@@ -202,8 +233,11 @@ class ProjectAdoptCommand
       created.add(file.path);
     }
 
+    final retirement = retired.isEmpty ? null : removeGitignoreEntries(root);
+
     final lines = [
       ...created.map((path) => '  created  $path'),
+      if (retirement != null) ...retired.map((e) => '  retired  $e'),
       '',
       'Adopted. Run `macss project check` to see what still needs your '
           'judgement.',
