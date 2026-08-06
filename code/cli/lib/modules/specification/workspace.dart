@@ -63,18 +63,51 @@ String? resolveRequisitionDir(String root, [String? slug]) {
     final exact = p.join(base.path, slug);
     if (Directory(exact).existsSync()) return exact;
 
-    final dated = base
-        .listSync()
-        .whereType<Directory>()
-        .where((d) => p.basename(d.path).endsWith('-$slug'))
-        .toList()
-      // YYYYMMDD sorts lexically == chronologically; newest last → pick it.
-      ..sort((a, b) => p.basename(a.path).compareTo(p.basename(b.path)));
-    if (dated.isNotEmpty) return dated.last.path;
+    // More than one folder can end in the same slug: the date prefix makes
+    // folder *names* unique, not slugs. This used to sort them and return the
+    // newest, which is inventing a decision the caller is entitled to make —
+    // forbidden by ADR 0009. Ambiguity resolves to nothing; the caller reports
+    // it with `ambiguousRequisitionFailure`.
+    final dated = requisitionsMatching(root, slug);
+    if (dated.length == 1) return p.join(base.path, dated.single);
   }
 
   final legacy = p.join(root, 'requisitions', slug);
   return Directory(legacy).existsSync() ? legacy : null;
+}
+
+/// Every requisition folder whose name ends in `-[slug]`, sorted.
+///
+/// Returns folder names rather than paths: they are what a person reads and
+/// what a command shows when it refuses to choose between them.
+List<String> requisitionsMatching(String root, String slug) {
+  final base = Directory(p.join(root, _base[0], _base[1]));
+  if (!base.existsSync()) return const [];
+
+  return base
+      .listSync()
+      .whereType<Directory>()
+      .map((d) => p.basename(d.path))
+      .where((name) => name.endsWith('-$slug'))
+      .toList()
+    ..sort();
+}
+
+/// The usage error to report when [slug] names more than one requisition, or
+/// null when it does not.
+///
+/// Every command taking `--slug` asks this before its own "not found" message,
+/// so ambiguity is answered with the candidates instead of being resolved by
+/// picking one. One implementation, so the six of them cannot disagree.
+String? ambiguousRequisitionFailure(String root, String? slug) {
+  if (slug == null || slug.isEmpty) return null;
+
+  final candidates = requisitionsMatching(root, slug);
+  if (candidates.length < 2) return null;
+
+  return '"$slug" names ${candidates.length} requisitions:\n'
+      '${candidates.map((c) => '  $c').join('\n')}\n'
+      'Name one of them exactly with --slug.';
 }
 
 /// Records the **active** requisition in `.macss/state.yaml` so other
