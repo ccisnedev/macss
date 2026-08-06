@@ -15,6 +15,8 @@ import 'package:cli_router/cli_router.dart';
 import 'package:modular_cli_sdk/modular_cli_sdk.dart';
 import 'package:path/path.dart' as p;
 
+import 'workspace_dir.dart';
+
 /// Which of the two things the caller asked for.
 enum ChangeMode {
   /// Compute the change and write the plan file. Touch nothing else.
@@ -282,7 +284,9 @@ class PlanFile {
     required String body,
     required DateTime now,
   }) {
-    final dir = Directory(p.join(workingDirectory, p.joinAll(directory.split('/'))))
+    // Through `ensureWorkspace`, so a plan written in a project that never
+    // opened a requisition still lands in a workspace that ignores itself.
+    final dir = Directory(p.join(ensureWorkspace(workingDirectory).path, 'plans'))
       ..createSync(recursive: true);
 
     final file = File(p.join(dir.path, '${_stamp(now)}-${_slug(command)}.md'));
