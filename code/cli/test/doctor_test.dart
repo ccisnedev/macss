@@ -187,7 +187,10 @@ void main() {
       final gh = checks.firstWhere((c) => c.name == 'gh');
 
       expect(gh.status, CheckStatus.warning);
-      expect(gh.detail, contains('macss issue publish'));
+      // Not `macss issue publish`, which this asserted for as long as it
+      // existed: there has never been an `issue` module. The suite was
+      // defending a command the CLI does not have.
+      expect(gh.detail, contains('macss requisition publish --apply'));
       expect(gh.remediation, contains('Install:'));
     });
 

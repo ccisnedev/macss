@@ -103,7 +103,8 @@ class SpecificationCheckCommand
 
     final spec = _specFile;
     if (spec == null || !spec.existsSync()) {
-      return 'No specification found — run `macss specification new <slug>` first, '
+      return 'No specification found — run '
+          '`macss specification new --slug <slug> --apply` first, '
           'or point at one with --slug <slug>.';
     }
     return null;

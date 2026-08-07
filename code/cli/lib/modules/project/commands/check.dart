@@ -89,7 +89,8 @@ class ProjectCheckOutput extends Output {
     } else {
       buf.writeln(
         '$missing missing, $deviations needing your judgement. '
-        'Run `macss project adopt --plan` to preview what would be created.',
+        'Run `macss project adopt --lang <en|es> --plan` to preview what would '
+        'be created.',
       );
     }
     return buf.toString();

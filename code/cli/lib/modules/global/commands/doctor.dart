@@ -114,7 +114,7 @@ class DoctorCommand implements Command<DoctorInput, DoctorOutput> {
           name: entry.key,
           status: exists ? CheckStatus.ok : CheckStatus.error,
           detail: exists ? 'found' : 'missing',
-          remediation: exists ? null : 'Run: macss upgrade',
+          remediation: exists ? null : 'Run: macss upgrade --apply',
         ),
       );
     }

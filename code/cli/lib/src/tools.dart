@@ -41,7 +41,7 @@ const externalTools = <ExternalTool>[
   ),
   ExternalTool(
     executable: 'gh',
-    neededFor: 'macss issue publish',
+    neededFor: 'macss requisition publish --apply',
     install: 'winget install GitHub.cli — or: brew install gh',
   ),
   ExternalTool(
