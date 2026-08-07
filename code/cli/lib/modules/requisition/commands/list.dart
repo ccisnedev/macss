@@ -49,6 +49,9 @@ class RequisitionEntry {
   final bool isActive;
   final bool hasRequisition;
   final bool hasSpecification;
+  final bool hasImplementation;
+  final bool hasDelivery;
+  final bool hasVerification;
 
   /// The issue carrying it, when it has been published.
   final int? issue;
@@ -59,15 +62,25 @@ class RequisitionEntry {
     required this.isActive,
     required this.hasRequisition,
     required this.hasSpecification,
+    required this.hasImplementation,
+    required this.hasDelivery,
+    required this.hasVerification,
     this.issue,
   });
 
-  /// How far the work has got, in the vocabulary of the lifecycle.
+  /// How far the work has got, named with the lifecycle's own stages.
+  ///
+  /// Five of the seven leave an artifact on disk and are therefore observable
+  /// without running anything. **`dor` and `dod` are gates, not artifacts**:
+  /// knowing either has been met means running it, which this listing
+  /// deliberately does not do. So the furthest stage reported is the furthest
+  /// one that wrote a file.
   String get stage {
-    if (issue != null && hasSpecification) return 'published + contract';
-    if (issue != null) return 'published';
-    if (hasSpecification) return 'contract';
-    if (hasRequisition) return 'opened';
+    if (hasVerification) return 'verification';
+    if (hasDelivery) return 'delivery';
+    if (hasImplementation) return 'implementation';
+    if (hasSpecification) return 'specification';
+    if (hasRequisition) return 'requisition';
     return 'empty';
   }
 
@@ -79,10 +92,21 @@ class RequisitionEntry {
         if (issue != null) 'issue': issue,
       };
 
-  String toText({int slugWidth = 0}) => [
+  /// One row.
+  ///
+  /// The date is **not** shown. It was there to tell two rows apart, and once a
+  /// slug names one requisition there are no two rows to tell apart; the order
+  /// it gives is already carried by the position, since the folder's date
+  /// prefix is what sorts them.
+  ///
+  /// [disambiguate] brings the folder back for the rows that need it — two
+  /// requisitions sharing a slug, which is possible in a project that has them
+  /// already. It shows the difference exactly where there is one, instead of a
+  /// column that repeats the row order everywhere else.
+  String toText({int slugWidth = 0, bool disambiguate = false}) => [
         isActive ? 'active' : '      ',
         slug.padRight(slugWidth),
-        folder.split('-').first,
+        if (disambiguate) folder,
         stage,
         if (issue != null) '#$issue',
       ].join('  ').trimRight();
@@ -117,8 +141,19 @@ class RequisitionListOutput extends Output {
     final width = entries.fold<int>(
         0, (w, e) => e.slug.length > w ? e.slug.length : w);
 
+    // Slugs that name more than one requisition. Only those rows carry their
+    // folder; everywhere else the slug is the identity and nothing else is
+    // needed.
+    final shared = <String>{
+      for (final e in entries)
+        if (entries.where((o) => o.slug == e.slug).length > 1) e.slug,
+    };
+
     return [
-      ...entries.map((e) => '  ${e.toText(slugWidth: width)}'),
+      ...entries.map((e) => '  ${e.toText(
+            slugWidth: width,
+            disambiguate: shared.contains(e.slug),
+          )}'),
       if (danglingPointer != null)
         '\n  ! the active requisition points at "$danglingPointer", '
             'which is not there',
@@ -166,6 +201,12 @@ class RequisitionListCommand
           isActive: folder == activeFolder,
           hasRequisition: _has(base, folder, 'requisition.md'),
           hasSpecification: _has(base, folder, 'specification.md'),
+          // The implementation stage writes two artifacts across its phases;
+          // either one means it has been entered.
+          hasImplementation: _has(base, folder, 'diagnosis.md') ||
+              _has(base, folder, 'plan.md'),
+          hasDelivery: _has(base, folder, 'delivery.md'),
+          hasVerification: _has(base, folder, 'verification.md'),
           issue: _issueOf(base, folder),
         ),
     ];
