@@ -9,6 +9,10 @@
 /// way `gh pr list` does. It was only ever needed when one specification could
 /// derive issues into several repositories, which one-requirement-one-issue
 /// removes.
+///
+/// `lang` is absent for the same kind of reason: the project declares its
+/// language once, in `.macss/config.yaml`. A copy here would be a second
+/// answer, free to drift from the first — and two answers is none.
 library;
 
 import 'dart:io';
@@ -19,7 +23,6 @@ import 'package:yaml/yaml.dart';
 class IssueMetadata {
   final String title;
   final List<String> labels;
-  final String lang;
 
   /// The published issue number, written back by `publish`. Null until then —
   /// which is how the DoR knows the requisition has not been published yet.
@@ -28,7 +31,6 @@ class IssueMetadata {
   const IssueMetadata({
     required this.title,
     this.labels = const [],
-    this.lang = 'en',
     this.issue,
   });
 
@@ -52,7 +54,6 @@ class IssueMetadata {
       labels: rawLabels is List
           ? rawLabels.map((l) => '$l').where((l) => l.isNotEmpty).toList()
           : const [],
-      lang: '${doc['lang'] ?? 'en'}',
       issue: doc['issue'] is int ? doc['issue'] as int : null,
     );
   }
@@ -67,7 +68,6 @@ class IssueMetadata {
         '# The repository is not here: gh infers it from the directory.',
         'title: "${title.replaceAll('"', r'\"')}"',
         'labels: [${labels.join(', ')}]',
-        'lang: $lang',
         if (issue != null) 'issue: $issue',
         '',
       ].join('\n');
@@ -75,7 +75,6 @@ class IssueMetadata {
   IssueMetadata withIssue(int number) => IssueMetadata(
         title: title,
         labels: labels,
-        lang: lang,
         issue: number,
       );
 }

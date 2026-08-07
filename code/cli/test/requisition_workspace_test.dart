@@ -102,7 +102,6 @@ void main() {
       writeActiveRequisition(root.path,
           slug: 'demo',
           relDir: 'docs/requisitions/20260804-demo',
-          lang: 'en',
           isoDate: '2026-08-04');
 
       expect(resolveRequisitionDir(root.path), endsWith('20260804-demo'));
@@ -113,7 +112,6 @@ void main() {
       writeActiveRequisition(root.path,
           slug: 'demo',
           relDir: 'docs/requisitions/20260804-demo',
-          lang: 'en',
           isoDate: '2026-08-04');
 
       expect(resolveRequisitionDir(root.path), isNull);

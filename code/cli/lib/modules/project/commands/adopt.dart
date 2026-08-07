@@ -35,6 +35,7 @@ import 'package:path/path.dart' as p;
 import '../../../assets.dart';
 import '../../../src/gitignore.dart';
 import '../../../src/plan_apply.dart';
+import '../../../src/project_config.dart';
 import '../canon.dart';
 
 // ─── Input ──────────────────────────────────────────────────────────────────
@@ -47,12 +48,19 @@ class ProjectAdoptInput extends Input {
   /// target would be a change to the target, and `--plan` changes nothing.
   final String workingDirectory;
 
+  /// The language this project's documents are written in.
+  ///
+  /// **Required, with no default.** Adopting the canon includes adopting this
+  /// decision, and a fallback would be a choice nobody made (ADR 0009).
+  final String? lang;
+
   final ChangeFlags flags;
 
   ProjectAdoptInput({
     required this.resolvedPath,
     required this.flags,
     String? workingDirectory,
+    this.lang,
   }) : workingDirectory = workingDirectory ?? resolvedPath;
 
   factory ProjectAdoptInput.fromCliRequest(
@@ -65,6 +73,7 @@ class ProjectAdoptInput extends Input {
       resolvedPath:
           raw == null ? cwd : (p.isAbsolute(raw) ? raw : p.join(cwd, raw)),
       workingDirectory: cwd,
+      lang: req.flagString('lang'),
       flags: ChangeFlags.fromCliRequest(req),
     );
   }
@@ -75,6 +84,13 @@ class ProjectAdoptInput extends Input {
       abbr: 'p',
       description: 'Project directory to adopt; defaults to the current one',
     ),
+    CliParam.string(
+      'lang',
+      allowed: ['en', 'es'],
+      description:
+          'Language of this project documents. Required: there is no default, '
+          'because a fallback would be a choice nobody made',
+    ),
     ...ChangeFlags.params,
   ];
 
@@ -84,6 +100,7 @@ class ProjectAdoptInput extends Input {
   @override
   Map<String, dynamic> toJson() => {
         'resolvedPath': resolvedPath,
+        'lang': lang,
         'plan': flags.plan,
         'apply': flags.apply,
         'autoapprove': flags.autoapprove,
@@ -156,6 +173,13 @@ class ProjectAdoptCommand
     if (!Directory(input.resolvedPath).existsSync()) {
       return 'No such directory: "${input.resolvedPath}".';
     }
+    // Adopting the canon includes adopting the decision about language. It is
+    // required rather than defaulted for the same reason as in `create`.
+    if (input.lang == null || input.lang!.isEmpty) {
+      return '--lang is required: adopting the canon includes declaring the '
+          'language of this project documents, and there is no default.\n'
+          'Usage: macss project adopt --lang <en|es> --apply';
+    }
     return input.flags.validate();
   }
 
@@ -164,10 +188,11 @@ class ProjectAdoptCommand
     final root = input.resolvedPath;
     final missing = missingCanonFiles(root);
     final retired = retiredGitignoreEntriesIn(root);
+    final declaring = projectLanguage(root) != input.lang;
 
     // Nothing to change means nothing to plan. Writing an empty plan file
     // would leave an artifact saying "no artifact was needed".
-    if (missing.isEmpty && retired.isEmpty) {
+    if (missing.isEmpty && retired.isEmpty && !declaring) {
       return ProjectAdoptOutput(
         message: 'Nothing to adopt — every canonical file is already present.',
         created: const [],
@@ -189,8 +214,12 @@ class ProjectAdoptCommand
         '',
         ...missing.map((f) => '  create   ${f.path}'),
       ],
-      if (retired.isNotEmpty) ...[
+      if (declaring) ...[
         if (missing.isNotEmpty) '',
+        '  declare  $projectConfigPath (language: ${input.lang})',
+      ],
+      if (retired.isNotEmpty) ...[
+        if (missing.isNotEmpty || declaring) '',
         'Obsolete MACSS entries would be retired from $root/.gitignore:',
         '',
         ...retired.map((e) => '  retire   $e'),
@@ -233,10 +262,13 @@ class ProjectAdoptCommand
       created.add(file.path);
     }
 
+    if (declaring) writeProjectConfig(root, language: input.lang!);
     final retirement = retired.isEmpty ? null : removeGitignoreEntries(root);
 
     final lines = [
       ...created.map((path) => '  created  $path'),
+      if (declaring)
+        '  declared $projectConfigPath (language: ${input.lang})',
       if (retirement != null) ...retired.map((e) => '  retired  $e'),
       '',
       'Adopted. Run `macss project check` to see what still needs your '

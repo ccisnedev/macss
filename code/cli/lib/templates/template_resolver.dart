@@ -19,12 +19,18 @@ class TemplateResolution {
 /// If a non-English language was requested but only English exists, the result
 /// carries a one-line [TemplateResolution.notice]. Throws [ArgumentError] when no
 /// template exists for the artifact at all.
+///
+/// [lang] is required. Falling back to English when the caller has nothing to
+/// say is a different thing from inventing an answer for a caller who never
+/// asked: the fallback is a stated resolution rule with a notice attached, and
+/// a default parameter is a silent one. Every caller now knows which language
+/// it wants, so no caller needs the silence.
 class TemplateResolver {
   final Assets assets;
 
   TemplateResolver(this.assets);
 
-  TemplateResolution resolve(String artifact, {String lang = 'en'}) {
+  TemplateResolution resolve(String artifact, {required String lang}) {
     final localized = _tryLoad('artifacts/$artifact.template.$lang.md');
     if (localized != null) return TemplateResolution(localized);
 

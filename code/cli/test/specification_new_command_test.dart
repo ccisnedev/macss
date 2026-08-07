@@ -5,9 +5,9 @@ import 'package:test/test.dart';
 
 import 'package:macss_cli/assets.dart';
 import 'package:macss_cli/modules/requisition/commands/new.dart';
-import 'package:macss_cli/modules/requisition/issue_metadata.dart';
 import 'package:macss_cli/modules/specification/commands/new.dart';
 import 'package:macss_cli/src/plan_apply.dart';
+import 'package:macss_cli/src/project_config.dart';
 import 'package:macss_cli/templates/template_resolver.dart';
 
 /// `specification new` used to create the requisition **and** the specification
@@ -35,23 +35,24 @@ void main() {
   File file(String relative) =>
       File(p.join(tempDir.path, p.joinAll(relative.split('/'))));
 
-  Future<void> openRequisition({String lang = 'es'}) => RequisitionNewCommand(
-        RequisitionNewInput(
-          slug: 'demo',
-          lang: lang,
-          flags: const ChangeFlags(apply: true, autoapprove: true),
-        ),
-        resolver: resolver,
-        workingDirectory: tempDir.path,
-        now: clock,
-      ).execute();
+  Future<void> openRequisition({String lang = 'es'}) {
+    writeProjectConfig(tempDir.path, language: lang);
+    return RequisitionNewCommand(
+      RequisitionNewInput(
+        slug: 'demo',
+        flags: const ChangeFlags(apply: true, autoapprove: true),
+      ),
+      resolver: resolver,
+      workingDirectory: tempDir.path,
+      now: clock,
+    ).execute();
+  }
 
   Future<SpecificationNewOutput> addContract({
-    String? lang,
     ChangeFlags flags = const ChangeFlags(apply: true, autoapprove: true),
   }) =>
       SpecificationNewCommand(
-        SpecificationNewInput(lang: lang, flags: flags),
+        SpecificationNewInput(flags: flags),
         resolver: resolver,
         workingDirectory: tempDir.path,
         now: clock,
@@ -76,8 +77,8 @@ void main() {
           file('$folder/requisition.md').readAsStringSync(), 'FILLED BY THE PO');
     });
 
-    test('inherits the language the requisition was opened in', () async {
-      // A Spanish request should not yield an English contract.
+    test('is written in the language the project declared', () async {
+      // A Spanish project should not yield an English contract.
       await openRequisition(lang: 'es');
 
       await addContract();
@@ -86,13 +87,14 @@ void main() {
           contains('Historias de Usuario'));
     });
 
-    test('--lang overrides the inherited language', () async {
-      await openRequisition(lang: 'es');
-
-      await addContract(lang: 'en');
-
-      expect(file('$folder/specification.md').readAsStringSync(),
-          contains('User Stories'));
+    // There is no `--lang` to override it with. A contract written in a
+    // language the project does not speak is not a contract anyone will read,
+    // and the per-invocation flag was the only way to produce one.
+    test('takes no --lang to write against the project with', () {
+      expect(
+        SpecificationNewInput.params.map((p) => p.name),
+        isNot(contains('lang')),
+      );
     });
 
     test('replaces the {{DATE}} placeholder with today', () async {
@@ -139,13 +141,21 @@ void main() {
       expect(cmd.validate(), contains('requisition new'));
     });
 
-    test('the language comes from issue.yaml, not from a guess', () async {
-      await openRequisition(lang: 'es');
+    // The project must have said which language it speaks. There is nothing
+    // to fall back on, and English is not a safe assumption — it is a guess.
+    test('refuses to write a contract where no language is declared', () async {
+      await openRequisition();
+      File(p.join(tempDir.path, '.macss', 'config.yaml')).deleteSync();
 
-      expect(
-        IssueMetadata.read(p.dirname(file('$folder/x').path))!.lang,
-        'es',
+      final cmd = SpecificationNewCommand(
+        SpecificationNewInput(
+          flags: const ChangeFlags(apply: true, autoapprove: true),
+        ),
+        resolver: resolver,
+        workingDirectory: tempDir.path,
       );
+
+      expect(cmd.validate(), contains('macss project adopt --lang <en|es>'));
     });
   });
 }

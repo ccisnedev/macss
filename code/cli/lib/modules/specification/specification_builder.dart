@@ -7,14 +7,14 @@ import '../../templates/template_resolver.dart';
 import 'commands/check.dart';
 import 'commands/new.dart';
 import 'commands/publish.dart';
-import '../requisition/commands/export_template.dart';
 
-/// Registers the `specification` module — the QA-facing specification phase.
+/// Registers the `specification` module — the contract written on top of a
+/// request that already exists.
 ///
-/// `macss specification new <slug> [--lang <lang>]` scaffolds the QA workspace
-/// `docs/requisitions/<YYYYMMDD>-<slug>/` with `requisition.md` +
-/// `specification.md` from the single-source templates (the CLI
-/// is the hands), and records it as the active requisition.
+/// `macss specification new` writes `specification.md` into the active
+/// requisition, in the language the project declared once in
+/// `.macss/config.yaml`. It takes no `--lang`: a setting passed per invocation
+/// is one that can differ per invocation.
 void buildSpecificationModule(ModuleBuilder m, {required Assets assets}) {
   final resolver = TemplateResolver(assets);
 
@@ -30,16 +30,10 @@ void buildSpecificationModule(ModuleBuilder m, {required Assets assets}) {
     params: SpecificationNewInput.params,
   );
 
-  m.command<ExportTemplateInput, ExportTemplateOutput>(
-    'export-template',
-    (req) => ExportTemplateCommand(
-      ExportTemplateInput.fromCliRequest(req),
-      resolver: resolver,
-      artifact: 'specification',
-    ),
-    description: 'Write the blank contract template',
-    params: ExportTemplateInput.params,
-  );
+  // No specification export-template. Of the four documents, the requisition
+  // is the only one handed to somebody outside the team — it is this method's
+  // issue template. A blank contract would be a form for work nobody outside is
+  // doing.
 
   m.command<SpecificationPublishInput, SpecificationPublishOutput>(
     'publish',

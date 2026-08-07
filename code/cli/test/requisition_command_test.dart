@@ -13,6 +13,7 @@ import 'package:macss_cli/modules/requisition/commands/publish.dart';
 import 'package:macss_cli/modules/requisition/publisher.dart';
 import 'package:macss_cli/modules/requisition/requisition_builder.dart';
 import 'package:macss_cli/src/plan_apply.dart';
+import 'package:macss_cli/src/project_config.dart';
 import 'package:macss_cli/templates/template_resolver.dart';
 
 import 'support/memory_sink.dart';
@@ -36,18 +37,25 @@ void main() {
     if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
   });
 
+  /// The project says which language it speaks, once. Commands derive it from
+  /// here — there is no `--lang` to pass them.
+  void declareLanguage(String lang) =>
+      writeProjectConfig(tempDir.path, language: lang);
+
   RequisitionNewCommand newCommand({
-    String lang = 'es',
+    String? lang = 'es',
     ChangeFlags flags = const ChangeFlags(apply: true, autoapprove: true),
     Approver? approver,
-  }) =>
-      RequisitionNewCommand(
-        RequisitionNewInput(slug: 'demo', lang: lang, flags: flags),
-        resolver: resolver,
-        workingDirectory: tempDir.path,
-        now: clock,
-        approver: approver,
-      );
+  }) {
+    if (lang != null) declareLanguage(lang);
+    return RequisitionNewCommand(
+      RequisitionNewInput(slug: 'demo', flags: flags),
+      resolver: resolver,
+      workingDirectory: tempDir.path,
+      now: clock,
+      approver: approver,
+    );
+  }
 
   Future<RequisitionNewOutput> open({String lang = 'es'}) =>
       newCommand(lang: lang).execute();
@@ -89,6 +97,17 @@ void main() {
       expect(file('.macss/.gitignore').existsSync(), isTrue);
     });
 
+    // A copy of the declaration is a second answer waiting to disagree with the
+    // first. `.macss/config.yaml` says it once; nothing downstream repeats it.
+    test('copies the language into neither issue.yaml nor state.yaml', () async {
+      await open(lang: 'es');
+
+      expect(file('$folder/issue.yaml').readAsStringSync(),
+          isNot(contains('lang')));
+      expect(file('.macss/state.yaml').readAsStringSync(),
+          isNot(contains('lang')));
+    });
+
     test('is idempotent — a second run keeps what is there', () async {
       await open();
       file('$folder/requisition.md').writeAsStringSync('EDITED BY THE PO');
@@ -100,17 +119,38 @@ void main() {
           'EDITED BY THE PO');
     });
 
-    test('the form is in the language asked for', () async {
+    test('the form is in the language the project declared', () async {
       await open(lang: 'es');
       expect(file('$folder/requisition.md').readAsStringSync(),
           contains('Situación actual'));
     });
 
+    // The document travels: it is sent as PDF or DOCX to a Product Owner who
+    // has no repository to consult. So it says what language it is in, on its
+    // own face, rather than only in the configuration that produced it.
+    test('the form declares its own language, for when it travels alone',
+        () async {
+      await open(lang: 'es');
+      expect(file('$folder/requisition.md').readAsStringSync(),
+          contains('macss:lang=es'));
+    });
+
+    // No default: a project that never said which language it speaks is
+    // stopped and told how to say it, not assumed to be English.
+    test('refuses to open a requisition where no language is declared', () {
+      final cmd = newCommand(lang: null);
+
+      final failure = cmd.validate();
+      expect(failure, isNotNull);
+      expect(failure, contains('macss project adopt --lang <en|es> --apply'));
+      expect(file('docs').existsSync(), isFalse);
+    });
+
     test('validate rejects an empty slug', () {
+      declareLanguage('en');
       final cmd = RequisitionNewCommand(
         RequisitionNewInput(
           slug: '',
-          lang: 'en',
           flags: const ChangeFlags(apply: true, autoapprove: true),
         ),
         resolver: resolver,
@@ -148,7 +188,6 @@ void main() {
       final meta = IssueMetadata.read(p.dirname(file('$folder/x').path))!;
       expect(meta.isPublished, isFalse);
       expect(meta.issue, isNull);
-      expect(meta.lang, 'es');
     });
 
     test('carries no repo — gh infers it from the directory', () async {
@@ -161,7 +200,6 @@ void main() {
       const meta = IssueMetadata(
         title: 'Consulta del estado de un pedido',
         labels: ['enhancement', 'app'],
-        lang: 'es',
       );
       final dir = tempDir.path;
       meta.write(dir);
@@ -212,6 +250,21 @@ void main() {
   });
 
   group('macss requisition export-template', () {
+    ExportTemplateCommand exportCommand({
+      String? lang = 'es',
+      ChangeFlags flags = const ChangeFlags(apply: true, autoapprove: true),
+    }) =>
+        ExportTemplateCommand(
+          ExportTemplateInput(
+            resolvedPath: tempDir.path,
+            lang: lang,
+            flags: flags,
+          ),
+          resolver: resolver,
+          artifact: 'requisition',
+          now: clock,
+        );
+
     Future<ExportTemplateOutput> export({
       String lang = 'es',
       ChangeFlags flags = const ChangeFlags(apply: true, autoapprove: true),
@@ -227,7 +280,11 @@ void main() {
           now: clock,
         ).execute();
 
-    test('writes the blank form where asked', () async {
+    test('writes the blank form where asked, project or not', () async {
+      // tempDir is not a MACSS project: no `.macss/`, nothing to derive the
+      // language from. Declaring it is what makes the command answerable here.
+      expect(file('.macss').existsSync(), isFalse);
+
       final out = await export();
 
       expect(File(out.path).existsSync(), isTrue);
@@ -261,6 +318,18 @@ void main() {
       expect(out.exitCode, ExitCode.conflict);
       expect(File(p.join(tempDir.path, 'requisition.md')).readAsStringSync(),
           'MINE');
+    });
+
+    // The one command that keeps --lang is the one that requires it: it writes
+    // where no MACSS project need exist, so there is nothing to derive from.
+    // The rule is not weakened here — this is the reason it has an exception.
+    test('refuses to guess the language when none is declared', () {
+      final failure = exportCommand(lang: null).validate();
+
+      expect(failure, isNotNull);
+      expect(failure, contains('--lang is required'));
+      expect(failure, contains('export-template --lang <en|es>'));
+      expect(file('requisition.md').existsSync(), isFalse);
     });
   });
 
@@ -432,7 +501,7 @@ void main() {
     test('creating an issue labels it with --label', () async {
       await open();
       await fillForm();
-      const IssueMetadata(title: 'Un título', labels: ['bug'], lang: 'es')
+      const IssueMetadata(title: 'Un título', labels: ['bug'])
           .write(p.dirname(file('$folder/x').path));
 
       await publish(
@@ -448,7 +517,6 @@ void main() {
       const IssueMetadata(
         title: 'Un título',
         labels: ['bug', 'app'],
-        lang: 'es',
         issue: 42,
       ).write(p.dirname(file('$folder/x').path));
 

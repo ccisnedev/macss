@@ -18,8 +18,8 @@ void main() {
       expect(r.notice, isNull);
     });
 
-    test('localized artifact: en (default) returns English, no notice', () {
-      final r = resolver.resolve('specification');
+    test('localized artifact: en returns English, no notice', () {
+      final r = resolver.resolve('specification', lang: 'en');
       expect(r.content, contains('# Specification'));
       expect(r.content, contains('macss:lang=en'));
       expect(r.notice, isNull);
@@ -34,7 +34,7 @@ void main() {
     });
 
     test('unknown artifact throws', () {
-      expect(() => resolver.resolve('bogus'), throwsArgumentError);
+      expect(() => resolver.resolve('bogus', lang: 'en'), throwsArgumentError);
     });
   });
 
