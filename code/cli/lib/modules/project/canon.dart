@@ -95,7 +95,7 @@ DoctorCheck _fileCheck(String root, CanonFile file) {
     name: file.path,
     status: exists ? CheckStatus.ok : CheckStatus.error,
     detail: exists ? 'present' : 'missing',
-    remediation: exists ? null : 'Run: macss project adopt --apply',
+    remediation: exists ? null : 'Run: macss project adopt --lang <en|es> --apply',
   );
 }
 

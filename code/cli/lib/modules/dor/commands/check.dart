@@ -110,7 +110,8 @@ class DorCheckCommand implements Command<DorCheckInput, DorCheckOutput> {
     final ambiguous = ambiguousRequisitionFailure(workingDirectory, input.slug);
     if (ambiguous != null) return ambiguous;
     if (_dir == null) {
-      return 'No requisition found — run `macss requisition new <slug>` first, '
+      return 'No requisition found — run `macss requisition new <slug> --apply` '
+          'first, '
           'or point at one with --slug <slug>.';
     }
     return null;

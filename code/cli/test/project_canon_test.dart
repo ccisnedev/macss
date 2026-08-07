@@ -124,7 +124,11 @@ void main() {
 
       expect(out.missing, canonFiles.length);
       expect(out.exitCode, 1);
-      expect(out.toText(), contains('macss project adopt --plan'));
+      // With `--lang`: #24 made it required, which silently invalidated the
+      // very message this method started from. This assertion passed
+      // throughout, because it pinned the prefix rather than the invocation.
+      expect(out.toText(),
+          contains('macss project adopt --lang <en|es> --plan'));
     });
 
     test('an api module with no db module is a warning, not an error',
