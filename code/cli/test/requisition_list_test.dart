@@ -82,11 +82,36 @@ void main() {
 
       final byslug = {for (final e in (await list()).entries) e.slug: e};
 
-      expect(byslug['alpha']!.hasSpecification, isFalse);
+      expect(byslug['alpha']!.stage, 'requisition');
       expect(byslug['alpha']!.issue, isNull);
-      expect(byslug['beta']!.hasSpecification, isTrue);
+      expect(byslug['beta']!.stage, 'specification');
       expect(byslug['beta']!.issue, isNull);
       expect(byslug['gamma']!.issue, 31);
+    });
+
+    // The date column was removed: it existed to tell two rows apart, and the
+    // order it carried is already given by the row position, since the folder's
+    // date prefix is what sorts them. What it did cover was two requisitions
+    // sharing a slug — possible in a project that already has them — so that
+    // case brings the folder back, on those rows only.
+    test('rows are the slug and nothing else when slugs are unique', () async {
+      makeRequisition('20260804-alpha');
+
+      expect(out(await list()).first, isNot(contains('20260804')));
+    });
+
+    test('two requisitions sharing a slug show which folder each is', () async {
+      makeRequisition('20260804-dup');
+      makeRequisition('20260806-dup');
+      makeRequisition('20260805-alone');
+
+      final lines = out(await list());
+
+      expect(lines.where((l) => l.contains('20260804-dup')), hasLength(1));
+      expect(lines.where((l) => l.contains('20260806-dup')), hasLength(1));
+      expect(lines.firstWhere((l) => l.contains('alone')),
+          isNot(contains('20260805')),
+          reason: 'the unambiguous row stays clean');
     });
 
     test('a project with no requisitions says so', () async {
