@@ -110,7 +110,6 @@ void main() {
       writeActiveRequisition(tempDir.path,
           slug: 'active',
           relDir: 'docs/requisitions/$folder',
-          lang: 'en',
           isoDate: '2026-07-09');
 
       final out = await cmd(null).execute();

@@ -46,15 +46,22 @@ writing — and **you have no terminal to answer from**, so every `--apply` belo
 carries `--autoapprove`. Without it the command waits for an approval nobody is
 there to give. Show the plan to the human and get their word before you pass it.
 
-1. `macss requisition new <slug> --apply --autoapprove` (add `--lang es` for
-   Spanish) — scaffolds `docs/requisitions/<YYYYMMDD>-<slug>/` with the form and
-   its issue metadata, and records it as the **active requisition**, so later
-   commands need no slug. Inputs and outputs are files on disk, not your memory.
+1. `macss requisition new <slug> --apply --autoapprove` — scaffolds
+   `docs/requisitions/<YYYYMMDD>-<slug>/` with the form and its issue metadata,
+   and records it as the **active requisition**, so later commands need no slug.
+   Inputs and outputs are files on disk, not your memory.
+   The documents are written in the language the project declared once, in
+   `.macss/config.yaml`. There is no `--lang` to pass here: if the command tells
+   you none is declared, it is the human who declares it with
+   `macss project adopt --lang <en|es> --apply` — not a decision to make for
+   them.
 2. Fill `requisition.md` with what the Product Owner sent, gathering from **all**
    the sources — email, meeting, chat. Transcribe; do not invent scope. Where he
    left a section unanswered, ask him rather than filling it in yourself.
-   (`macss requisition export-template --apply --autoapprove` writes a blank
-   form if you would rather send him one to fill directly.)
+   (`macss requisition export-template --lang <en|es> --apply --autoapprove`
+   writes a blank form if you would rather send him one to fill directly. It is
+   the one command that still asks for the language, because it writes where no
+   project need exist.)
 3. `macss requisition check` — verifies every section is answered. Fix exactly
    what it reports.
 4. `macss requisition publish --plan`, show the plan to the human, then
@@ -63,8 +70,7 @@ there to give. Show the plan to the human and get their word before you pass it.
    **From here the requirement has a consultable home**, and everything that
    follows is published on top of it.
 5. `macss specification new --apply --autoapprove` — scaffolds the contract
-   template into the same requisition, in the language the request was written
-   in.
+   template into the same requisition, in the project's declared language.
 6. Fill `specification.md`: the committed delivery date, user stories each
    carrying at least one Given-When-Then acceptance criterion, an explicit scope
    that states what is **excluded**, the domain glossary and business rules, and
