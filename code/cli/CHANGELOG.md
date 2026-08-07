@@ -5,6 +5,54 @@ All notable changes to this project will be documented in this file.
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.7.1]
+
+Every invocation this CLI puts in front of somebody is now one the CLI accepts,
+and a check asks the CLI rather than reading the message. Seventeen of the
+thirty-one dictated invocations were refused by the binary that printed them.
+
+The rule had already failed three times, each through a message that reads
+perfectly: `project check` dictating `macss project adopt --plan` before that
+flag existed — the defect this whole method started from — the banner dictating
+`macss upgrade` after ADR 0007 made the choice mandatory, and the same
+`project adopt` line again once 0.7.0 made `--lang` required. Reading is what
+failed, so nothing in the check reads.
+
+### Fixed
+- **`macss issue publish` named a command that has never existed.** `doctor`
+  reported it as what `gh` is needed for; the module is `requisition`. A test
+  asserted the wrong name for as long as the string existed.
+
+- **`macss project adopt --plan` and `--apply` were broken by 0.7.0.** Both
+  carry the flag ADR 0007 requires and both were refused, because `--lang`
+  became required and the two messages naming the command were not revisited.
+  They now carry it. The `project check` one is the sentence this method was
+  founded on, corrected for the second time in four days, for a different
+  reason each time.
+
+- **Fourteen messages named a changing command without saying which of planning
+  or applying was meant** — `macss upgrade` in five places, `requisition new` in
+  six, plus `requisition activate`, `specification new` twice. Each now says.
+
+- **`macss specification new <slug>` passed a bare argument that command does
+  not take**; it reads `--slug <slug>`.
+
+### Added
+- **A check that every dictated invocation is one the CLI accepts**, over the
+  messages this CLI prints and over the skills it ships to agents. It asks the
+  catalogue the CLI publishes — the route exists, the options are declared,
+  nothing required is missing, and a command that changes something has been
+  told which. Whether a command changes anything is **derived** from whether it
+  declares `--plan`, never from a list kept by hand.
+
+  Nothing is registered. A registry would be a second list to keep in step, and
+  would leave a raw string added tomorrow unguarded — the one thing the
+  requirement asks to prevent. The check reads what is actually in the source,
+  so a new message is covered because it exists.
+
+  It also pins how many invocations it *found*. A check that reports only
+  violations passes loudest when it has stopped looking.
+
 ## [0.7.0]
 
 A project says which language its documents are written in **once**, in

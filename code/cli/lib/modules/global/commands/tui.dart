@@ -69,7 +69,7 @@ class TuiCommand implements Command<TuiInput, TuiOutput> {
       final result = await checker(currentVersion: macssVersion);
       if (result.updateAvailable && result.latestVersion != null) {
         banner += "\n  Update available: $macssVersion → ${result.latestVersion}"
-            " — run 'macss upgrade'";
+            " — run 'macss upgrade --apply'";
       }
     } catch (_) {
       // Silent on failure

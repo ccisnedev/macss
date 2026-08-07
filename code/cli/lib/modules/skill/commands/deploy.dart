@@ -112,7 +112,7 @@ class SkillDeployCommand
   @override
   String? validate() {
     if (!assets.directoryExists('skills')) {
-      return 'No skills found in the installed assets. Run: macss upgrade';
+      return 'No skills found in the installed assets. Run: macss upgrade --apply';
     }
     return input.flags.validate();
   }

@@ -132,10 +132,12 @@ class SpecificationPublishCommand
     if (ambiguous != null) return ambiguous;
     final dir = _dir;
     if (dir == null) {
-      return 'No requisition found — run `macss requisition new <slug>` first.';
+      return 'No requisition found — run '
+          '`macss requisition new <slug> --apply` first.';
     }
     if (!File(p.join(dir, 'specification.md')).existsSync()) {
-      return 'No specification.md — run `macss specification new` first.';
+      return 'No specification.md — run `macss specification new --apply` '
+          'first.';
     }
     final meta = IssueMetadata.read(dir);
     if (meta == null || !meta.isPublished) {

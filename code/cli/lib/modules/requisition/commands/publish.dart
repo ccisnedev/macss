@@ -139,7 +139,8 @@ class RequisitionPublishCommand
     if (ambiguous != null) return ambiguous;
     final dir = _dir;
     if (dir == null) {
-      return 'No requisition found — run `macss requisition new <slug>` first, '
+      return 'No requisition found — run `macss requisition new <slug> --apply` '
+          'first, '
           'or point at one with --slug <slug>.';
     }
     if (IssueMetadata.read(dir) == null) {
