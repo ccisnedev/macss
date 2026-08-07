@@ -1,5 +1,4 @@
 # developer-specific files
 .dev/
 # MACSS — local workspace (git-ignored)
-.macss/
 docs/requisitions/
