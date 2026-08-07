@@ -39,6 +39,22 @@ what this release applies to language.
   the **active** requisition. `set` would not say what is being set, and git's
   `checkout` carries a meaning that does not apply.
 
+### Fixed
+- **A parameter the command refuses to run without is now declared required**,
+  instead of being enforced in prose while `help --json` reported
+  `"required": false`. That covers `--lang` on `project create`, `project adopt`
+  and `requisition export-template`, and `--path` on `project create`.
+
+  The catalogue is what a machine reads to learn how to call this CLI, and the
+  reader who believed it — an agent composing an invocation — is exactly the
+  reader it exists for. The refusal message becomes the SDK's
+  (`missing required option --lang`) and the explanation moves into the
+  parameter's description, which the same output prints and which `--help`
+  reaches without anyone having to get it wrong first.
+
+  Found while verifying #24 criterion by criterion, in a JSON printed as
+  evidence for something else.
+
 ### Changed — BREAKING
 - **`--lang` is gone from `requisition new` and `specification new`.** Both
   derive the language from `.macss/config.yaml`. Scripts passing the flag will

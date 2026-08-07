@@ -77,17 +77,22 @@ class CreateInput extends Input {
   /// Declaring them rejects any other flag at parse time and publishes the
   /// options in help.
   static final List<CliParam> params = [
+    // Declared required rather than checked in `validate`. The declaration is
+    // the contract this CLI publishes, and a rule enforced only in prose is one
+    // `help --json` reports the opposite of — to the machine that reads it.
     CliParam.string(
       'path',
       abbr: 'p',
+      required: true,
       description: 'Directory to scaffold the MACSS project into',
     ),
     CliParam.string(
       'lang',
+      required: true,
       allowed: ['en', 'es'],
       description:
-          'Language of this project documents. Required: there is no default, '
-          'because a fallback would be a choice nobody made',
+          'Language of this project documents. There is no default: a fallback '
+          'would be a choice nobody made',
     ),
     ...ChangeFlags.params,
   ];
@@ -146,16 +151,8 @@ class CreateCommand implements Command<CreateInput, CreateOutput> {
 
   @override
   String? validate() {
-    if (input.resolvedPath == null || input.resolvedPath!.isEmpty) {
-      return '--path is required. Usage: macss project create --path=<dir>';
-    }
-    // Creating a project is the moment its language is chosen, so it is the
-    // moment it must be stated. No default: a fallback is a choice nobody made.
-    if (input.lang == null || input.lang!.isEmpty) {
-      return '--lang is required: a project declares the language of its '
-          'documents once, and there is no default.\n'
-          'Usage: macss project create --path=<dir> --lang <en|es> --apply';
-    }
+    // Neither `--path` nor `--lang` is checked here: both are declared
+    // required, so an invocation missing either is refused before this runs.
     return input.flags.validate();
   }
 

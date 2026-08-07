@@ -175,12 +175,26 @@ void main() {
   // because nobody said is inventing a choice the caller was entitled to make
   // (ADR 0009).
   group('macss project create — the language is declared, never assumed', () {
+    // Through the CLI, because the rule is now declared on the parameter and
+    // the SDK enforces the declaration before the command is ever built.
+    // Asserting it on `validate()` would test prose that no longer exists.
     test('without --lang it refuses, and scaffolds nothing', () async {
       final dest = p.join(tempRoot.path, 'undeclared-proj');
+      final stderr = MemorySink();
 
-      final error = makeCmd(dest, lang: null).validate();
+      final code = await makeCli().run(
+        ['project', 'create', '--path=$dest', '--apply', '--autoapprove'],
+        stdout: MemorySink().sink,
+        stderr: stderr.sink,
+      );
 
-      expect(error, contains('--lang is required'));
+      final error = await stderr.text();
+      expect(code, ExitCode.validationFailed);
+      expect(error, contains('--lang'));
+      // The reason survives the move: it now reaches --help too, instead of
+      // only the reader who already got it wrong.
+      expect(error, contains('a choice nobody made'));
+      expect(error, contains('required'));
       expect(Directory(dest).existsSync(), isFalse);
     });
 
@@ -240,16 +254,17 @@ void main() {
   });
 
   group('macss project create', () {
-    test('validate returns error when path is null', () {
-      final cmd = CreateCommand(
-        CreateInput(
-          resolvedPath: null,
-          workingDirectory: tempRoot.path,
-          flags: const ChangeFlags(apply: true, autoapprove: true),
-        ),
-        assets: assets,
+    test('without --path it refuses, and scaffolds nothing', () async {
+      final stderr = MemorySink();
+
+      final code = await makeCli().run(
+        ['project', 'create', '--lang', 'en', '--apply', '--autoapprove'],
+        stdout: MemorySink().sink,
+        stderr: stderr.sink,
       );
-      expect(cmd.validate(), isNotNull);
+
+      expect(code, ExitCode.validationFailed);
+      expect(await stderr.text(), contains('--path'));
     });
 
     test('creates root directory when it does not exist', () async {

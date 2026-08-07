@@ -250,21 +250,6 @@ void main() {
   });
 
   group('macss requisition export-template', () {
-    ExportTemplateCommand exportCommand({
-      String? lang = 'es',
-      ChangeFlags flags = const ChangeFlags(apply: true, autoapprove: true),
-    }) =>
-        ExportTemplateCommand(
-          ExportTemplateInput(
-            resolvedPath: tempDir.path,
-            lang: lang,
-            flags: flags,
-          ),
-          resolver: resolver,
-          artifact: 'requisition',
-          now: clock,
-        );
-
     Future<ExportTemplateOutput> export({
       String lang = 'es',
       ChangeFlags flags = const ChangeFlags(apply: true, autoapprove: true),
@@ -318,18 +303,6 @@ void main() {
       expect(out.exitCode, ExitCode.conflict);
       expect(File(p.join(tempDir.path, 'requisition.md')).readAsStringSync(),
           'MINE');
-    });
-
-    // The one command that keeps --lang is the one that requires it: it writes
-    // where no MACSS project need exist, so there is nothing to derive from.
-    // The rule is not weakened here — this is the reason it has an exception.
-    test('refuses to guess the language when none is declared', () {
-      final failure = exportCommand(lang: null).validate();
-
-      expect(failure, isNotNull);
-      expect(failure, contains('--lang is required'));
-      expect(failure, contains('export-template --lang <en|es>'));
-      expect(file('requisition.md').existsSync(), isFalse);
     });
   });
 
@@ -590,6 +563,26 @@ void main() {
 
       expect(code, ExitCode.validationFailed);
       expect(await stderr.text(), contains('unknown option --bogus'));
+    });
+
+    // The one command that keeps --lang is the one that requires it: it writes
+    // where no MACSS project need exist, so there is nothing to derive from.
+    // The rule is not weakened here — this is the reason it has an exception.
+    test('refuses to guess the language when none is declared', () async {
+      final stderr = MemorySink();
+
+      final code = await makeCli().run(
+        ['requisition', 'export-template', '--path=${tempDir.path}',
+          '--apply', '--autoapprove'],
+        stdout: MemorySink().sink,
+        stderr: stderr.sink,
+      );
+
+      final error = await stderr.text();
+      expect(code, ExitCode.validationFailed);
+      expect(error, contains('--lang'));
+      expect(error, contains('nothing to derive it from'));
+      expect(file('requisition.md').existsSync(), isFalse);
     });
 
     test('rejects a language outside the allowed set', () async {

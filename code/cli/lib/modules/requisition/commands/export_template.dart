@@ -50,10 +50,11 @@ class ExportTemplateInput extends Input {
     ),
     CliParam.string(
       'lang',
+      required: true,
       allowed: ['en', 'es'],
       description:
-          'Language of the template. Required: this runs where no project '
-          'exists, so there is nothing to derive it from',
+          'Language of the template. This runs where no project need exist, '
+          'so there is nothing to derive it from',
     ),
     ...ChangeFlags.params,
   ];
@@ -128,13 +129,8 @@ class ExportTemplateCommand
     // The one command that keeps `--lang`, and the one that requires it: it
     // writes where no MACSS project need exist, so there is no configuration to
     // derive the language from. Not a weakening of the rule — the reason the
-    // rule has an exception here.
-    if (input.lang == null || input.lang!.isEmpty) {
-      return '--lang is required: this writes a blank form at a path that need '
-          'not be a MACSS project, so there is nothing to derive the language '
-          'from.\n'
-          'Usage: macss $artifact export-template --lang <en|es> --apply';
-    }
+    // rule has an exception here. It is declared required, so absence is
+    // refused before this method runs.
     return input.flags.validate();
   }
 
