@@ -96,10 +96,17 @@ const _wht = '\x1B[97m';
 /// the CLI rejects (ADR 0002 chose explicit flags), on the alias deprecated in
 /// favour of `project create`. The first command a new user was told to type
 /// exited 7.
-/// ADR 0007 added the second half: a command that changes things now says
-/// which of plan or apply it is doing, and the first one a new user types is
-/// no exception — it is where the convention is learned.
-const quickstartCommand = 'macss project create --path=my-project --apply';
+/// It has grown twice since, and both times this guard is what noticed. ADR
+/// 0007 added `--apply`: a command that changes things says which of plan or
+/// apply it is doing, and the first one a new user types is no exception — it
+/// is where the convention is learned. ADR 0009 added `--lang`: a project
+/// declares the language of its documents at the moment that choice is made,
+/// and there is no default to fall back on.
+///
+/// It is longer than a slogan, and that is the trade: every word in it is a
+/// decision the reader would otherwise not know had been made for them.
+const quickstartCommand =
+    'macss project create --path=my-project --lang en --apply';
 
 String _buildBanner(String version) {
   final logo =

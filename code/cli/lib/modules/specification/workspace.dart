@@ -115,11 +115,14 @@ String? ambiguousRequisitionFailure(String root, String? slug) {
 /// Records the **active** requisition in `.macss/state.yaml` so other
 /// commands can resolve the folder without repeating the slug. Overwrites any
 /// previous pointer (the newest `specification new` wins).
+///
+/// It is a pointer and nothing else. The language used to travel with it,
+/// which made the pointer a place the language could be answered from — and a
+/// second answer is a chance to disagree with `.macss/config.yaml`.
 void writeActiveRequisition(
   String root, {
   required String slug,
   required String relDir,
-  required String lang,
   required String isoDate,
 }) {
   // Through `ensureWorkspace`: the pointer and the plan files are two paths
@@ -129,7 +132,6 @@ void writeActiveRequisition(
     '# MACSS — active requisition pointer (local; git-ignored)\n'
     'slug: $slug\n'
     'path: $relDir\n'
-    'lang: $lang\n'
     'created: $isoDate\n',
   );
 }

@@ -43,7 +43,6 @@ void main() {
         root.path,
         slug: slug,
         relDir: 'docs/requisitions/$folder',
-        lang: 'en',
         isoDate: '2026-08-06',
       );
 

@@ -8,6 +8,7 @@ import 'package:macss_cli/assets.dart';
 import 'package:macss_cli/modules/project/commands/create.dart';
 import 'package:macss_cli/modules/project/project_builder.dart';
 import 'package:macss_cli/src/plan_apply.dart';
+import 'package:macss_cli/src/project_config.dart';
 
 import 'support/memory_sink.dart';
 
@@ -89,12 +90,14 @@ void main() {
   CreateCommand makeCmd(
     String resolvedPath, {
     ChangeFlags flags = const ChangeFlags(apply: true, autoapprove: true),
+    String? lang = 'en',
   }) =>
       CreateCommand(
         CreateInput(
           resolvedPath: resolvedPath,
           workingDirectory: tempRoot.path,
           flags: flags,
+          lang: lang,
         ),
         assets: assets,
         now: () => DateTime(2026, 8, 4, 9, 30, 15),
@@ -127,7 +130,7 @@ void main() {
       final dest = p.join(tempRoot.path, 'abbr-proj');
 
       final code = await makeCli().run(
-        ['project', 'create', '-p', dest, '--apply', '--autoapprove'],
+        ['project', 'create', '-p', dest, '--lang', 'en', '--apply', '--autoapprove'],
         stdout: MemorySink().sink,
         stderr: MemorySink().sink,
       );
@@ -140,7 +143,7 @@ void main() {
       final dest = p.join(tempRoot.path, 'long-proj');
 
       final code = await makeCli().run(
-        ['project', 'create', '--path=$dest', '--apply', '--autoapprove'],
+        ['project', 'create', '--path=$dest', '--lang', 'en', '--apply', '--autoapprove'],
         stdout: MemorySink().sink,
         stderr: MemorySink().sink,
       );
@@ -163,6 +166,58 @@ void main() {
 
       expect(code, isNot(0));
       expect(await stderr.text(), contains('--plan'));
+      expect(Directory(dest).existsSync(), isFalse);
+    });
+  });
+
+  // A project declares the language of its documents once, and it is declared
+  // at the moment it is chosen. There is no default: answering "English"
+  // because nobody said is inventing a choice the caller was entitled to make
+  // (ADR 0009).
+  group('macss project create — the language is declared, never assumed', () {
+    test('without --lang it refuses, and scaffolds nothing', () async {
+      final dest = p.join(tempRoot.path, 'undeclared-proj');
+
+      final error = makeCmd(dest, lang: null).validate();
+
+      expect(error, contains('--lang is required'));
+      expect(Directory(dest).existsSync(), isFalse);
+    });
+
+    test('with --lang it writes the declaration', () async {
+      final dest = p.join(tempRoot.path, 'declared-proj');
+
+      await makeCmd(dest, lang: 'es').execute();
+
+      expect(projectLanguage(dest), 'es');
+    });
+
+    test('a language outside the shipped set is rejected, naming them',
+        () async {
+      final dest = p.join(tempRoot.path, 'fr-proj');
+      final stderr = MemorySink();
+
+      final code = await makeCli().run(
+        ['project', 'create', '--path=$dest', '--lang', 'fr', '--apply'],
+        stdout: MemorySink().sink,
+        stderr: stderr.sink,
+      );
+
+      expect(code, isNot(0));
+      final text = await stderr.text();
+      expect(text, contains('en'));
+      expect(text, contains('es'));
+      expect(Directory(dest).existsSync(), isFalse);
+    });
+
+    test('the declaration is named in the plan before it is written', () async {
+      final dest = p.join(tempRoot.path, 'planned-lang-proj');
+
+      final out =
+          await makeCmd(dest, flags: const ChangeFlags(plan: true), lang: 'es')
+              .execute();
+
+      expect(File(out.planPath!).readAsStringSync(), contains('language: es'));
       expect(Directory(dest).existsSync(), isFalse);
     });
   });

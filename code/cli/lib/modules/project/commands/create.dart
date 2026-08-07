@@ -19,6 +19,7 @@ import 'package:path/path.dart' as p;
 
 import '../../../assets.dart';
 import '../../../src/plan_apply.dart';
+import '../../../src/project_config.dart';
 import '../canon.dart';
 
 // ─── Input ──────────────────────────────────────────────────────────────────
@@ -26,12 +27,21 @@ import '../canon.dart';
 class CreateInput extends Input {
   final String? resolvedPath;
   final String workingDirectory;
+
+  /// The language this project's documents will be written in.
+  ///
+  /// **Required, with no default.** Creating a project is the moment the choice
+  /// is made, so it is the moment it must be stated; a sensible fallback would
+  /// still be a choice nobody made (ADR 0009).
+  final String? lang;
+
   final ChangeFlags flags;
 
   CreateInput({
     required this.resolvedPath,
     required this.workingDirectory,
     required this.flags,
+    this.lang,
   });
 
   factory CreateInput.fromCliRequest(
@@ -39,6 +49,7 @@ class CreateInput extends Input {
     String? workingDirectory,
   }) {
     final rawPath = req.flagString('path', aliases: const ['p']);
+    final lang = req.flagString('lang');
     workingDirectory ??= Directory.current.path;
     final flags = ChangeFlags.fromCliRequest(req);
 
@@ -47,6 +58,7 @@ class CreateInput extends Input {
         resolvedPath: null,
         workingDirectory: workingDirectory,
         flags: flags,
+        lang: lang,
       );
     }
 
@@ -57,6 +69,7 @@ class CreateInput extends Input {
       resolvedPath: resolved,
       workingDirectory: workingDirectory,
       flags: flags,
+      lang: lang,
     );
   }
 
@@ -69,6 +82,13 @@ class CreateInput extends Input {
       abbr: 'p',
       description: 'Directory to scaffold the MACSS project into',
     ),
+    CliParam.string(
+      'lang',
+      allowed: ['en', 'es'],
+      description:
+          'Language of this project documents. Required: there is no default, '
+          'because a fallback would be a choice nobody made',
+    ),
     ...ChangeFlags.params,
   ];
 
@@ -79,6 +99,7 @@ class CreateInput extends Input {
   Map<String, dynamic> toJson() => {
         'resolvedPath': resolvedPath,
         'workingDirectory': workingDirectory,
+        'lang': lang,
         'plan': flags.plan,
         'apply': flags.apply,
         'autoapprove': flags.autoapprove,
@@ -128,6 +149,13 @@ class CreateCommand implements Command<CreateInput, CreateOutput> {
     if (input.resolvedPath == null || input.resolvedPath!.isEmpty) {
       return '--path is required. Usage: macss project create --path=<dir>';
     }
+    // Creating a project is the moment its language is chosen, so it is the
+    // moment it must be stated. No default: a fallback is a choice nobody made.
+    if (input.lang == null || input.lang!.isEmpty) {
+      return '--lang is required: a project declares the language of its '
+          'documents once, and there is no default.\n'
+          'Usage: macss project create --path=<dir> --lang <en|es> --apply';
+    }
     return input.flags.validate();
   }
 
@@ -166,6 +194,7 @@ class CreateCommand implements Command<CreateInput, CreateOutput> {
       ...canonFiles.map((f) => absent.contains(f)
           ? '  create   ${f.path}'
           : '  exists   ${f.path}'),
+      '  declare  $projectConfigPath (language: ${input.lang})',
       '',
       'An existing file is never overwritten.',
     ].join('\n');
@@ -199,6 +228,11 @@ class CreateCommand implements Command<CreateInput, CreateOutput> {
     for (final file in canonFiles) {
       steps.add(_stamp(root, file));
     }
+
+    // The project's own configuration, and the one thing in .macss/ that is
+    // versioned: its language must be the same for everyone who clones.
+    writeProjectConfig(root, language: input.lang!);
+    steps.add('created  $projectConfigPath (language: ${input.lang})');
 
     return CreateOutput(message: steps.join('\n'), created: true);
   }
