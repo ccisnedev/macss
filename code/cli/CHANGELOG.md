@@ -5,7 +5,16 @@ All notable changes to this project will be documented in this file.
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.7.0]
+
+A project says which language its documents are written in **once**, in
+`.macss/config.yaml`, and every document derives from that. The setting used to
+be a flag on each command: `requisition new --lang es`, then `specification new`
+inheriting it from the requisition's `issue.yaml`, with `en` waiting as a
+default wherever the chain broke. A setting passed per invocation is one that
+can differ per invocation, and a project that answers differently on Tuesday
+does not have an answer. ADR 0009 — a default may derive, but never invent — is
+what this release applies to language.
 
 ### Added
 - **`macss requisition list`** — every requisition in the project, with the
@@ -31,6 +40,41 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
   `checkout` carries a meaning that does not apply.
 
 ### Changed — BREAKING
+- **`--lang` is gone from `requisition new` and `specification new`.** Both
+  derive the language from `.macss/config.yaml`. Scripts passing the flag will
+  fail with `unknown option --lang`; the language moves to the project, once.
+
+  `specification new` also stops inheriting from the requisition's `issue.yaml`.
+  Inheriting was the right instinct applied one hop at a time — it made the
+  requisition an authority on a question that was never its own, and left the
+  answer to be re-derived at every hop.
+
+  Neither `issue.yaml` nor `.macss/state.yaml` carries a `lang:` key any more.
+  A copy of the declaration is a second answer waiting to disagree with the
+  first, and two answers is none. Existing files keep the key; nothing reads it.
+
+- **`project create` and `project adopt` require `--lang <en|es>`.** A project
+  declares the language of its documents at the moment that choice is made, by
+  the person making it. There is no default: English is not a neutral choice,
+  it is a guess about who will read the documents.
+
+- **`specification export-template` is removed.** Of the two documents, only the
+  requisition is handed to somebody outside the team — it is this method's issue
+  template, and a Product Owner may prefer filling one directly. The contract is
+  written by whoever holds the pen, on top of a request that already exists; a
+  blank one is a form for work nobody outside is doing.
+
+  `requisition export-template` survives **and is the one command that still
+  takes `--lang`, now required**: it writes at a path that need not be a MACSS
+  project, so there is nothing to derive from. Not an exception to the rule —
+  the reason the rule has one.
+
+- **A project that has not declared a language is stopped, not assumed to be
+  English.** `requisition new` and `specification new` refuse and name the way
+  out: `macss project adopt --lang <en|es> --apply`. **This includes every
+  project created before this release**, the MACSS repository itself among them.
+  Adopting is a one-line change and the command reports it in its plan first.
+
 - **An ambiguous `--slug` is refused instead of resolved.** Two requisitions can
   answer to one slug: the date prefix makes folder *names* unique, not slugs.
   The resolver used to sort the matches and return the newest, silently. That is
