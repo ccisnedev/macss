@@ -17,8 +17,8 @@ import 'package:modular_cli_sdk/modular_cli_sdk.dart';
 import 'package:path/path.dart' as p;
 
 import '../../../src/plan_apply.dart';
+import '../../../src/project_config.dart';
 import '../../../templates/template_resolver.dart';
-import '../../requisition/issue_metadata.dart';
 import '../slug.dart';
 import '../workspace.dart';
 
@@ -26,31 +26,23 @@ import '../workspace.dart';
 
 class SpecificationNewInput extends Input {
   final String? slug;
-
-  /// Overrides the language; by default the requisition's is inherited, so a
-  /// Spanish request yields a Spanish contract.
-  final String? lang;
-
   final ChangeFlags flags;
 
-  SpecificationNewInput({this.slug, this.lang, required this.flags});
+  SpecificationNewInput({this.slug, required this.flags});
 
   factory SpecificationNewInput.fromCliRequest(CliRequest req) =>
       SpecificationNewInput(
         slug: optionalSlug(req.flagString('slug')),
-        lang: req.flagString('lang'),
         flags: ChangeFlags.fromCliRequest(req),
       );
 
+  /// No `--lang`. It used to inherit the requisition's, which was the right
+  /// instinct applied one hop at a time; the project now declares it once and
+  /// every document derives from that.
   static final List<CliParam> params = [
     CliParam.string(
       'slug',
       description: 'Requisition to add the contract to; defaults to the active one',
-    ),
-    CliParam.string(
-      'lang',
-      allowed: ['en', 'es'],
-      description: "Language of the contract; inherits the requisition's when omitted",
     ),
     ...ChangeFlags.params,
   ];
@@ -61,7 +53,6 @@ class SpecificationNewInput extends Input {
   @override
   Map<String, dynamic> toJson() => {
         'slug': slug,
-        'lang': lang,
         'plan': flags.plan,
         'apply': flags.apply,
         'autoapprove': flags.autoapprove,
@@ -122,6 +113,9 @@ class SpecificationNewCommand
       return 'No requisition found — run `macss requisition new <slug>` first, '
           'or point at one with --slug <slug>.';
     }
+    final undeclared = undeclaredLanguageFailure(workingDirectory);
+    if (undeclared != null) return undeclared;
+
     return input.flags.validate();
   }
 
@@ -142,7 +136,7 @@ class SpecificationNewCommand
       );
     }
 
-    final lang = input.lang ?? IssueMetadata.read(dir)?.lang ?? 'en';
+    final lang = projectLanguage(workingDirectory)!;
     final resolution = resolver.resolve('specification', lang: lang);
 
     final decision = await ChangeGate(

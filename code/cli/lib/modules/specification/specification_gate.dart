@@ -163,7 +163,8 @@ class SpecificationGate {
   /// the sections identically in every language (`1.` Commitment date / Fecha de
   /// compromiso, `2.` User Stories / Historias de Usuario, `3.` Explicit Scope /
   /// Alcance Explícito, `4.` Domain and business rules / Dominio y reglas de
-  /// negocio), so this is language-agnostic — the gate works on `--lang es` too.
+  /// negocio), so this is language-agnostic — the gate works on a Spanish
+  /// project as well as an English one.
   String? _section(Map<String, String> sections, int number) {
     for (final entry in sections.entries) {
       if (entry.key.startsWith('$number.')) return entry.value;

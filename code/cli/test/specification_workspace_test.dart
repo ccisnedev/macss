@@ -33,7 +33,6 @@ void main() {
       writeActiveRequisition(root(),
           slug: 'x',
           relDir: 'docs/requisitions/20260709-x',
-          lang: 'es',
           isoDate: '2026-07-09');
       expect(activeRequisitionPath(root()), 'docs/requisitions/20260709-x');
     });
@@ -49,7 +48,6 @@ void main() {
       writeActiveRequisition(root(),
           slug: 'alpha',
           relDir: 'docs/requisitions/20260709-alpha',
-          lang: 'en',
           isoDate: '2026-07-09');
       expect(resolveRequisitionDir(root()), dir.path);
     });

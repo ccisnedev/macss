@@ -11,6 +11,7 @@ import 'package:macss_cli/modules/project/commands/check.dart';
 import 'package:macss_cli/modules/project/commands/create.dart';
 import 'package:macss_cli/modules/project/project_builder.dart';
 import 'package:macss_cli/src/plan_apply.dart';
+import 'package:macss_cli/src/project_config.dart';
 
 import 'support/memory_sink.dart';
 
@@ -44,6 +45,7 @@ void main() {
         resolvedPath: dest,
         workingDirectory: tempRoot.path,
         flags: const ChangeFlags(apply: true, autoapprove: true),
+        lang: 'en',
       ),
       assets: assets,
     ).execute();
@@ -60,12 +62,14 @@ void main() {
     bool apply = false,
     bool autoapprove = false,
     Approver? approver,
+    String? lang = 'en',
   }) =>
       ProjectAdoptCommand(
         ProjectAdoptInput(
           resolvedPath: dest,
           flags: ChangeFlags(
               plan: plan, apply: apply, autoapprove: autoapprove),
+          lang: lang,
         ),
         assets: assets,
         approver: approver ?? (_) async => true,
@@ -77,12 +81,14 @@ void main() {
     bool apply = false,
     bool autoapprove = false,
     Approver? approver,
+    String? lang = 'en',
   }) =>
       adoptCommand(
         plan: plan,
         apply: apply,
         autoapprove: autoapprove,
         approver: approver,
+        lang: lang,
       ).execute();
 
   void mkdirs(String relative) =>
@@ -421,6 +427,39 @@ void main() {
           reason: 'a plan changes nothing');
     });
 
+    // Adopting the canon includes adopting the decision about language. A
+    // project that predates this stops at the first document command until it
+    // has been adopted, which is the contracted behaviour and the part a user
+    // feels.
+    test('declares the language on a project that had none', () async {
+      await scaffold();
+
+      await adopt(apply: true, autoapprove: true, lang: 'es');
+
+      expect(projectLanguage(dest), 'es');
+    });
+
+    test('a project already conforming but undeclared is not a no-op',
+        () async {
+      await scaffold();
+      File(p.join(dest, '.macss', 'config.yaml')).deleteSync();
+
+      final out = await adopt(apply: true, autoapprove: true, lang: 'en');
+
+      expect(out.message, isNot(contains('Nothing to adopt')));
+      expect(projectLanguage(dest), 'en');
+    });
+
+    test('the declaration is named in the plan, and not written', () async {
+      await scaffold();
+      File(p.join(dest, '.macss', 'config.yaml')).deleteSync();
+
+      final out = await adopt(plan: true, lang: 'es');
+
+      expect(out.message, contains('language: es'));
+      expect(projectLanguage(dest), isNull, reason: 'a plan changes nothing');
+    });
+
     test('a project with nothing missing but a stale entry is not a no-op',
         () async {
       await scaffold();
@@ -445,6 +484,9 @@ void main() {
   // Contract style: through a real ModularCli, so parse-time enforcement is
   // exercised end to end without the compiled binary.
   group('macss project contract', () {
+    // Adopting the canon includes adopting the decision about language, and
+    // the refusal is the SDK enforcing the declared contract — so it is
+    // exercised here, through a real CLI, and not against `validate()`.
     ModularCli makeCli({String? workingDirectory}) => ModularCli()
       ..module(
         'project',
@@ -467,6 +509,23 @@ void main() {
       expect(await stderr.text(), contains('unknown option --bogus'));
     });
 
+    test('without --lang it refuses, and adopts nothing', () async {
+      Directory(dest).createSync(recursive: true);
+      final stderr = MemorySink();
+
+      final code = await makeCli().run(
+        ['project', 'adopt', '--path=$dest', '--apply', '--autoapprove'],
+        stdout: MemorySink().sink,
+        stderr: stderr.sink,
+      );
+
+      final error = await stderr.text();
+      expect(code, ExitCode.validationFailed);
+      expect(error, contains('--lang'));
+      expect(error, contains('a choice nobody made'));
+      expect(File(p.join(dest, 'CHANGELOG.md')).existsSync(), isFalse);
+    });
+
     // This used to assert that a bare `adopt` previews and exits 0. That was
     // the default ADR 0007 removes: it made "change nothing" the outcome of
     // forgetting a flag, so the safe path and the writing path were told apart
@@ -476,7 +535,7 @@ void main() {
       final stderr = MemorySink();
 
       final code = await makeCli().run(
-        ['project', 'adopt', '--path=$dest'],
+        ['project', 'adopt', '--path=$dest', '--lang', 'en'],
         stdout: MemorySink().sink,
         stderr: stderr.sink,
       );
@@ -501,7 +560,7 @@ void main() {
         ..createSync(recursive: true);
 
       final code = await makeCli(workingDirectory: invokedFrom.path).run(
-        ['project', 'adopt', '--path=$dest', '--plan'],
+        ['project', 'adopt', '--path=$dest', '--lang', 'en', '--plan'],
         stdout: MemorySink().sink,
         stderr: MemorySink().sink,
       );
@@ -517,7 +576,7 @@ void main() {
 
     test('create is reachable under the project module', () async {
       final code = await makeCli().run(
-        ['project', 'create', '--path=$dest', '--apply', '--autoapprove'],
+        ['project', 'create', '--path=$dest', '--lang', 'en', '--apply', '--autoapprove'],
         stdout: MemorySink().sink,
         stderr: MemorySink().sink,
       );

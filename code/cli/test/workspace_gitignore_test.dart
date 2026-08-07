@@ -152,7 +152,6 @@ void main() {
         repo.path,
         slug: 'demo',
         relDir: 'docs/requisitions/20260805-demo',
-        lang: 'es',
         isoDate: '2026-08-05',
       );
 

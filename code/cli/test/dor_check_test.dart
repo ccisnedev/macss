@@ -12,6 +12,7 @@ import 'package:macss_cli/modules/requisition/issue_metadata.dart';
 import 'package:macss_cli/modules/specification/commands/new.dart';
 import 'package:macss_cli/src/checks.dart';
 import 'package:macss_cli/src/plan_apply.dart';
+import 'package:macss_cli/src/project_config.dart';
 import 'package:macss_cli/templates/template_resolver.dart';
 
 import 'support/memory_sink.dart';
@@ -40,16 +41,19 @@ void main() {
   File file(String relative) =>
       File(p.join(tempDir.path, p.joinAll(relative.split('/'))));
 
-  Future<void> openRequisition() => RequisitionNewCommand(
-        RequisitionNewInput(
-          slug: 'demo',
-          lang: 'es',
-          flags: const ChangeFlags(apply: true, autoapprove: true),
-        ),
-        resolver: resolver,
-        workingDirectory: tempDir.path,
-        now: clock,
-      ).execute();
+  Future<void> openRequisition() {
+    // The project declares its language once; every document derives from it.
+    writeProjectConfig(tempDir.path, language: 'es');
+    return RequisitionNewCommand(
+      RequisitionNewInput(
+        slug: 'demo',
+        flags: const ChangeFlags(apply: true, autoapprove: true),
+      ),
+      resolver: resolver,
+      workingDirectory: tempDir.path,
+      now: clock,
+    ).execute();
+  }
 
   Future<void> addContract() => SpecificationNewCommand(
         SpecificationNewInput(

@@ -162,14 +162,12 @@ class RequisitionActivateCommand
       );
     }
 
-    // The same writer `requisition new` uses, so the pointer keeps its four
-    // keys and its format. The language comes from the requisition's own
-    // metadata rather than being asked for again.
+    // The same writer `requisition new` uses, so the pointer keeps its keys and
+    // its format.
     writeActiveRequisition(
       workingDirectory,
       slug: input.slug!,
       relDir: relDir,
-      lang: _langOf(dir),
       isoDate: _iso(now()),
     );
 
@@ -189,15 +187,6 @@ class RequisitionActivateCommand
         .toSet()
         .toList()
       ..sort();
-  }
-
-  String _langOf(String dir) {
-    final f = File(p.join(dir, 'issue.yaml'));
-    if (!f.existsSync()) return 'en';
-    return RegExp(r'^lang:\s*(\S+)\s*$', multiLine: true)
-            .firstMatch(f.readAsStringSync())
-            ?.group(1) ??
-        'en';
   }
 
   String _iso(DateTime d) => '${d.year.toString().padLeft(4, '0')}-'

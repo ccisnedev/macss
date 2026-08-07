@@ -1,4 +1,8 @@
-/// `macss requisition new <slug> [--lang <lang>]` — opens a requisition.
+/// `macss requisition new <slug> --plan|--apply` — opens a requisition.
+///
+/// It takes no `--lang`: the project declared its language once, and this
+/// derives it. A project that has not declared one is stopped rather than
+/// assumed to be English.
 ///
 /// Writes the form carrying the Product Owner's request, the issue metadata
 /// beside it, and records the requisition as the active one so later commands
@@ -20,6 +24,7 @@ import 'package:path/path.dart' as p;
 
 import '../../../src/gitignore.dart';
 import '../../../src/plan_apply.dart';
+import '../../../src/project_config.dart';
 import '../../../templates/template_resolver.dart';
 import '../../specification/slug.dart';
 import '../../specification/workspace.dart';
@@ -29,30 +34,22 @@ import '../issue_metadata.dart';
 
 class RequisitionNewInput extends Input {
   final String slug;
-  final String lang;
   final ChangeFlags flags;
 
-  RequisitionNewInput({
-    required this.slug,
-    required this.lang,
-    required this.flags,
-  });
+  RequisitionNewInput({required this.slug, required this.flags});
 
   factory RequisitionNewInput.fromCliRequest(CliRequest req) =>
       RequisitionNewInput(
         slug: normalizeSlug(req.param('slug') ?? ''),
-        lang: req.flagString('lang') ?? 'en',
         flags: ChangeFlags.fromCliRequest(req),
       );
 
+  /// No `--lang`. The project declared its language once, in
+  /// `.macss/config.yaml`, and this derives it from there: a setting passed per
+  /// invocation is one that can differ per invocation, and a project that
+  /// answers differently on Tuesday does not have an answer.
   static final List<CliParam> params = [
     CliParam.positional('slug', description: 'Short name for the requisition'),
-    CliParam.string(
-      'lang',
-      allowed: ['en', 'es'],
-      defaultValue: 'en',
-      description: 'Language of the form handed to the Product Owner',
-    ),
     ...ChangeFlags.params,
   ];
 
@@ -62,7 +59,6 @@ class RequisitionNewInput extends Input {
   @override
   Map<String, dynamic> toJson() => {
         'slug': slug,
-        'lang': lang,
         'plan': flags.plan,
         'apply': flags.apply,
         'autoapprove': flags.autoapprove,
@@ -120,8 +116,16 @@ class RequisitionNewCommand
     if (input.slug.isEmpty) {
       return 'A <slug> is required: macss requisition new <slug>';
     }
+    // The form is a localized template, so the project must have said which
+    // language it speaks. There is no default to fall back on.
+    final undeclared = undeclaredLanguageFailure(workingDirectory);
+    if (undeclared != null) return undeclared;
+
     return input.flags.validate();
   }
+
+  /// The project's language, declared once. Safe once validation has passed.
+  String get lang => projectLanguage(workingDirectory)!;
 
   @override
   Future<RequisitionNewOutput> execute() async {
@@ -175,7 +179,7 @@ class RequisitionNewCommand
 
     Directory(dir).createSync(recursive: true);
 
-    final resolution = resolver.resolve('requisition', lang: input.lang);
+    final resolution = resolver.resolve('requisition', lang: lang);
     final form = File(p.join(dir, 'requisition.md'));
     if (form.existsSync()) {
       steps.add('  kept     $relDir/requisition.md (already exists)');
@@ -189,7 +193,7 @@ class RequisitionNewCommand
     if (File(IssueMetadata.pathIn(dir)).existsSync()) {
       steps.add('  kept     $relDir/${IssueMetadata.fileName}');
     } else {
-      IssueMetadata(title: input.slug, lang: input.lang).write(dir);
+      IssueMetadata(title: input.slug).write(dir);
       steps.add('  created  $relDir/${IssueMetadata.fileName}');
     }
 
@@ -197,7 +201,6 @@ class RequisitionNewCommand
       workingDirectory,
       slug: input.slug,
       relDir: relDir,
-      lang: input.lang,
       isoDate: _iso(stamp),
     );
 

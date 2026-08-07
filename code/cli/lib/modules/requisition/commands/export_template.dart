@@ -20,7 +20,9 @@ import '../../../templates/template_resolver.dart';
 
 class ExportTemplateInput extends Input {
   final String resolvedPath;
-  final String lang;
+  /// Required, and the only place --lang survives: this writes at a path
+  /// that need not be a MACSS project, so there is no config to derive it from.
+  final String? lang;
   final ChangeFlags flags;
 
   ExportTemplateInput({
@@ -35,7 +37,7 @@ class ExportTemplateInput extends Input {
     return ExportTemplateInput(
       resolvedPath:
           raw == null ? cwd : (p.isAbsolute(raw) ? raw : p.join(cwd, raw)),
-      lang: req.flagString('lang') ?? 'en',
+      lang: req.flagString('lang'),
       flags: ChangeFlags.fromCliRequest(req),
     );
   }
@@ -48,9 +50,11 @@ class ExportTemplateInput extends Input {
     ),
     CliParam.string(
       'lang',
+      required: true,
       allowed: ['en', 'es'],
-      defaultValue: 'en',
-      description: 'Language of the template',
+      description:
+          'Language of the template. This runs where no project need exist, '
+          'so there is nothing to derive it from',
     ),
     ...ChangeFlags.params,
   ];
@@ -122,12 +126,17 @@ class ExportTemplateCommand
     if (File(input.resolvedPath).existsSync()) {
       return '"${input.resolvedPath}" is a file, not a directory.';
     }
+    // The one command that keeps `--lang`, and the one that requires it: it
+    // writes where no MACSS project need exist, so there is no configuration to
+    // derive the language from. Not a weakening of the rule — the reason the
+    // rule has an exception here. It is declared required, so absence is
+    // refused before this method runs.
     return input.flags.validate();
   }
 
   @override
   Future<ExportTemplateOutput> execute() async {
-    final resolution = resolver.resolve(artifact, lang: input.lang);
+    final resolution = resolver.resolve(artifact, lang: input.lang!);
     final target = File(p.join(input.resolvedPath, '$artifact.md'));
 
     // The refusal to overwrite comes first: there is no change to plan or
