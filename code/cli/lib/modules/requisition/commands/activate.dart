@@ -107,7 +107,8 @@ class RequisitionActivateCommand
   @override
   String? validate() {
     if (input.slug == null || input.slug!.isEmpty) {
-      return 'Which requisition? Usage: macss requisition activate <slug>\n'
+      return 'Which requisition? '
+          'Usage: macss requisition activate <slug> --apply\n'
           'Run `macss requisition list` to see them.';
     }
 

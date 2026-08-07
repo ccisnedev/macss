@@ -114,7 +114,7 @@ class RequisitionNewCommand
   @override
   String? validate() {
     if (input.slug.isEmpty) {
-      return 'A <slug> is required: macss requisition new <slug>';
+      return 'A <slug> is required: macss requisition new <slug> --apply';
     }
     // The form is a localized template, so the project must have said which
     // language it speaks. There is no default to fall back on.
