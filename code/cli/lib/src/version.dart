@@ -4,4 +4,4 @@
 /// Both are kept in sync manually — validated by version_sync_test.dart.
 library;
 
-const String macssVersion = '0.6.0';
+const String macssVersion = '0.7.0';
