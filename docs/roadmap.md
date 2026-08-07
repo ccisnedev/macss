@@ -353,6 +353,42 @@ it returns to implementation with something to change. A returning issue does
 not re-open the requisition. The contract still holds; what changed is how the
 solution is built.
 
+### Two skills the stages need but do not have — `macss-commit`, `macss-pr`
+
+Neither is a new phase. Implementation still has three, and delivery and
+verification still do what ADR 0008 says. These are **tools used inside stages
+that already exist**, and they are missing because the artifacts they produce —
+the commit and the pull request — are the only ones the method leaves to
+unaided judgement.
+
+| Skill | Stage | Produces |
+|---|---|---|
+| `macss-commit` | implementation → execute | a commit that is one complete logical unit |
+| `macss-pr` | delivery, revisited in verification | the PR title and body, in the form release automation reads |
+
+**Why they earn a skill rather than a command.** A command can create a commit;
+it cannot tell whether the staged change is one idea or three. That is the same
+judgement call that made implementation the skill-served stage in the first
+place.
+
+`macss-commit` reads what is staged and answers a question the author is badly
+placed to answer about their own work: *is this one change?* It separates a
+refactor from the behaviour change it travelled with, refuses to bundle a fix
+with a feature, and writes the message once the shape is right. The discipline
+is not stylistic — a commit that mixes concerns cannot be reverted precisely,
+and the refactor hides inside the diff where review will not question it.
+
+`macss-pr` matters for a reason that appears only once releases are automated:
+under squash, **the PR title is the only message that reaches the main branch**,
+so it is the single input to the version calculation. Getting it wrong does not
+produce an untidy history — it produces the wrong version, or no release at
+all. The skill also warns when a PR spans more than one deployable component,
+because that bumps every component it touches.
+
+Both are downstream of decisions recorded in the consuming organisation's
+handbook — Conventional Commits, SemVer, release-please, squash-only. The
+skills carry the discipline; they do not invent it.
+
 ### The review is methodological, and it is not a MACSS command
 
 **The reviewer is an AI agent, and that is the point.** A human review is not
@@ -673,10 +709,24 @@ ADR 0005 recorded that today's gates *"record what was checked; none records who
 checked it."* The instrument is a signature, and modelling the lifecycle as a
 finite state machine is what gives it teeth.
 
-- A gate that passes does not advance the state. It makes signing **possible**.
-  The gate checks the artifact; the signature attaches the person. Signing
-  instead of checking would be the rubber stamp; signing only after checking is
-  the pair working as intended.
+- **The signature becomes one of the things the gate composes.** `macss dor check`
+  already composes three conditions — the requisition is complete, the contract
+  is ready, the issue is published. It gains a fourth: it is signed. So today it
+  measures completeness, and afterwards it measures completeness **and** the
+  accountability for it, and fails while the signature is missing. No new
+  concept, one more clause.
+
+  The gate still checks the artifact and the signature still attaches the
+  person; what changes is that neither counts as done without the other. Signing
+  instead of checking would be the rubber stamp; checking without signing is
+  what the method does today, and it is why `verification.md` could be
+  forgotten and a frozen body could be edited.
+
+- **The freeze hangs off the signature, not off the check.** This was learned by
+  breaking it: a specification body was edited after `dor check` had passed,
+  because passing the gate is what freezes it today. With two people, "is it
+  frozen?" has to have a mechanical answer, and completeness is the wrong one —
+  the body is frozen once somebody has answered for it.
 - **The signature covers a content hash**, not a moment. If the signed body
   changes, the signature is void and the machine falls back to the previous
   state on its own. That is what turns "the body freezes at DoR" from a
