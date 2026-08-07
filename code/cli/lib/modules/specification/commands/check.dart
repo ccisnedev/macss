@@ -97,6 +97,10 @@ class SpecificationCheckCommand
 
   @override
   String? validate() {
+    // Ambiguity is answered with the candidates, never resolved by picking one.
+    final ambiguous = ambiguousRequisitionFailure(workingDirectory, input.slug);
+    if (ambiguous != null) return ambiguous;
+
     final spec = _specFile;
     if (spec == null || !spec.existsSync()) {
       return 'No specification found — run `macss specification new <slug>` first, '

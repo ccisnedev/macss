@@ -8,7 +8,9 @@ import 'package:modular_cli_sdk/modular_cli_sdk.dart';
 
 import '../../assets.dart';
 import '../../templates/template_resolver.dart';
+import 'commands/activate.dart';
 import 'commands/check.dart';
+import 'commands/list.dart';
 import 'commands/export_template.dart';
 import 'commands/new.dart';
 import 'commands/publish.dart';
@@ -49,6 +51,27 @@ void buildRequisitionModule(ModuleBuilder m, {required Assets assets}) {
     description:
         'Create or update the issue from the requisition — --plan or --apply',
     params: RequisitionPublishInput.params,
+  );
+
+  m.command<RequisitionListInput, RequisitionListOutput>(
+    'list',
+    (req) => RequisitionListCommand(
+      RequisitionListInput.fromCliRequest(req),
+      workingDirectory: Directory.current.path,
+    ),
+    description: 'Show every requisition in this project, and which is active',
+    params: RequisitionListInput.params,
+  );
+
+  m.command<RequisitionActivateInput, RequisitionActivateOutput>(
+    'activate <slug>',
+    (req) => RequisitionActivateCommand(
+      RequisitionActivateInput.fromCliRequest(req),
+      workingDirectory: Directory.current.path,
+    ),
+    description:
+        'Choose the requisition the following commands act on — --plan or --apply',
+    params: RequisitionActivateInput.params,
   );
 
   m.command<RequisitionCheckInput, RequisitionCheckOutput>(

@@ -127,6 +127,9 @@ class SpecificationPublishCommand
 
   @override
   String? validate() {
+    // Ambiguity is answered with the candidates, never resolved by picking one.
+    final ambiguous = ambiguousRequisitionFailure(workingDirectory, input.slug);
+    if (ambiguous != null) return ambiguous;
     final dir = _dir;
     if (dir == null) {
       return 'No requisition found — run `macss requisition new <slug>` first.';
