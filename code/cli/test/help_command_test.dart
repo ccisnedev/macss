@@ -97,6 +97,39 @@ void main() {
       );
     });
 
+    // The catalogue is what a machine reads to learn how to call this CLI. A
+    // parameter the command refuses to run without, declared `required: false`,
+    // is the contract describing a behaviour the binary does not have — and the
+    // reader who believes it is precisely the reader the JSON exists for.
+    test('a parameter the command will not run without is declared required',
+        () async {
+      final stdout = MemorySink();
+      final code = await runMacss(
+        const ['help', '--json'],
+        stdout: stdout.sink,
+        stderr: MemorySink().sink,
+      );
+      expect(code, 0);
+
+      final catalog = jsonDecode(await stdout.text()) as Map<String, dynamic>;
+      final required = <String>{
+        for (final c in (catalog['commands'] as List).cast<Map<String, dynamic>>())
+          for (final p in (c['params'] as List).cast<Map<String, dynamic>>())
+            if (p['required'] == true) '${c['route']} --${p['name']}',
+      };
+
+      expect(
+        required,
+        containsAll(const [
+          // No default, and nothing to derive one from.
+          'project create --path',
+          'project create --lang',
+          'project adopt --lang',
+          'requisition export-template --lang',
+        ]),
+      );
+    });
+
     test('normalizes --version and -v to the version command', () {
       expect(normalizeMacssArgs(const ['--version']), equals(const ['version']));
       expect(normalizeMacssArgs(const ['-v']), equals(const ['version']));

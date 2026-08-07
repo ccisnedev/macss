@@ -84,12 +84,15 @@ class ProjectAdoptInput extends Input {
       abbr: 'p',
       description: 'Project directory to adopt; defaults to the current one',
     ),
+    // Adopting the canon includes adopting the decision about language, and
+    // the declaration says so where a machine can read it.
     CliParam.string(
       'lang',
+      required: true,
       allowed: ['en', 'es'],
       description:
-          'Language of this project documents. Required: there is no default, '
-          'because a fallback would be a choice nobody made',
+          'Language of this project documents. There is no default: a fallback '
+          'would be a choice nobody made',
     ),
     ...ChangeFlags.params,
   ];
@@ -173,13 +176,8 @@ class ProjectAdoptCommand
     if (!Directory(input.resolvedPath).existsSync()) {
       return 'No such directory: "${input.resolvedPath}".';
     }
-    // Adopting the canon includes adopting the decision about language. It is
-    // required rather than defaulted for the same reason as in `create`.
-    if (input.lang == null || input.lang!.isEmpty) {
-      return '--lang is required: adopting the canon includes declaring the '
-          'language of this project documents, and there is no default.\n'
-          'Usage: macss project adopt --lang <en|es> --apply';
-    }
+    // `--lang` is declared required, so an invocation without it never reaches
+    // this method.
     return input.flags.validate();
   }
 

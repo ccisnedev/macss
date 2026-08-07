@@ -431,15 +431,6 @@ void main() {
     // project that predates this stops at the first document command until it
     // has been adopted, which is the contracted behaviour and the part a user
     // feels.
-    test('without --lang it refuses, and adopts nothing', () async {
-      Directory(dest).createSync(recursive: true);
-
-      final error = adoptCommand(apply: true, lang: null).validate();
-
-      expect(error, contains('--lang is required'));
-      expect(File(p.join(dest, 'CHANGELOG.md')).existsSync(), isFalse);
-    });
-
     test('declares the language on a project that had none', () async {
       await scaffold();
 
@@ -493,6 +484,9 @@ void main() {
   // Contract style: through a real ModularCli, so parse-time enforcement is
   // exercised end to end without the compiled binary.
   group('macss project contract', () {
+    // Adopting the canon includes adopting the decision about language, and
+    // the refusal is the SDK enforcing the declared contract — so it is
+    // exercised here, through a real CLI, and not against `validate()`.
     ModularCli makeCli({String? workingDirectory}) => ModularCli()
       ..module(
         'project',
@@ -513,6 +507,23 @@ void main() {
 
       expect(code, ExitCode.validationFailed);
       expect(await stderr.text(), contains('unknown option --bogus'));
+    });
+
+    test('without --lang it refuses, and adopts nothing', () async {
+      Directory(dest).createSync(recursive: true);
+      final stderr = MemorySink();
+
+      final code = await makeCli().run(
+        ['project', 'adopt', '--path=$dest', '--apply', '--autoapprove'],
+        stdout: MemorySink().sink,
+        stderr: stderr.sink,
+      );
+
+      final error = await stderr.text();
+      expect(code, ExitCode.validationFailed);
+      expect(error, contains('--lang'));
+      expect(error, contains('a choice nobody made'));
+      expect(File(p.join(dest, 'CHANGELOG.md')).existsSync(), isFalse);
     });
 
     // This used to assert that a bare `adopt` previews and exits 0. That was
