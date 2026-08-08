@@ -70,6 +70,12 @@ The test of a good question: it sends the human to verify something specific,
 and they answer with a statement of their own. The test of a bad one: it can be
 answered "yes" without leaving the chair.
 
+**Give it, do not offer it.** If a decision needs a text, a command or a number
+in order to be made, it goes in the same message as the question. "I can show
+you the text if you want" adds a step and asks the human to choose before they
+have what the choice requires — the vague question again, wearing the shape of
+courtesy.
+
 Say plainly when the missing fact is one only they hold — something said in a
 meeting, a constraint never written down, an intention. Then the question is not
 "do you agree" but "here is the one thing I cannot reach: what is it?"
@@ -79,6 +85,14 @@ And never ask it in the method's own vocabulary. *Warrant*, *qualifier* and
 words of the thing being verified.
 
 When a story is done, ask before starting the next.
+
+**If the human declines to judge a criterion and asks you to move on**, that is
+their decision and you take it. The criterion is neither met nor failed: it is
+**unjudged**, and the record says so by name. Do not carry it as met, do not
+fold it into "not demonstrated" — that is what *you* could not show, and this is
+what *they* did not judge. Two different gaps, two different owners. Name every
+unjudged criterion again at the end, so a record read later cannot mistake
+silence for agreement.
 
 ## Reproducibility
 
@@ -90,6 +104,9 @@ verification, not a courtesy attached to it.
   into something that did not happen.
 - Where the evidence is not a command — a file, a diff, an output already
   produced — name where it is, precisely enough to open: path and line.
+  A line number ages. Name the file and the line, and quote enough of the text
+  that a reader who finds the line moved can still find the thing. The quote is
+  what survives an edit; the number is what makes it quick today.
 - Say what has to be true for the command to work: which directory, which
   artifact, what state.
 - **Verify against the built artifact**, not the source tree, whenever the two
@@ -98,6 +115,13 @@ verification, not a courtesy attached to it.
   you are running: a stale artifact answers confidently and wrongly.
 - The finished record must let somebody who was not present reproduce the whole
   verification from it alone.
+
+**Reproducible means available, not exercised.** Give the command whether or not
+anyone intends to run it — including the working directory and whatever else it
+needs — so the human can decide for themselves whether they need to check. Never
+make a criterion depend on their running it: that hands them work the evidence
+was supposed to have already done, and their running it would prove their
+environment resembles yours, not that the claim is true.
 
 ## What the evidence does not show
 
@@ -114,6 +138,13 @@ them everything.
   met nor failed. Present it as such and carry on. It does not stop the
   verification, and it certainly does not pass quietly. Hiding it inside "met"
   or inside "failed" is the one inadmissible move.
+
+**When there is nothing to run, say what would have to exist.** Some gaps have
+no command behind them — the reader who was not present, the agent that has not
+used this yet. Do not leave the entry with a gap and nothing else: name what
+would produce the evidence and why it is not available here. That tells the
+human what it would cost to close the gap, which is the decision they are
+actually being asked to make.
 
 **Report what went wrong while you were gathering evidence.** A command that
 failed, a fixture that turned out to be built wrong, a message that could not be
@@ -142,10 +173,22 @@ for the failure:
 A criterion that holds only in part is **met with reservations**, and the
 reservation is stated. Do not round it up.
 
+**Met with reservations is not the same as met in substance.** The first is
+about the delivery: it holds, with a caveat worth writing down. The second is
+about the criterion: its letter did not hold, its purpose did, and the human
+chose to accept that rather than remake the agreement — a verdict on the
+criterion, resolved by the person who owns it. Record which one it is.
+Collapsing them hides who the defect belongs to.
+
 **Then stop.** Do not propose where the work should go. Correcting, discarding
 or remaking the agreement are decisions for whoever answers for the requirement.
 You establish what is true; they decide what to do about it. Offering the route
 is how a verdict quietly becomes a plan nobody chose.
+
+**And do not lean.** Naming the options is your job; ranking them is not. "This
+one is the honest choice" or "this is the only one that…" is the conclusion
+arriving by the back door — you have chosen and left the human to ratify. Give
+each option its consequences, in the same words, and stop there.
 
 Record the human's decision **in their own words.** That is what makes the
 record theirs rather than yours.
@@ -166,14 +209,22 @@ verification or record it for later is the human's call, not yours.
 
 ## The record
 
-Write it as you go, not afterwards from memory.
+**Open the record before you start.** Create the document first, listing every
+criterion from the contract, unjudged. Fill each one in as it is judged — the
+claim, the evidence, the warrant, the gap, and the human's decision in their own
+words — before moving to the next.
+
+Written afterwards, the record is a reconstruction: what survives is what you
+remember, which is the part that went smoothly. Written as you go, each entry
+carries the moment the human judged it, and a walk interrupted halfway leaves a
+document that says exactly how far it got instead of nothing at all.
 
 - Every criterion, in the contract's order, with its claim, evidence, warrant
   and what the evidence does not cover.
 - The verdict for anything that did not hold, and the evidence for that reading.
-- What the human judged — including anything they **rejected**, and anything
-  they accepted **with reservations**. A document that only records agreement is
-  a record of nothing.
+- What the human judged — including anything they **rejected**, anything they
+  accepted **with reservations**, and anything they chose **not to judge**. A
+  document that only records agreement is a record of nothing.
 - What you demonstrated, distinguished from what the human accepted. They are
   different acts and the record must not blur them.
 - At the end, what is **not covered by any criterion**, so it cannot be mistaken
@@ -199,7 +250,8 @@ yourself is the exact failure it exists to prevent.
 - [ ] Every gap is stated concretely — what could not be done, and why.
 - [ ] Anything that did not hold says which of the three failed, with the
       evidence for that reading, and proposes no route.
-- [ ] Anything rejected or accepted with reservations is recorded as such.
+- [ ] Anything rejected, accepted with reservations, or left unjudged is
+      recorded as such, and named again at the end.
 - [ ] The record would let someone who was not present reproduce the whole thing.
 - [ ] The human concluded. You did not.
 
