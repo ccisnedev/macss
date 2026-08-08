@@ -36,6 +36,7 @@ const _allTemplates = [
   'skills/macss-analyze/SKILL.md',
   'skills/macss-plan/SKILL.md',
   'skills/macss-execute/SKILL.md',
+  'skills/macss-verification/SKILL.md',
 ];
 
 void main() {
@@ -208,6 +209,40 @@ void main() {
       // Everything else is still absent.
       expect(checks.firstWhere((c) => c.name == 'docker').status,
           CheckStatus.warning);
+    });
+  });
+
+  // A skill shipped but absent from doctor's list is one doctor will never
+  // report missing: the work looks complete and the check is silently exempt.
+  // Found by diagnosing #34 — `macss-verification` shipped, four suites green,
+  // and nothing noticed. Then lost with #34's branch when that contract was
+  // superseded, and noticed a second time the same way: the skill shipped
+  // again, everything stayed green again. A guard living only in the branch
+  // it was written for dies with it. Derived from the shipped assets rather than repeated,
+  // so the next skill joins without anybody remembering this rule.
+  //
+  // Doctor keeps its hand-written list on purpose. Deriving its checks from the
+  // same directory it inspects would make them vacuous: a deleted skill would
+  // simply stop being listed, and a broken installation is precisely what
+  // doctor is for. So the list stays, and this is what keeps it complete.
+  group('every shipped skill is a skill doctor checks', () {
+    test('the real assets', () async {
+      final assets = Assets(root: Directory.current.path);
+      final shipped = assets.listDirectory('skills');
+
+      final out = await makeCmd(assets).execute();
+      final checked = out.checks.map((c) => c.name).toSet();
+
+      expect(shipped, isNotEmpty, reason: 'no skills found to check');
+      for (final skill in shipped) {
+        expect(
+          checked,
+          contains('skill: $skill'),
+          reason: '"$skill" is shipped and installed by `skill deploy`, and '
+              '`macss doctor` does not check it. Add it to requiredAssets in '
+              'doctor.dart.',
+        );
+      }
     });
   });
 }
