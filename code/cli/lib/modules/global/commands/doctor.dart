@@ -88,9 +88,15 @@ class DoctorCommand implements Command<DoctorInput, DoctorOutput> {
 
     // Check 3+: every asset the commands need at runtime.
     //
-    // Labels come from the map, not from the path's basename: four skills all
-    // end in `SKILL.md`, so a basename label would render four identical rows
-    // and hide which one is actually missing.
+    // Labels come from the map, not from the path's basename: the skills all
+    // end in `SKILL.md`, so a basename label would render identical rows and
+    // hide which one is actually missing.
+    //
+    // The list is written out rather than derived from the shipped directory,
+    // and that is deliberate: deriving it from the directory this inspects
+    // would make it vacuous, since a deleted skill would stop being listed
+    // instead of being reported. A broken installation is what doctor is for.
+    // A test keeps the list complete — see doctor_test.dart.
     const requiredAssets = <String, String>{
       'template: 0001-record-architecture-decisions.md':
           'templates/project-base/docs/adr/0001-record-architecture-decisions.md',
@@ -105,6 +111,7 @@ class DoctorCommand implements Command<DoctorInput, DoctorOutput> {
       'skill: macss-analyze': 'skills/macss-analyze/SKILL.md',
       'skill: macss-plan': 'skills/macss-plan/SKILL.md',
       'skill: macss-execute': 'skills/macss-execute/SKILL.md',
+      'skill: macss-verification': 'skills/macss-verification/SKILL.md',
     };
 
     for (final entry in requiredAssets.entries) {
