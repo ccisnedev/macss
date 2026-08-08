@@ -5,6 +5,66 @@ All notable changes to this project will be documented in this file.
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.8.0]
+
+### Added
+- **`macss-verification`** — the fifth lifecycle skill, and the one covering the
+  stage where the human signs. The lifecycle was served up to the end of
+  implementation and then stopped, exactly where accountability begins.
+
+  It needs three things and knows nothing else: the acceptance criteria, the
+  delivered change, and a human present. Where those come from and what happens
+  to the work afterwards belong to whoever invokes it — so it works in a project
+  with no requisitions, no issues, no pull requests and no gates.
+
+  It teaches obligations rather than supplying a template, because sameness is
+  the negative signal: verifications resemble each other only when a form is
+  being filled instead of the work being done.
+
+  **One criterion at a time**, with the human's judgement before the next.
+  Claim, evidence and warrant stated separately. **Every question explicit** —
+  what the criterion asked, what was checked, what was *not* checked and why it
+  is out of reach, and the decision at stake as alternatives that are different
+  acts. Never "does the reasoning hold?": that has an answer which depends on
+  fatigue and trust, produces "yes, go ahead", and removes the accountability
+  the stage exists to create.
+
+  **When a criterion does not hold it says which of three things failed** — the
+  work, the approach, or the criterion itself — with the evidence for that
+  reading, and then **stops**. Where the work goes next is decided by whoever
+  answers for the requirement. Offering the route is how a verdict quietly
+  becomes a plan nobody chose.
+
+  **It does not require the verifier to be someone other than the implementer.**
+  One person can be requester, author of the criteria, implementer and signer.
+  What makes it a verification is not who conducts it but that every criterion
+  is faced one at a time, with reproducible evidence, and judged by someone who
+  answers for the judgement.
+
+  Written from five verifications conducted by hand — four in this repository
+  (#21, #31, #24, #39) and one in a repository with none of this machinery.
+  Every obligation is there because one of them needed it, including the last:
+  the rule about explicit questions was found by asking a vague one and being
+  corrected mid-walk.
+
+- **The method is checked for what it must not say.** Six couplings —
+  `delivery.md`, the pull request body, the Definition of Ready and Done, the
+  state machine, the `delivery` module — are asserted absent, with the term and
+  its line named when one reappears. A coupling is a word, and a word is exactly
+  what goes back in quietly six months later, reading perfectly.
+
+- **A skill that ships but that `doctor` does not check fails the build.** Added
+  once during #34, lost when that branch was abandoned, and the hole reopened
+  immediately: the skill shipped again, every suite stayed green again, nothing
+  noticed. Recovered and now recording how it was lost — a guard living only in
+  the branch it was written for dies with it.
+
+### Known limit
+- The skill teaches the practice; it does not enforce it. Nothing compels a walk
+  criterion by criterion, and nothing stops an agent writing a conclusion it was
+  told not to write. That has to come from the harness that runs it. Stated so
+  the gap is known rather than assumed closed.
+
 ## [0.7.1]
 
 Every invocation this CLI puts in front of somebody is now one the CLI accepts,
