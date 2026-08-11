@@ -5,6 +5,53 @@ All notable changes to this project will be documented in this file.
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.8.1]
+
+### Changed
+- **`macss-specification` rewritten.** The stage it covers was one imperative —
+  *"Fill `specification.md`: the committed delivery date, user stories each
+  carrying at least one Given-When-Then acceptance criterion…"* — one sentence,
+  addressed to one person, producing everything at once. That is the corpus the
+  method exists to prevent, prescribed by the method itself.
+
+  Measured before rewriting: of the twelve concepts the new contract requires,
+  **ten appeared zero times** — `authorize`, `inventory`, `one at a time`,
+  `objectively`, `contradict`, `means to check` among them. The Product Owner
+  appeared three times and never as somebody who authorizes: always as a source
+  who sends, said, is transcribed. The person bound by the contract had no role
+  in producing it.
+
+  It now names **two agents**, and only one of them authorizes. The other may be
+  a human or not: what defines it is not what it is but that it authorizes and
+  answers for it afterwards.
+
+  What it adds: the inventory of every source and repository, including what
+  could not be opened and why, and an inventory that never closes; the complete
+  list of stories as a stage of its own, iterated and closed before any
+  criterion; criteria proposed as a list per story and then authorized **one at
+  a time**, written into the contract at the moment each is decided; the two
+  conditions a criterion must meet — objectively checkable, and compared against
+  those already agreed, with any collision exposed rather than resolved; the
+  means to check every claim, given whether or not anyone intends to use them;
+  and what to do when a requirement cannot be specified at all.
+
+  Built by using it on itself: twenty-six criteria authorized one at a time, of
+  which the authorizing agent changed six while they were being written and
+  discarded two.
+
+- **The skill no longer tells anyone to split a request by its size.** The
+  sentence *"if a request is too large to deliver as a unit, split the request
+  into smaller ones"* is retired, and a test keeps it retired — a sentence that
+  looks lost gets restored. Size depends on how busy the team is, which the
+  method has no access to; splitting is a business decision. The method now has
+  no opinion on how much a requisition covers.
+
+### Added
+- **A guard over the specification method**, the same shape as the one #42 built
+  for verification: it pins the concepts the contract turns on and fails naming
+  the criterion each absence would break. Seen failing on the version that
+  shipped before this one, which was missing six of them.
+
 ## [0.8.0]
 
 ### Added
