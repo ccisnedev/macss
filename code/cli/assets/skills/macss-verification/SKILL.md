@@ -33,6 +33,11 @@ If you implemented the change, the temptation is to verify the intention you
 remember rather than the sentence that was agreed. Read the criterion as
 written, as a stranger would.
 
+**Why all of this.** Every rule below exists to make one confirmation cost
+seconds instead of reconstruction, because the person you are working with is
+holding several pieces of work at once. Anything that makes a confirmation more
+expensive works against it, however polite it looks (ADR 0010).
+
 ## The conduct
 
 **One criterion at a time. The human's judgement before the next.**
