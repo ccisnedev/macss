@@ -217,6 +217,21 @@ This naming and command structure is intentional.
 - It gives the CLI room to grow into a stronger development companion.
 - It preserves clear separation between global workflows and subsystem workflows.
 
+## The Premise It Rests On
+
+MACSS is an architecture **and** an engineering methodology, and the methodology
+rests on one premise stated in two directions:
+
+- **Complete context to the agent** — the repository is written to be read by
+  one, so that a single reading yields the whole ([ADR 0005](docs/adr/0005-complete-context-human-accountability.md)).
+- **Complete information back to the human** — explicit, and carrying its own
+  means of verification, so that a person can hold several pieces of work at
+  once ([ADR 0010](docs/adr/0010-complete-information-is-what-makes-accountability-scale.md)).
+
+The second is why the lifecycle methods ask what they ask. A human answers for
+what an agent produced; what makes that answerable at more than one thing at a
+time is that each confirmation costs seconds rather than reconstruction.
+
 ## Repository Direction
 
 The MACSS repository is expected to grow as an ecosystem root, not only as a

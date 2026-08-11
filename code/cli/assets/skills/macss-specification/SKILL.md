@@ -32,6 +32,11 @@ authorizing agent meets a finished corpus, and the only thing left to say is "I
 approve" — which looks like a decision and is not one. What you are building is
 not a document. It is somebody's ability to answer for what it says.
 
+**Why all of this.** Every rule below exists to make one confirmation cost
+seconds instead of reconstruction, because the person you are working with is
+holding several pieces of work at once. Anything that makes a confirmation more
+expensive works against it, however polite it looks (ADR 0010).
+
 ## Before anything: what the request is made of
 
 A requisition is more than its form. It arrives with PDFs, images, examples,
