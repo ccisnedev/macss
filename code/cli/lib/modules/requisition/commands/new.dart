@@ -28,7 +28,7 @@ import '../../../src/project_config.dart';
 import '../../../templates/template_resolver.dart';
 import '../../specification/slug.dart';
 import '../../specification/workspace.dart';
-import '../issue_metadata.dart';
+import '../requisition_record.dart';
 
 // ─── Input ──────────────────────────────────────────────────────────────────
 
@@ -137,7 +137,7 @@ class RequisitionNewCommand
     // What opening a requisition would touch, decided before it touches
     // anything. `new` is idempotent, so an existing file is named as kept.
     final formExists = File(p.join(dir, 'requisition.md')).existsSync();
-    final metaExists = File(IssueMetadata.pathIn(dir)).existsSync();
+    final metaExists = File(RequisitionRecord.pathIn(dir)).existsSync();
     final body = [
       'would open the requisition "${input.slug}" at $relDir:',
       '',
@@ -145,8 +145,8 @@ class RequisitionNewCommand
           ? '  keep     $relDir/requisition.md (already exists)'
           : '  create   $relDir/requisition.md',
       metaExists
-          ? '  keep     $relDir/${IssueMetadata.fileName}'
-          : '  create   $relDir/${IssueMetadata.fileName}',
+          ? '  keep     $relDir/${RequisitionRecord.fileName}'
+          : '  create   $relDir/${RequisitionRecord.fileName}',
       '  record   $relDir as the active requisition',
       '  ensure   the MACSS workspace is git-ignored',
     ].join('\n');
@@ -190,11 +190,12 @@ class RequisitionNewCommand
       steps.add('  created  $relDir/requisition.md');
     }
 
-    if (File(IssueMetadata.pathIn(dir)).existsSync()) {
-      steps.add('  kept     $relDir/${IssueMetadata.fileName}');
+    if (File(RequisitionRecord.pathIn(dir)).existsSync()) {
+      steps.add('  kept     $relDir/${RequisitionRecord.fileName}');
     } else {
-      IssueMetadata(title: input.slug).write(dir);
-      steps.add('  created  $relDir/${IssueMetadata.fileName}');
+      RequisitionRecord(title: input.slug, state: RequisitionState.opened)
+          .write(dir);
+      steps.add('  created  $relDir/${RequisitionRecord.fileName}');
     }
 
     writeActiveRequisition(

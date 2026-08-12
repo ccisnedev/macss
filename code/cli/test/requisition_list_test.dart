@@ -34,8 +34,10 @@ void main() {
       File(p.join(dir.path, 'specification.md'))
           .writeAsStringSync('# Specification\n');
     }
-    File(p.join(dir.path, 'issue.yaml')).writeAsStringSync(
-      'title: "t"\nlabels: []\nlang: en\n${issue == null ? '' : 'issue: $issue\n'}',
+    File(p.join(dir.path, 'state.yaml')).writeAsStringSync(
+      'title: "t"\nlabels: []\n'
+      'state: ${issue == null ? 'opened' : 'published'}\n'
+      '${issue == null ? '' : 'issue: $issue\n'}',
     );
   }
 
@@ -86,6 +88,37 @@ void main() {
       expect(byslug['beta']!.stage, 'specification');
       expect(byslug['beta']!.issue, isNull);
       expect(byslug['gamma']!.issue, 31);
+    });
+
+    /// A folder with no readable record is **broken**, not empty, and the
+    /// listing says so instead of leaving it out. It is the same rule the
+    /// dangling pointer already follows: a listing that hides a broken state is
+    /// how it becomes trusted and wrong — and this one decides what `prune`
+    /// will eventually be allowed to destroy.
+    test('a folder with no readable record is shown as unreadable', () async {
+      makeRequisition('20260804-alpha');
+      Directory(p.join(root.path, 'docs', 'requisitions', '20260805-broken'))
+          .createSync(recursive: true);
+
+      final out = await list();
+
+      final broken =
+          out.entries.firstWhere((e) => e.slug == 'broken');
+      expect(broken.isReadable, isFalse);
+      expect(out.toText(), contains('unreadable'));
+    });
+
+    test('a record whose state is a word nobody defined is unreadable too',
+        () async {
+      final dir =
+          Directory(p.join(root.path, 'docs', 'requisitions', '20260805-typo'))
+            ..createSync(recursive: true);
+      File(p.join(dir.path, 'state.yaml'))
+          .writeAsStringSync('title: "t"\nstate: dsicarded\n');
+
+      final out = await list();
+
+      expect(out.entries.single.isReadable, isFalse);
     });
 
     // The date column was removed: it existed to tell two rows apart, and the

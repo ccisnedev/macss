@@ -8,6 +8,34 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Changed
+- **`issue.yaml` → `state.yaml`, the requisition's lifecycle record.**
+  *(breaking, no fallback)* The old file held the title, the labels and the
+  issue number: everything the issue needed, and nothing about what became of
+  the requirement. That is why nothing could ever decide a requisition was
+  finished, and why the workspace only grew.
+
+  The record adds the state — `opened`, `published`, `specified`, `ready`,
+  `delivered`, `verified`, `done`, `discarded` — and the handles each transition
+  produced. Two titles, not one: the issue's, in the project's language, and the
+  pull request's, which is a commit message and therefore English and
+  Conventional Commits in every project.
+
+  A transition writes the state and the fact it rests on together, so a record
+  cannot claim to be published while nothing names the issue. A state outside
+  the list reads as no record at all — the same answer as a missing file,
+  because neither is "not finished yet", and `macss requisition list` shows both
+  as unreadable rather than leaving them out.
+
+  Existing workspaces have no `state.yaml` and every command will say so. There
+  is no migration: `docs/requisitions/` is not versioned, and a compatibility
+  path for a file nobody outside this repository has written would be legacy
+  code on purpose.
+
+- **`macss dor check` records that the requisition is ready.** It writes one
+  word the gate has just proved, and still takes neither `--plan` nor `--apply`
+  — a deliberate exception to ADR 0007, because a gate that must be told which
+  of the two it is doing stops being runnable as a gate. A gate that does not
+  pass writes nothing, and a passing gate never moves the state backwards.
 - **`.macss/state.yaml` → `.macss/active_requisition.yaml`.** *(breaking, no
   fallback)* The file holds `slug`, `path` and `created`: it says **which**
   requisition is being worked on, which is a pointer and not a state. It was

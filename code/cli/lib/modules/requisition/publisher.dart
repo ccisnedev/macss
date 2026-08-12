@@ -10,7 +10,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
-import 'issue_metadata.dart';
+import 'requisition_record.dart';
 
 typedef ProcessRunner = Future<ProcessResult> Function(
   String executable,
@@ -72,7 +72,7 @@ class IssuePublisher {
   /// without removing — so labels put on the issue by hand survive a
   /// republish. Using `--label` for both is what shipped, and it made every
   /// update fail once a requisition declared any label.
-  List<String> plannedArgs(IssueMetadata meta, {String? repo}) => [
+  List<String> plannedArgs(RequisitionRecord meta, {String? repo}) => [
         'issue',
         if (meta.isPublished) ...['edit', '${meta.issue}'] else 'create',
         if (repo != null) ...['--repo', repo],
@@ -86,7 +86,7 @@ class IssuePublisher {
   ///
   /// Returns the issue number on create, or the existing one on edit.
   Future<PublishResult> publish(
-    IssueMetadata meta,
+    RequisitionRecord meta,
     AssembledBody body, {
     String? repo,
   }) async {

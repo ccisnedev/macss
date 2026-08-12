@@ -16,6 +16,7 @@ import 'package:modular_cli_sdk/modular_cli_sdk.dart';
 import 'package:path/path.dart' as p;
 
 import '../../specification/workspace.dart';
+import '../requisition_record.dart';
 
 // ─── Input ──────────────────────────────────────────────────────────────────
 
@@ -56,6 +57,15 @@ class RequisitionEntry {
   /// The issue carrying it, when it has been published.
   final int? issue;
 
+  /// Whether `state.yaml` could be read at all.
+  ///
+  /// False for a folder that has none, and for one whose `state` is a word
+  /// nobody defined. The two are the same answer on purpose: neither is "not
+  /// finished yet", and a listing that quietly showed them as live work would
+  /// be the trusted-and-wrong failure this listing already refuses for the
+  /// dangling pointer.
+  final bool isReadable;
+
   const RequisitionEntry({
     required this.folder,
     required this.slug,
@@ -65,6 +75,7 @@ class RequisitionEntry {
     required this.hasImplementation,
     required this.hasDelivery,
     required this.hasVerification,
+    required this.isReadable,
     this.issue,
   });
 
@@ -76,6 +87,7 @@ class RequisitionEntry {
   /// deliberately does not do. So the furthest stage reported is the furthest
   /// one that wrote a file.
   String get stage {
+    if (!isReadable) return 'unreadable';
     if (hasVerification) return 'verification';
     if (hasDelivery) return 'delivery';
     if (hasImplementation) return 'implementation';
@@ -193,23 +205,28 @@ class RequisitionListCommand
           ..sort())
         : <String>[];
 
-    final entries = [
-      for (final folder in folders)
-        RequisitionEntry(
-          folder: folder,
-          slug: _slugOf(folder),
-          isActive: folder == activeFolder,
-          hasRequisition: _has(base, folder, 'requisition.md'),
-          hasSpecification: _has(base, folder, 'specification.md'),
-          // The implementation stage writes two artifacts across its phases;
-          // either one means it has been entered.
-          hasImplementation: _has(base, folder, 'diagnosis.md') ||
-              _has(base, folder, 'plan.md'),
-          hasDelivery: _has(base, folder, 'delivery.md'),
-          hasVerification: _has(base, folder, 'verification.md'),
-          issue: _issueOf(base, folder),
-        ),
-    ];
+    final entries = <RequisitionEntry>[];
+    for (final folder in folders) {
+      // Read once: whether the record is there and what it says are the same
+      // question, and asking twice invites the two answers to disagree.
+      final record = RequisitionRecord.read(p.join(base.path, folder));
+
+      entries.add(RequisitionEntry(
+        folder: folder,
+        slug: _slugOf(folder),
+        isActive: folder == activeFolder,
+        hasRequisition: _has(base, folder, 'requisition.md'),
+        hasSpecification: _has(base, folder, 'specification.md'),
+        // The implementation stage writes two artifacts across its phases;
+        // either one means it has been entered.
+        hasImplementation: _has(base, folder, 'diagnosis.md') ||
+            _has(base, folder, 'plan.md'),
+        hasDelivery: _has(base, folder, 'delivery.md'),
+        hasVerification: _has(base, folder, 'verification.md'),
+        isReadable: record != null,
+        issue: record?.issue,
+      ));
+    }
 
     // A pointer whose folder is gone resolves to nothing, so no row carries the
     // marker. Saying which folder it named is what makes it fixable.
@@ -226,12 +243,4 @@ class RequisitionListCommand
 
   bool _has(Directory base, String folder, String file) =>
       File(p.join(base.path, folder, file)).existsSync();
-
-  int? _issueOf(Directory base, String folder) {
-    final f = File(p.join(base.path, folder, 'issue.yaml'));
-    if (!f.existsSync()) return null;
-    final m = RegExp(r'^issue:\s*(\d+)\s*$', multiLine: true)
-        .firstMatch(f.readAsStringSync());
-    return m == null ? null : int.tryParse(m.group(1)!);
-  }
 }

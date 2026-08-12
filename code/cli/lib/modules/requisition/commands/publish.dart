@@ -19,7 +19,7 @@ import 'package:path/path.dart' as p;
 import '../../../src/plan_apply.dart';
 import '../../specification/slug.dart';
 import '../../specification/workspace.dart';
-import '../issue_metadata.dart';
+import '../requisition_record.dart';
 import '../publisher.dart';
 import '../requisition_gate.dart';
 
@@ -143,8 +143,8 @@ class RequisitionPublishCommand
           'first, '
           'or point at one with --slug <slug>.';
     }
-    if (IssueMetadata.read(dir) == null) {
-      return 'No ${IssueMetadata.fileName} in ${p.basename(dir)}.';
+    if (RequisitionRecord.read(dir) == null) {
+      return 'No ${RequisitionRecord.fileName} in ${p.basename(dir)}.';
     }
     return input.flags.validate();
   }
@@ -152,7 +152,7 @@ class RequisitionPublishCommand
   @override
   Future<RequisitionPublishOutput> execute() async {
     final dir = _dir!;
-    final meta = IssueMetadata.read(dir)!;
+    final meta = RequisitionRecord.read(dir)!;
 
     // Publishing an unanswered form has no purpose. The methodology check comes
     // first; the platform limit is a separate concern, checked below.
@@ -220,7 +220,7 @@ class RequisitionPublishCommand
     }
 
     if (result.number != null && !meta.isPublished) {
-      meta.withIssue(result.number!).write(dir);
+      meta.published(result.number!).write(dir);
     }
 
     return RequisitionPublishOutput(
@@ -228,7 +228,7 @@ class RequisitionPublishCommand
       message: [
         'Issue ${meta.isPublished ? 'updated' : 'created'}: ${result.url}',
         if (!meta.isPublished && result.number != null)
-          '  recorded issue: ${result.number} in ${IssueMetadata.fileName}',
+          '  recorded issue: ${result.number} in ${RequisitionRecord.fileName}',
       ].join('\n'),
     );
   }

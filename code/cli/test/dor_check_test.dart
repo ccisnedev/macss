@@ -8,7 +8,7 @@ import 'package:macss_cli/assets.dart';
 import 'package:macss_cli/modules/dor/commands/check.dart';
 import 'package:macss_cli/modules/dor/dor_builder.dart';
 import 'package:macss_cli/modules/requisition/commands/new.dart';
-import 'package:macss_cli/modules/requisition/issue_metadata.dart';
+import 'package:macss_cli/modules/requisition/requisition_record.dart';
 import 'package:macss_cli/modules/specification/commands/new.dart';
 import 'package:macss_cli/src/checks.dart';
 import 'package:macss_cli/src/plan_apply.dart';
@@ -108,7 +108,7 @@ void main() {
 
   void publish() {
     final dir = p.dirname(file('$folder/x').path);
-    IssueMetadata.read(dir)!.withIssue(42).write(dir);
+    RequisitionRecord.read(dir)!.published(42).write(dir);
   }
 
   Future<DorCheckOutput> dor() => DorCheckCommand(
@@ -185,6 +185,38 @@ void main() {
       expect(out.ready, isTrue, reason: out.toText());
       expect(out.exitCode, ExitCode.ok);
       expect(named(out, 'issue').detail, contains('#42'));
+    });
+
+    /// The gate writes the state it establishes, and takes neither `--plan` nor
+    /// `--apply` to do it — a deliberate exception to ADR 0007, because a gate
+    /// that must be told which of the two it is doing stops being runnable as a
+    /// gate. What it writes is a record of an event: `ready` says the gate was
+    /// passed, not that it would pass now.
+    test('passing the gate records that the requisition is ready', () async {
+      await openRequisition();
+      fillForm();
+      await addContract();
+      fillContract();
+      publish();
+
+      final out = await dor();
+
+      expect(out.ready, isTrue, reason: out.toText());
+      final dir = p.dirname(file('$folder/x').path);
+      expect(RequisitionRecord.read(dir)!.state, RequisitionState.ready);
+    });
+
+    test('failing it leaves the state where it was', () async {
+      await openRequisition();
+      fillForm();
+      publish(); // no contract, so the gate cannot pass
+
+      final out = await dor();
+
+      expect(out.ready, isFalse);
+      final dir = p.dirname(file('$folder/x').path);
+      expect(RequisitionRecord.read(dir)!.state, RequisitionState.published,
+          reason: 'a gate that did not pass has established nothing');
     });
 
     test('says the body is frozen once ready', () async {
