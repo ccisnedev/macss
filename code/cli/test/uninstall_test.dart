@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
+import 'package:modular_cli_sdk/testing.dart';
 import 'package:test/test.dart';
 
 import 'package:macss_cli/macss_cli.dart';
@@ -82,31 +83,28 @@ void main() {
 
     test('exits 0', () async {
       final ops = FakePlatformOps();
-      final cmd = UninstallCommand(
-        UninstallInput(installDir: tempDir.path, flags: const ChangeFlags(apply: true, autoapprove: true)),
+      final output = await applyCommand(UninstallCommand(
+        UninstallInput(installDir: tempDir.path),
         platformOps: ops,
-      );
-      final output = await cmd.execute();
+      ));
       expect(output.exitCode, 0);
     });
 
     test('message confirms uninstall', () async {
       final ops = FakePlatformOps();
-      final cmd = UninstallCommand(
-        UninstallInput(installDir: tempDir.path, flags: const ChangeFlags(apply: true, autoapprove: true)),
+      final output = await applyCommand(UninstallCommand(
+        UninstallInput(installDir: tempDir.path),
         platformOps: ops,
-      );
-      final output = await cmd.execute();
-      expect(output.message, contains('uninstalled'));
+      ));
+      expect(output.toText(), contains('uninstalled'));
     });
 
     test('schedules deletion of install directory', () async {
       final ops = FakePlatformOps();
-      final cmd = UninstallCommand(
-        UninstallInput(installDir: tempDir.path, flags: const ChangeFlags(apply: true, autoapprove: true)),
+      await applyCommand(UninstallCommand(
+        UninstallInput(installDir: tempDir.path),
         platformOps: ops,
-      );
-      await cmd.execute();
+      ));
       expect(ops.calls, contains('scheduleDeletion(${tempDir.path})'));
     });
 
@@ -118,11 +116,10 @@ void main() {
       final fakePath = '$otherA$sep$binDir$sep$otherB';
 
       final ops = FakePlatformOps(fakeEnvValue: fakePath);
-      final cmd = UninstallCommand(
-        UninstallInput(installDir: tempDir.path, flags: const ChangeFlags(apply: true, autoapprove: true)),
+      await applyCommand(UninstallCommand(
+        UninstallInput(installDir: tempDir.path),
         platformOps: ops,
-      );
-      await cmd.execute();
+      ));
 
       expect(ops.calls, contains('getEnvVariable(PATH)'));
       final expectedNew = '$otherA$sep$otherB';
@@ -135,11 +132,10 @@ void main() {
       final otherB = Platform.isWindows ? r'C:\more' : '/more';
 
       final ops = FakePlatformOps(fakeEnvValue: '$otherA$sep$otherB');
-      final cmd = UninstallCommand(
-        UninstallInput(installDir: tempDir.path, flags: const ChangeFlags(apply: true, autoapprove: true)),
+      await applyCommand(UninstallCommand(
+        UninstallInput(installDir: tempDir.path),
         platformOps: ops,
-      );
-      await cmd.execute();
+      ));
 
       expect(ops.calls, contains('getEnvVariable(PATH)'));
       expect(

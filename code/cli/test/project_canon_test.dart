@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:modular_cli_sdk/modular_cli_sdk.dart';
 import 'package:path/path.dart' as p;
+import 'package:modular_cli_sdk/testing.dart';
 import 'package:test/test.dart';
 
 import 'package:macss_cli/assets.dart';
@@ -39,56 +40,33 @@ void main() {
   });
 
   Future<void> scaffold() async {
-    await CreateCommand(
-      CreateInput(
-        resolvedPath: dest,
-        workingDirectory: tempRoot.path,
-        flags: const ChangeFlags(apply: true, autoapprove: true),
-        lang: 'en',
+    await applyCommand(
+      CreateCommand(
+        CreateInput(
+          resolvedPath: dest,
+          workingDirectory: tempRoot.path,
+          lang: 'en',
+        ),
+        assets: assets,
       ),
-      assets: assets,
-    ).execute();
+    );
   }
 
   Future<ProjectCheckOutput> check() =>
       ProjectCheckCommand(ProjectCheckInput(resolvedPath: dest)).execute();
 
-  /// Fixed so the plan file name is deterministic.
-  DateTime clock() => DateTime(2026, 8, 4, 9, 30, 15);
-
-  ProjectAdoptCommand adoptCommand({
-    bool plan = false,
-    bool apply = false,
-    bool autoapprove = false,
-    Approver? approver,
-    String? lang = 'en',
-  }) =>
+  ProjectAdoptCommand adoptCommand({String? lang = 'en'}) =>
       ProjectAdoptCommand(
-        ProjectAdoptInput(
-          resolvedPath: dest,
-          flags: ChangeFlags(
-              plan: plan, apply: apply, autoapprove: autoapprove),
-          lang: lang,
-        ),
+        ProjectAdoptInput(resolvedPath: dest, lang: lang),
         assets: assets,
-        approver: approver ?? (_) async => true,
-        now: clock,
       );
 
-  Future<ProjectAdoptOutput> adopt({
-    bool plan = false,
-    bool apply = false,
-    bool autoapprove = false,
-    Approver? approver,
-    String? lang = 'en',
-  }) =>
-      adoptCommand(
-        plan: plan,
-        apply: apply,
-        autoapprove: autoapprove,
-        approver: approver,
-        lang: lang,
-      ).execute();
+  Future<ProjectAdoptOutput> adopt({String? lang = 'en'}) async =>
+      await applyCommand(adoptCommand(lang: lang));
+
+  /// What it says it would do. Nothing is adopted.
+  Future<List<Preview>> plan({String? lang = 'en'}) =>
+      previewCommand(adoptCommand(lang: lang));
 
   void mkdirs(String relative) =>
       Directory(p.join(dest, p.joinAll(relative.split('/'))))
@@ -201,176 +179,53 @@ void main() {
     });
   });
 
-  // ADR 0007: neither --plan nor --apply is a default, and the two must not be
-  // distinguishable by an omission.
-  group('macss project adopt — choosing plan or apply', () {
-    test('a bare invocation is a usage error naming both ways out', () {
+  // What `--plan` and `--apply` mean, that exactly one is required, that a
+  // refusal changes nothing and that no terminal refuses rather than hangs —
+  // none of that is tested here any more. The SDK applies all of it to every
+  // command and has its own tests for it. Asserting it once per command tested
+  // the SDK from thirteen places, and thirteen places is where it drifts.
+  group('macss project adopt — what it would do', () {
+    test('names every canon file it would create, and creates none', () async {
       Directory(dest).createSync(recursive: true);
 
-      final error = adoptCommand().validate();
+      final previews = await plan();
 
-      expect(error, isNotNull);
-      expect(error, contains('--plan'));
-      expect(error, contains('--apply'));
-    });
-
-    test('both at once is a usage error rather than a silent choice', () {
-      Directory(dest).createSync(recursive: true);
-
-      expect(adoptCommand(plan: true, apply: true).validate(),
-          contains('Choose one'));
-    });
-
-    test('--autoapprove without --apply authorizes nothing', () {
-      Directory(dest).createSync(recursive: true);
-
-      expect(adoptCommand(plan: true, autoapprove: true).validate(),
-          contains('authorizes nothing'));
-    });
-
-    // On its own it is still the missing choice that needs saying first —
-    // there is no approval to transfer until something is being applied.
-    test('--autoapprove alone is answered by the choice it lacks', () {
-      Directory(dest).createSync(recursive: true);
-
-      expect(adoptCommand(autoapprove: true).validate(),
-          contains('Choose --plan or --apply'));
-    });
-
-    test('a legal combination passes validation', () {
-      Directory(dest).createSync(recursive: true);
-
-      expect(adoptCommand(plan: true).validate(), isNull);
-      expect(adoptCommand(apply: true).validate(), isNull);
-      expect(adoptCommand(apply: true, autoapprove: true).validate(), isNull);
-    });
-  });
-
-  group('macss project adopt --plan', () {
-    test('writes the plan file and changes nothing else', () async {
-      Directory(dest).createSync(recursive: true);
-
-      final out = await adopt(plan: true);
-
-      expect(out.applied, isFalse);
-      expect(out.created, isEmpty);
+      expect(previews.map((p) => p.target), contains('CHANGELOG.md'));
       expect(File(p.join(dest, 'CHANGELOG.md')).existsSync(), isFalse);
-
-      expect(out.planPath, isNotNull);
-      expect(File(out.planPath!).existsSync(), isTrue);
-      expect(p.split(out.planPath!), contains('plans'));
     });
 
-    // The point of the file: a preview that only ever existed as terminal
-    // output could not be attached, diffed, or read by anyone who was not
-    // there. So it has to stand on its own.
-    test('the plan reads on its own, away from the terminal', () async {
-      Directory(dest).createSync(recursive: true);
+    test('names the retirement before doing it', () async {
+      await scaffold();
+      File(p.join(dest, '.gitignore')).writeAsStringSync(
+          '# MACSS — local workspace (git-ignored)\n.macss/\n');
 
-      final out = await adopt(plan: true);
-      final plan = File(out.planPath!).readAsStringSync();
+      final previews = await plan();
 
-      expect(plan, contains('macss project adopt'));
-      expect(plan, contains('CHANGELOG.md'));
-      expect(plan, contains('Nothing was changed'));
-      expect(plan, contains('--apply'));
+      expect(previews.map((p) => p.verb), contains('retire'));
+      expect(File(p.join(dest, '.gitignore')).readAsStringSync(),
+          contains('.macss/'),
+          reason: 'asking changes nothing');
     });
 
-    test('two plans of the same command do not overwrite each other', () async {
-      Directory(dest).createSync(recursive: true);
+    test('a conforming, declared project would do nothing at all', () async {
+      await scaffold();
 
-      final first = await adopt(plan: true);
-      final second = await ProjectAdoptCommand(
-        ProjectAdoptInput(
-          resolvedPath: dest,
-          flags: const ChangeFlags(plan: true),
-        ),
-        assets: assets,
-        now: () => DateTime(2026, 8, 4, 9, 31, 0),
-      ).execute();
-
-      expect(second.planPath, isNot(first.planPath));
-      expect(File(first.planPath!).existsSync(), isTrue);
+      expect(await plan(), isEmpty);
     });
   });
 
-  group('macss project adopt --apply', () {
-    test('shows the plan and applies once approved', () async {
+  group('macss project adopt', () {
+    test('creates what is missing and never overwrites', () async {
       Directory(dest).createSync(recursive: true);
       File(p.join(dest, 'README.md')).writeAsStringSync('MINE');
-      var shown = '';
 
-      final out = await adopt(
-        apply: true,
-        approver: (plan) async {
-          shown = plan;
-          return true;
-        },
-      );
+      final out = await adopt();
 
-      expect(shown, contains('CHANGELOG.md'),
-          reason: 'the plan must reach the approver before anything is written');
       expect(out.applied, isTrue);
       expect(out.created, isNot(contains('README.md')));
       expect(out.created.length, canonFiles.length - 1);
-      // An existing file is never overwritten.
       expect(File(p.join(dest, 'README.md')).readAsStringSync(), 'MINE');
       expect((await check()).exitCode, ExitCode.ok);
-    });
-
-    test('writes no plan file — the operator is looking at it', () async {
-      Directory(dest).createSync(recursive: true);
-
-      final out = await adopt(apply: true, autoapprove: true);
-
-      expect(out.planPath, isNull);
-      expect(Directory(p.join(dest, '.macss', 'plans')).existsSync(), isFalse);
-    });
-
-    test('a refusal changes nothing and exits non-zero', () async {
-      Directory(dest).createSync(recursive: true);
-
-      final out = await adopt(apply: true, approver: (_) async => false);
-
-      expect(out.applied, isFalse);
-      expect(out.created, isEmpty);
-      expect(out.exitCode, isNot(ExitCode.ok));
-      expect(File(p.join(dest, 'CHANGELOG.md')).existsSync(), isFalse);
-    });
-
-    test('--autoapprove applies without ever asking', () async {
-      Directory(dest).createSync(recursive: true);
-      var asked = false;
-
-      final out = await adopt(
-        apply: true,
-        autoapprove: true,
-        approver: (_) async {
-          asked = true;
-          return true;
-        },
-      );
-
-      expect(asked, isFalse);
-      expect(out.applied, isTrue);
-      expect(File(p.join(dest, 'CHANGELOG.md')).existsSync(), isTrue);
-    });
-
-    // The failure --autoapprove exists to prevent: a skill that kept a bare
-    // --apply would block on a read that never returns. Refusing is the only
-    // outcome an agent can act on.
-    test('with no terminal to approve from, it refuses instead of hanging',
-        () async {
-      Directory(dest).createSync(recursive: true);
-
-      final out = await adopt(
-        apply: true,
-        approver: (_) async => throw const NoApproverAvailable(),
-      );
-
-      expect(out.exitCode, isNot(ExitCode.ok));
-      expect(out.message, contains('--autoapprove'));
-      expect(File(p.join(dest, 'CHANGELOG.md')).existsSync(), isFalse);
     });
 
     test('never removes anything, including what check flags', () async {
@@ -379,7 +234,7 @@ void main() {
       final marker = File(p.join(dest, 'code', 'legacy', 'keep.txt'));
       marker.writeAsStringSync('deliberate debt');
 
-      await adopt(apply: true, autoapprove: true);
+      await adopt();
 
       expect(marker.existsSync(), isTrue);
       expect(Directory(p.join(dest, 'code', 'legacy')).existsSync(), isTrue);
@@ -388,10 +243,11 @@ void main() {
     test('is a no-op on a conforming project', () async {
       await scaffold();
 
-      final out = await adopt(apply: true, autoapprove: true);
+      final out = await adopt();
 
       expect(out.created, isEmpty);
-      expect(out.message, contains('Nothing to adopt'));
+      expect(out.applied, isFalse);
+      expect(out.toText(), contains('Nothing to adopt'));
     });
 
     // The one thing adopt removes. ADR 0004 said it never deletes; that held
@@ -407,27 +263,14 @@ void main() {
           '.macss/\n'
           'docs/requisitions/\n');
 
-      final out = await adopt(apply: true, autoapprove: true);
+      final out = await adopt();
 
       final after = gitignore.readAsStringSync();
       expect(after, isNot(contains('.macss/')));
       expect(after, contains('docs/requisitions/'));
       expect(after, contains('node_modules/'),
           reason: 'what the project wrote is not ours to remove');
-      expect(out.message, contains('retired'));
-    });
-
-    test('names the retirement in the plan before doing it', () async {
-      await scaffold();
-      File(p.join(dest, '.gitignore')).writeAsStringSync(
-          '# MACSS — local workspace (git-ignored)\n.macss/\n');
-
-      final out = await adopt(plan: true);
-
-      expect(out.message, contains('retire'));
-      expect(File(p.join(dest, '.gitignore')).readAsStringSync(),
-          contains('.macss/'),
-          reason: 'a plan changes nothing');
+      expect(out.retired, isNotEmpty);
     });
 
     // Adopting the canon includes adopting the decision about language. A
@@ -437,7 +280,7 @@ void main() {
     test('declares the language on a project that had none', () async {
       await scaffold();
 
-      await adopt(apply: true, autoapprove: true, lang: 'es');
+      await adopt(lang: 'es');
 
       expect(projectLanguage(dest), 'es');
     });
@@ -447,20 +290,21 @@ void main() {
       await scaffold();
       File(p.join(dest, '.macss', 'config.yaml')).deleteSync();
 
-      final out = await adopt(apply: true, autoapprove: true, lang: 'en');
+      final out = await adopt(lang: 'en');
 
-      expect(out.message, isNot(contains('Nothing to adopt')));
+      expect(out.applied, isTrue);
       expect(projectLanguage(dest), 'en');
     });
 
-    test('the declaration is named in the plan, and not written', () async {
+    test('the declaration is named before it is written', () async {
       await scaffold();
       File(p.join(dest, '.macss', 'config.yaml')).deleteSync();
 
-      final out = await adopt(plan: true, lang: 'es');
+      final previews = await plan(lang: 'es');
 
-      expect(out.message, contains('language: es'));
-      expect(projectLanguage(dest), isNull, reason: 'a plan changes nothing');
+      expect(previews.firstWhere((p) => p.verb == 'declare').detail,
+          contains('language: es'));
+      expect(projectLanguage(dest), isNull, reason: 'asking changes nothing');
     });
 
     test('a project with nothing missing but a stale entry is not a no-op',
@@ -469,18 +313,15 @@ void main() {
       File(p.join(dest, '.gitignore')).writeAsStringSync(
           '# MACSS — local workspace (git-ignored)\n.macss/\n');
 
-      final out = await adopt(apply: true, autoapprove: true);
+      final out = await adopt();
 
-      expect(out.message, isNot(contains('Nothing to adopt')));
+      expect(out.applied, isTrue);
     });
 
-    test('nothing to adopt writes no plan file either', () async {
+    test('nothing to adopt builds no steps at all', () async {
       await scaffold();
 
-      final out = await adopt(plan: true);
-
-      expect(out.planPath, isNull);
-      expect(Directory(p.join(dest, '.macss', 'plans')).existsSync(), isFalse);
+      expect(await plan(), isEmpty);
     });
   });
 
@@ -569,12 +410,13 @@ void main() {
       );
 
       expect(code, ExitCode.ok);
+      // Nothing reaches the target — not the canon, and not a workspace. Where
+      // a plan file lands is the sink's business and is tested with the sink;
+      // this CLI registers none, so `--plan` prints and files nothing.
       expect(File(p.join(dest, 'CHANGELOG.md')).existsSync(), isFalse);
-      // The plan is the only thing written, and not into the target.
       expect(Directory(p.join(dest, '.macss')).existsSync(), isFalse);
       expect(
-          Directory(p.join(invokedFrom.path, '.macss', 'plans')).existsSync(),
-          isTrue);
+          Directory(p.join(invokedFrom.path, '.macss')).existsSync(), isFalse);
     });
 
     test('create is reachable under the project module', () async {
