@@ -1,193 +1,137 @@
-/// `macss skill clean [--host <assistant>]` — removes the lifecycle skills from
-/// the assistants they were deployed to.
+/// `macss skill clean [--host <assistant>] --plan|--apply` — removes the
+/// lifecycle skills from the assistants they were deployed to.
 ///
 /// Only skills MACSS ships are removed, by name. Anything else living in the
 /// assistant's skills directory is another tool's, or the user's, and is left
 /// alone.
+///
+/// The only command in the CLI whose whole purpose is to delete, which is why
+/// naming every directory it would remove — before removing any — is the least
+/// the convention is for. It used to name them by walking the hosts once to
+/// build the preview and again to do the work, two loops written out character
+/// for character. Now the walk happens once, and produces the steps.
 library;
-
-import 'dart:io';
 
 import 'package:cli_router/cli_router.dart';
 import 'package:modular_cli_sdk/modular_cli_sdk.dart';
 import 'package:path/path.dart' as p;
 
 import '../../../assets.dart';
+import '../deployer.dart';
 import '../host.dart';
 
 // ─── Input ──────────────────────────────────────────────────────────────────
 
 class SkillCleanInput extends Input {
+  SkillCleanInput({this.host});
+
   final String? host;
-  final ChangeFlags flags;
 
-  SkillCleanInput({this.host, this.flags = const ChangeFlags()});
-
-  factory SkillCleanInput.fromCliRequest(CliRequest req) => SkillCleanInput(
-        host: req.flagString('host'),
-        flags: ChangeFlags.fromCliRequest(req),
-      );
+  factory SkillCleanInput.fromCliRequest(CliRequest req) =>
+      SkillCleanInput(host: req.flagString('host'));
 
   static final List<CliParam> params = [
     CliParam.string(
       'host',
       allowed: supportedHosts,
-      description:
-          'Clean this assistant only; defaults to every one installed',
+      description: 'Clean this assistant only; defaults to every one installed',
     ),
-    ...ChangeFlags.params,
   ];
 
   @override
   List<CliParam> get schemaFields => params;
 
   @override
-  Map<String, dynamic> toJson() => {
-        'host': host,
-        'plan': flags.plan,
-        'apply': flags.apply,
-        'autoapprove': flags.autoapprove,
-      };
+  Map<String, dynamic> toJson() => {'host': host};
 }
 
 // ─── Output ─────────────────────────────────────────────────────────────────
 
 class SkillCleanOutput extends Output {
-  final String message;
+  SkillCleanOutput({required this.removed, required this.absent});
+
+  /// The skills that were there and are not any more.
   final List<String> removed;
-  final int _exitCode;
 
-  SkillCleanOutput({
-    required this.message,
-    this.removed = const [],
-    int exitCode = ExitCode.ok,
-  }) : _exitCode = exitCode;
+  /// The skills that were already gone. Reported rather than omitted: a clean
+  /// that says nothing about what it did not find reads as if it found nothing.
+  final List<String> absent;
 
   @override
-  Map<String, dynamic> toJson() => {'message': message, 'removed': removed};
+  Map<String, dynamic> toJson() => {'removed': removed, 'absent': absent};
 
   @override
-  int get exitCode => _exitCode;
+  int get exitCode => ExitCode.ok;
 
   @override
-  String? toText() => message;
+  String? toText() => removed.isEmpty && absent.isEmpty
+      ? 'No supported assistant found in your home directory.'
+      : [
+          ...removed.map((s) => '  removed  $s'),
+          ...absent.map((s) => '  absent   $s'),
+        ].join('\n');
 }
 
 // ─── Command ────────────────────────────────────────────────────────────────
 
 class SkillCleanCommand implements Command<SkillCleanInput, SkillCleanOutput> {
+  SkillCleanCommand(this.input, {required this.assets, this.environment});
+
   @override
   final SkillCleanInput input;
 
   final Assets assets;
   final Map<String, String>? environment;
-  final Approver? approver;
-  final DateTime Function()? now;
-  final String workingDirectory;
-
-  SkillCleanCommand(
-    this.input, {
-    required this.assets,
-    this.environment,
-    this.approver,
-    this.now,
-    String? workingDirectory,
-  }) : workingDirectory = workingDirectory ?? Directory.current.path;
 
   @override
-  String? validate() {
-    if (!assets.directoryExists('skills')) {
-      return 'No skills found in the installed assets. Run: macss upgrade --apply';
-    }
-    return input.flags.validate();
-  }
+  String? validate() => null;
 
   @override
-  Future<SkillCleanOutput> execute() async {
+  Future<List<Step>> steps() async {
     final hosts = input.host != null
         ? [input.host!]
         : detectHosts(environment: environment);
 
-    if (hosts.isEmpty) {
-      return SkillCleanOutput(
-        message: 'No supported assistant found in your home directory.',
-      );
-    }
+    // Nothing installed means nothing to clean, and that is not a failure: the
+    // state the caller asked for already holds. So no steps rather than an
+    // error — `deploy` refuses in the same situation because there the caller
+    // asked for something to happen and nothing did.
+    if (hosts.isEmpty) return const [];
 
     final names = assets.listDirectory('skills');
-    final resolved = <String, HostPaths>{};
-    for (final host in hosts) {
-      final paths = hostPaths(host, environment: environment);
-      if (paths == null) {
-        return SkillCleanOutput(
-          message: 'Cannot resolve the home directory for host "$host". '
-              'Set HOME or USERPROFILE.',
-          exitCode: ExitCode.genericError,
-        );
-      }
-      resolved[host] = paths;
-    }
 
-    // The only command in the CLI whose whole purpose is to delete. Naming
-    // every directory it would remove, before removing any, is the least this
-    // convention is for.
-    final doomed = <String>[];
-    final preview = <String>[];
-    for (final entry in resolved.entries) {
-      preview.add('${entry.key} → ${entry.value.skillsDirectory}');
-      for (final name in names) {
-        final dir = Directory(p.join(entry.value.skillsDirectory, name));
-        if (dir.existsSync()) {
-          preview.add('  remove   $name');
-          doomed.add(name);
-        } else {
-          preview.add('  absent   $name');
-        }
-      }
-    }
+    return [
+      for (final host in hosts)
+        for (final name in names)
+          RemoveSkill(
+            directory: p.join(_pathsFor(host).skillsDirectory, name),
+          ),
+    ];
+  }
 
-    final decision = await ChangeGate(
-      flags: input.flags,
-      approver: approver,
-      now: now,
-    ).decide(
-      command: 'skill clean',
-      workingDirectory: workingDirectory,
-      body: [
-        doomed.isEmpty
-            ? 'would remove nothing — no MACSS skill is deployed:'
-            : 'would remove ${doomed.toSet().length} deployed MACSS skill(s):',
-        '',
-        ...preview,
-      ].join('\n'),
-    );
-
-    if (!decision.proceed) {
-      return SkillCleanOutput(
-        message: decision.message!,
-        exitCode: decision.blocked ? ExitCode.genericError : ExitCode.ok,
+  HostPaths _pathsFor(String host) {
+    final paths = hostPaths(host, environment: environment);
+    if (paths == null) {
+      throw CommandException(
+        code: 'HOME_NOT_RESOLVED',
+        message:
+            'Cannot resolve the home directory for host "$host". '
+            'Set HOME or USERPROFILE.',
+        exitCode: ExitCode.genericError,
       );
     }
-
-    final steps = <String>[];
-    final removed = <String>[];
-    for (final entry in resolved.entries) {
-      steps.add('${entry.key} → ${entry.value.skillsDirectory}');
-      for (final name in names) {
-        final dir = Directory(p.join(entry.value.skillsDirectory, name));
-        if (dir.existsSync()) {
-          dir.deleteSync(recursive: true);
-          steps.add('  removed  $name');
-          removed.add(name);
-        } else {
-          steps.add('  absent   $name');
-        }
-      }
-    }
-
-    return SkillCleanOutput(
-      message: steps.join('\n'),
-      removed: removed.toSet().toList()..sort(),
-    );
+    return paths;
   }
+
+  @override
+  SkillCleanOutput describe(Execution execution) => SkillCleanOutput(
+    removed: [
+      for (final o in execution.outcomes)
+        if (o.verb == 'remove') p.basename(o.target),
+    ],
+    absent: [
+      for (final o in execution.outcomes)
+        if (o.verb == 'absent') p.basename(o.target),
+    ],
+  );
 }

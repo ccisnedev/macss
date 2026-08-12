@@ -14,17 +14,19 @@
 /// git-ignores. A plan records an intention, not history — committing plans
 /// would leave a second, staler description of every change beside the change.
 ///
-/// The plan is written where the command was **invoked**, never inside the
-/// directory it targets. Writing it into the target would itself be a change,
-/// which is the one thing `--plan` promises not to make — and for `project
-/// create` the target does not exist yet, so planning would create the very
-/// directory it says it would only create under `--apply`.
+/// Two rules govern where it goes, and both used to be a command's business.
 ///
-/// That rule now holds by construction. It used to be honoured by each command
+/// **It is written where the command was invoked, never inside the directory it
+/// targets.** Writing it into the target would itself be a change, which is the
+/// one thing `--plan` promises not to make — and for `project create` the
+/// target does not exist yet, so planning would create the very directory it
+/// says it would only create under `--apply`. This was honoured by each command
 /// passing the right directory, and `requisition export-template --path X`
 /// passed the target: it filed its plan inside the very directory the caller
 /// had only asked to receive a template. A sink registered once on the CLI has
 /// no per-command directory to get wrong.
+///
+/// **It is written only inside a MACSS project.** See [macssPlanSink].
 library;
 
 import 'dart:io';
@@ -32,6 +34,7 @@ import 'dart:io';
 import 'package:modular_cli_sdk/modular_cli_sdk.dart';
 import 'package:path/path.dart' as p;
 
+import 'project_config.dart';
 import 'workspace_dir.dart';
 
 /// Where plans live, relative to the directory the command was invoked in.
@@ -39,16 +42,39 @@ const planDirectory = '$workspaceDirName/plans';
 
 /// The [PlanSink] MACSS registers on its `ModularCli`.
 ///
+/// **A plan is filed only inside a MACSS project.** Five commands are designed
+/// to run where no project exists — `requisition export-template`, `skill
+/// deploy`, `skill clean`, `upgrade` and `uninstall` — and `export-template`
+/// says so in its own contract: `--lang` is required there precisely because
+/// "this runs where no project need exist, so there is nothing to derive it
+/// from". Filing a plan would answer that by creating `.macss/` in a directory
+/// whose owner asked for a blank form and nothing else.
+///
+/// So outside a project `--plan` shows the plan and files nothing. It is not a
+/// lesser answer: the plan is on the terminal either way, and `--json` gives it
+/// as data. What is lost is a file nobody asked for, in a folder MACSS does not
+/// own.
+///
+/// The marker is the project's configuration, not the workspace directory. A
+/// directory only has `.macss/` because some command put it there, and this
+/// rule exists to stop that happening by accident; `config.yaml` is what a
+/// human decided.
+///
 /// [now] and [workingDirectory] are seams for the tests: a plan's name carries
 /// a timestamp, and a suite that cannot fix the clock cannot assert the name.
 PlanSink macssPlanSink({DateTime Function()? now, String? workingDirectory}) {
   final clock = now ?? DateTime.now;
-  return (plan) => PlanFile.write(
-    workingDirectory: workingDirectory ?? Directory.current.path,
-    plan: plan,
-    now: clock(),
-  );
+  return (plan) {
+    final root = workingDirectory ?? Directory.current.path;
+    if (!isMacssProject(root)) return null;
+    return PlanFile.write(workingDirectory: root, plan: plan, now: clock());
+  };
 }
+
+/// Whether [root] is a MACSS project — the question the sink asks before it
+/// writes anything.
+bool isMacssProject(String root) =>
+    File(p.join(root, projectConfigPath)).existsSync();
 
 /// Writes the plan artifact under `.macss/plans/`.
 class PlanFile {
