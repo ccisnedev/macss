@@ -7,6 +7,34 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- **`macss delivery new` / `check`** — the first stage of the pull-request side.
+
+  `delivery.md` is the mirror of `requisition.md`: the first document of each
+  pair reports, the second commits. The request states what was asked and nobody
+  signs it; the delivery states what was built and nobody signs that either.
+  What is signed is the verification.
+
+  So it carries only what a verifier cannot derive from the frozen contract and
+  the diff — which criterion is claimed where, what was deliberately not done,
+  and how to reproduce it. Not what was built: the code says that. Not why:
+  `adr/` says that, or nothing does. A delivery that argues its own quality is
+  doing the verification's job from the one position that cannot.
+
+  `check` judges shape and coverage, never truth, exactly as `requisition check`
+  "judges presence, not quality". Three rules: `pr_title` parses as Conventional
+  Commits — shape only, because a closed list of types would be the gate
+  deciding what kinds of change a project may make; every criterion the contract
+  declares is claimed with somewhere a reader can look; and the branch is not the
+  one a pull request would merge into, which is the last gate before `gh pr
+  create` would fail with all the work already done. When `origin/HEAD` is
+  unset the branch rule warns instead of refusing — blocking on an unconfigured
+  ref would stop the work for a reason that has nothing to do with the delivery.
+
+  The criterion ids are generated in one place, `SpecificationGate.acIds`, so
+  the contract, the delivery and the verification cannot disagree about what a
+  criterion is called.
+
 ### Changed
 - **`issue.yaml` → `state.yaml`, the requisition's lifecycle record.**
   *(breaking, no fallback)* The old file held the title, the labels and the

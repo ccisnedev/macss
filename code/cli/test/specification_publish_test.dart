@@ -49,7 +49,7 @@ void main() {
           autoapprove: true,
         )),
         workingDirectory: root.path,
-        runProcess: (_, __) async =>
+        runProcess: (_, _) async =>
             ProcessResult(0, 0, 'https://github.com/o/r/issues/42', ''),
         assets: Assets(root: Directory.current.path),
       ).execute();
