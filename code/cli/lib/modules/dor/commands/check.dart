@@ -19,7 +19,7 @@ import 'package:path/path.dart' as p;
 import '../../../assets.dart';
 import '../../../src/checks.dart';
 import '../../../src/vocabulary.dart';
-import '../../requisition/issue_metadata.dart';
+import '../../requisition/requisition_record.dart';
 import '../../requisition/requisition_gate.dart';
 import '../../specification/slug.dart';
 import '../../specification/specification_gate.dart';
@@ -121,6 +121,28 @@ class DorCheckCommand implements Command<DorCheckInput, DorCheckOutput> {
   Future<DorCheckOutput> execute() async {
     final dir = _dir!;
 
+    final output = _evaluate(dir);
+
+    // The gate records what it establishes, and takes neither `--plan` nor
+    // `--apply` to do it. That is a deliberate exception to ADR 0007: a gate
+    // that has to be told which of planning or applying it is doing stops being
+    // runnable as a gate, and this writes one word that the gate itself just
+    // proved.
+    //
+    // A gate that did not pass has established nothing, so it writes nothing —
+    // and it never moves the state backwards: `ready` is a record that the gate
+    // was passed, not a claim that it would pass now.
+    if (output.ready) {
+      final record = RequisitionRecord.read(dir);
+      if (record != null && record.state.isBefore(RequisitionState.ready)) {
+        record.at(RequisitionState.ready).write(dir);
+      }
+    }
+
+    return output;
+  }
+
+  DorCheckOutput _evaluate(String dir) {
     return DorCheckOutput(
       name: p.basename(dir),
       checks: [
@@ -156,7 +178,7 @@ class DorCheckCommand implements Command<DorCheckInput, DorCheckOutput> {
   /// Until the issue exists there is nothing for development to pick up,
   /// nothing to reference from a branch, and nothing to freeze.
   DoctorCheck _issueCheck(String dir) {
-    final meta = IssueMetadata.read(dir);
+    final meta = RequisitionRecord.read(dir);
     final published = meta != null && meta.isPublished;
 
     return DoctorCheck(

@@ -5,6 +5,199 @@ All notable changes to this project will be documented in this file.
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.9.0]
+
+### Added
+- **`macss requisition prune --plan` / `--apply`** — the workspace lets go of
+  what is finished. Nothing removed a requisition, so the ratio of noise to
+  signal only grew and the command whose purpose is to answer *"what is next?"*
+  had stopped answering it.
+
+  The criterion is local: the state the gates recorded, never a question put to
+  the platform. That is not a shortcut — `dod` is the method's own definition of
+  finished, and the merge only confirms the grant was honoured. It also
+  expresses what no platform can: a requisition **discarded**, superseded or
+  abandoned, which was never delivered and never will be.
+
+  A folder nothing can read is never removed. "I cannot tell" and "it is
+  finished" are different answers, and only one of them authorises destruction —
+  so unreadable folders are named in the plan and left alone.
+
+  It destroys with no `git restore` behind it, and what makes that safe is not
+  the command's caution: after the Definition of Done nothing in the folder is
+  unique. The request and the contract are the issue body, the delivery and the
+  evidence are the pull-request body, and the diagnosis and the plan are
+  comments on the issue. The working documents go with the rest on purpose — the
+  code is what they became, and decisions worth keeping are in `adr/`.
+
+  If it removes the active requisition it clears the pointer, rather than
+  manufacturing the dangling state the listing exists to report.
+
+- **`macss dod check`** — the Definition of Done, and the mirror of `dor check`.
+  It composes the two stage gates rather than replacing them — the delivery
+  judges the implementer's claim, the record judges the verifier's judgement —
+  and adds what neither owns: that the work has a pull request. From here the
+  pull-request body freezes, as the issue body freezes at the Definition of
+  Ready.
+
+  It reads the contract from the platform **once** and hands the same criteria
+  to both gates. Composing means one question asked in one place; two gates each
+  fetching their own copy could disagree about what the contract says.
+
+  Review is not in it, and that is not an omission: ADR 0008 and the roadmap
+  both decide it the same way — review fires on the pull request, on the
+  platform, and joins when that integration exists.
+
+- **`macss verification check` / `publish`** — the record is judged complete and
+  then joins the pull request the delivery opened, the way the contract joins
+  the issue the requisition opened. The body then reads as one thing: what was
+  built, and that it holds.
+
+  `check` asks three things and none of them is truth: every criterion of the
+  contract is carried, none is left with the placeholder `new` wrote, and the
+  conclusion exists. A criterion nobody judged is not the same as one that
+  held, and a record must not read as if it were. Anything rejected or accepted
+  with reservations counts as judged — a gate that only accepted agreement would
+  push the walk towards recording agreement.
+
+  `publish` pushes as a **safety net rather than a requirement**: verification
+  produces no code, so "everything up to date" is the ordinary answer and is
+  not a failure. What it covers is the walk that turned up a fix.
+
+  `macss-verification` may now name the two commands of its own stage. Six
+  entries stay barred from it — the delivery, the two gates either side, the
+  harness, and the two stages before it. Naming the tool that performs your own
+  stage is not the same as knowing about the stages around it, and instructing
+  a stage without naming that tool is how a documented convention becomes one
+  nobody follows.
+
+- **`macss verification new`** — the record is opened before the walk starts,
+  listing every criterion of the contract and judging none of them. Written
+  afterwards a record is a reconstruction: what survives is what somebody
+  remembers, which is the part that went smoothly.
+
+  It reads the contract from the **platform**, not from disk. A verifier may
+  hold no copy at all — `docs/requisitions/` is not versioned, so a local
+  `specification.md` can be absent, stale, or edited since the body froze — and
+  what is authoritative is the frozen issue body.
+
+  It is the first scaffold in this CLI whose content depends on another
+  document: the skeleton comes from a template in the project's language, and
+  the criteria are generated from the contract by the same `acIds` the
+  specification gate uses, so the two cannot disagree about what a criterion is
+  called.
+
+  It refuses rather than guessing in three cases: an issue body with no
+  `macss:specification` marker, because the contract cannot be told apart from
+  the request it follows; a contract that declares no criterion, which is a
+  defect of the contract and not of the walk; and a requisition with no issue.
+  And it never re-opens a record that exists — a walk already begun is exactly
+  what re-scaffolding would throw away.
+
+- **`macss delivery publish`** — the pull request appears as the consequence of
+  publishing the delivery, the way the issue appears from publishing the
+  requisition. There is no `macss pr` module for the same reason there is no
+  `macss issue` one.
+
+  It is the first command in this CLI that writes outside the machine by a route
+  that is not `gh`: it pushes, because `gh pr create` resolves the head on the
+  remote and a branch the remote has never seen is not there to resolve. So
+  `--plan` names the push and performs neither it nor the `gh` call, and the
+  gate runs before any of it — nothing leaves the machine on a red gate, and a
+  push is the one step that cannot be taken back.
+
+  The body points at the issue with a plain reference, never `Closes #N`. An
+  issue may deliberately outlive the pull request that answered it, and
+  auto-closing would fight a method that allows it.
+
+  It records the pull request, the branches it was opened between, and the
+  state, together. The branches are read from git at publish time rather than
+  from the record: the record stores them afterwards, as the fact the transition
+  produced.
+
+- **`macss delivery new` / `check`** — the first stage of the pull-request side.
+
+  `delivery.md` is the mirror of `requisition.md`: the first document of each
+  pair reports, the second commits. The request states what was asked and nobody
+  signs it; the delivery states what was built and nobody signs that either.
+  What is signed is the verification.
+
+  So it carries only what a verifier cannot derive from the frozen contract and
+  the diff — which criterion is claimed where, what was deliberately not done,
+  and how to reproduce it. Not what was built: the code says that. Not why:
+  `adr/` says that, or nothing does. A delivery that argues its own quality is
+  doing the verification's job from the one position that cannot.
+
+  `check` judges shape and coverage, never truth, exactly as `requisition check`
+  "judges presence, not quality". Three rules: `pr_title` parses as Conventional
+  Commits — shape only, because a closed list of types would be the gate
+  deciding what kinds of change a project may make; every criterion the contract
+  declares is claimed with somewhere a reader can look; and the branch is not the
+  one a pull request would merge into, which is the last gate before `gh pr
+  create` would fail with all the work already done. When `origin/HEAD` is
+  unset the branch rule warns instead of refusing — blocking on an unconfigured
+  ref would stop the work for a reason that has nothing to do with the delivery.
+
+  The criterion ids are generated in one place, `SpecificationGate.acIds`, so
+  the contract, the delivery and the verification cannot disagree about what a
+  criterion is called.
+
+### Changed
+- **`macss requisition list` reports the state and the pull request.**
+  *(breaking for `--json`: `stage` becomes `state`, and `pr` joins `issue`.)*
+
+  It used to answer "how far has this got?" from which documents were on disk,
+  which could only ever report the five stages that write a file — `dor` and
+  `dod` are gates and leave no artifact, so the listing said so in its own
+  source. Now the gates record what they establish, and the listing reports the
+  record. Deriving it a second way would be a second answer.
+
+  The pull request is shown beside the issue **before** anything acts on it. It
+  is the fact `prune` will decide by, and a destructive command whose criterion
+  has never been displayed is one nobody can audit before running it (ADR 0010).
+
+- **`issue.yaml` → `state.yaml`, the requisition's lifecycle record.**
+  *(breaking, no fallback)* The old file held the title, the labels and the
+  issue number: everything the issue needed, and nothing about what became of
+  the requirement. That is why nothing could ever decide a requisition was
+  finished, and why the workspace only grew.
+
+  The record adds the state — `opened`, `published`, `specified`, `ready`,
+  `delivered`, `verified`, `done`, `discarded` — and the handles each transition
+  produced. Two titles, not one: the issue's, in the project's language, and the
+  pull request's, which is a commit message and therefore English and
+  Conventional Commits in every project.
+
+  A transition writes the state and the fact it rests on together, so a record
+  cannot claim to be published while nothing names the issue. A state outside
+  the list reads as no record at all — the same answer as a missing file,
+  because neither is "not finished yet", and `macss requisition list` shows both
+  as unreadable rather than leaving them out.
+
+  Existing workspaces have no `state.yaml` and every command will say so. There
+  is no migration: `docs/requisitions/` is not versioned, and a compatibility
+  path for a file nobody outside this repository has written would be legacy
+  code on purpose.
+
+- **`macss dor check` records that the requisition is ready.** It writes one
+  word the gate has just proved, and still takes neither `--plan` nor `--apply`
+  — a deliberate exception to ADR 0007, because a gate that must be told which
+  of the two it is doing stops being runnable as a gate. A gate that does not
+  pass writes nothing, and a passing gate never moves the state backwards.
+- **`.macss/state.yaml` → `.macss/active_requisition.yaml`.** *(breaking, no
+  fallback)* The file holds `slug`, `path` and `created`: it says **which**
+  requisition is being worked on, which is a pointer and not a state. It was
+  already renamed once for this reason — `.macss/specification.yaml` →
+  `.macss/state.yaml`, *"the old name said something else"* — and that rename
+  fixed the wrong half. The name cost nothing while nothing else in the project
+  held a state; a requisition that records its own is what makes it a second
+  answer to a different question.
+
+  The old file is not read. It is git-ignored and local, so there is nothing to
+  migrate and nothing to lose — but whoever upgrades stops having an active
+  requisition, with no indication why. `macss requisition list` says so, and
+  `macss requisition activate <slug> --apply` restores it in one command.
+
 ## [0.8.1]
 
 ### Changed

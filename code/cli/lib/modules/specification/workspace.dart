@@ -6,7 +6,7 @@
 /// `<YYYYMMDD>-<slug>` so an alphabetical listing sorts **chronologically**
 /// (the compact, hyphen-free date sorts cleanly and is good for ~7 more
 /// millennia). The **active** requisition is recorded in
-/// `.macss/state.yaml` so downstream commands (`issue new`,
+/// `.macss/active_requisition.yaml` so downstream commands (`issue new`,
 /// `specification check`, `issue publish`) need not repeat the slug.
 library;
 
@@ -16,8 +16,21 @@ import 'package:path/path.dart' as p;
 
 import '../../src/workspace_dir.dart';
 
+export '../../src/workspace_dir.dart' show workspaceDirName;
+
 /// The two path segments under the project root where requisitions live.
 const _base = ['docs', 'requisitions'];
+
+/// The pointer's file name, under `.macss/`.
+///
+/// It says *which* requisition is being worked on — `slug`, `path`, `created` —
+/// so it is a pointer and not a state. It carried the name `state.yaml` while
+/// nothing else in the project held a state; the requisition's own state file
+/// makes that name a second answer to a different question.
+///
+/// Named once because it is read in one place and written in another, and a
+/// rename reaching only one of them would leave the two disagreeing in silence.
+const activeRequisitionFileName = 'active_requisition.yaml';
 
 /// Compact, hyphen-free date stamp that sorts chronologically: `YYYYMMDD`.
 String dateStamp(DateTime now) =>
@@ -37,9 +50,9 @@ String requisitionDir(String root, String folder) =>
 String requisitionRelDir(String folder) => p.posix.join(_base[0], _base[1], folder);
 
 /// The repo-relative (posix) path of the active requisition, read from
-/// `.macss/state.yaml`, or null when the pointer is absent.
+/// `.macss/active_requisition.yaml`, or null when the pointer is absent.
 String? activeRequisitionPath(String root) {
-  final f = File(p.join(root, '.macss', 'state.yaml'));
+  final f = File(p.join(root, workspaceDirName, activeRequisitionFileName));
   if (!f.existsSync()) return null;
   final m = RegExp(r'^path:\s*(.+)$', multiLine: true)
       .firstMatch(f.readAsStringSync());
@@ -48,7 +61,7 @@ String? activeRequisitionPath(String root) {
 
 /// Resolves a requisition folder to an absolute path, or null when none exists.
 ///
-/// With no [slug], it follows the active pointer (`.macss/state.yaml`).
+/// With no [slug], it follows the active pointer (`.macss/active_requisition.yaml`).
 /// With a [slug], it prefers a folder under `docs/requisitions/` whose name is
 /// exactly `<slug>` or ends in `-<slug>` (the dated form; newest wins), then
 /// falls back to the **legacy** repo-root `requisitions/<slug>/`.
@@ -112,7 +125,7 @@ String? ambiguousRequisitionFailure(String root, String? slug) {
       'Name one of them exactly with --slug.';
 }
 
-/// Records the **active** requisition in `.macss/state.yaml` so other
+/// Records the **active** requisition in `.macss/active_requisition.yaml` so other
 /// commands can resolve the folder without repeating the slug. Overwrites any
 /// previous pointer (the newest `specification new` wins).
 ///
@@ -128,7 +141,8 @@ void writeActiveRequisition(
   // Through `ensureWorkspace`: the pointer and the plan files are two paths
   // into the same directory, and both must find it already ignoring itself.
   ensureWorkspace(root);
-  File(p.join(root, '.macss', 'state.yaml')).writeAsStringSync(
+  File(p.join(root, workspaceDirName, activeRequisitionFileName))
+      .writeAsStringSync(
     '# MACSS — active requisition pointer (local; git-ignored)\n'
     'slug: $slug\n'
     'path: $relDir\n'

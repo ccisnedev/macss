@@ -202,4 +202,26 @@ void main() {
     });
 
   });
+
+  group('the criterion ids the contract declares', () {
+    /// The id is the join between the contract and the two documents that
+    /// answer it — the delivery claims evidence per id, the verification is
+    /// opened listing them unjudged. Generated in one place so the three cannot
+    /// disagree about what a criterion is called.
+    test('qualified by their story, in reading order', () {
+      expect(gate.acIds(_filledSpec), isNotEmpty);
+      expect(gate.acIds(_filledSpec).first, matches(RegExp(r'^US\d+-AC\d+$')));
+    });
+
+    test('a contract with no stories declares none', () {
+      expect(gate.acIds('# Specification\n\n## 2. User Stories\n'), isEmpty);
+    });
+
+    /// Blank template rows are not criteria anybody agreed to, and the gate
+    /// already ignores them when it decides whether a story is filled.
+    test('unfilled rows are not criteria', () {
+      final ids = gate.acIds(_filledSpec);
+      expect(ids, everyElement(isNot(contains('AC0'))));
+    });
+  });
 }

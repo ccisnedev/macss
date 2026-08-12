@@ -1,6 +1,6 @@
 /// `macss specification check [--slug <slug>]` — runs the `specification_ready`
 /// gate over the active requisition's `specification.md`
-/// (`.macss/state.yaml`; `--slug` overrides).
+/// (`.macss/active_requisition.yaml`; `--slug` overrides).
 ///
 /// The CLI runs the gate; the model fixes exactly what it reports. Specification
 /// precedes implementation, whose gates belong to the inquiry FSM, so this is a
@@ -24,7 +24,7 @@ import '../workspace.dart';
 
 class SpecificationCheckInput extends Input {
   /// The requisition workspace override; `null` → the active requisition
-  /// recorded in `.macss/state.yaml`.
+  /// recorded in `.macss/active_requisition.yaml`.
   final String? slug;
 
   SpecificationCheckInput({this.slug});

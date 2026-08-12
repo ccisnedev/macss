@@ -83,7 +83,7 @@ void main() {
 
       expect(
         commands.length,
-        greaterThanOrEqualTo(10),
+        greaterThanOrEqualTo(17),
         reason: 'extraction found ${commands.length} invocations in the '
             'shipped skills — fewer than they are known to instruct',
       );

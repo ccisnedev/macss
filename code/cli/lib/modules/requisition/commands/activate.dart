@@ -1,7 +1,7 @@
 /// `macss requisition activate <slug> --plan|--apply` — choose the requisition
 /// the following commands act on.
 ///
-/// The pointer lives in `.macss/state.yaml` and was, until now, changed by
+/// The pointer lives in `.macss/active_requisition.yaml` and was, until now, changed by
 /// opening that file and editing two keys that had to stay consistent with each
 /// other and with a folder name. Nothing checked that they agreed, which made it
 /// the only unguarded operation in a CLI that will not even choose between

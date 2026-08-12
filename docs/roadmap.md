@@ -247,9 +247,9 @@ serves each stage:
 | implementation | skills + `macss diagnosis`, `macss plan` | `macss-analyze` / `macss-plan` / `macss-execute` — **shipped** (0.5.0). The two documents the phases produce become artifacts with modules of their own; `execute` produces code, so it gets none |
 | ci | none — the platform's | GitHub Actions. MACSS states the expectation; it does not own the runner |
 | review | none — the platform's | a gate, methodological. Fires on the PR, so the instrument is platform review with custom instructions, not a MACSS command |
-| delivery | `macss delivery` | planned (ADR 0008) — what was built, published as the PR |
-| verification | `macss verification` | planned (ADR 0008) — the evidence, appended to that same PR |
-| definition of done | `macss dod` | planned — composes both gates plus "the PR exists"; review joins when the platform integration exists |
+| delivery | `macss delivery` | **shipped** (0.9.0) — what was built, published as the PR |
+| verification | `macss verification` | **shipped** (0.9.0) — the evidence, appended to that same PR |
+| definition of done | `macss dod` | **shipped** (0.9.0) — composes both gates plus "the PR exists"; review joins when the platform integration exists |
 | deploy | `macss deploy` | planned — delegates to `macss-devops` (Stage 3.5) |
 
 There is no `macss issue` module. One requirement is one issue, and the issue is
@@ -746,19 +746,31 @@ preceding stages is finished without it.
 
 ## Stage 7 - Environments: dev, uat, prod, demo
 
-`verification`, `dod` and `deploy` stay planned, and deliberately so. Building
-commands for stages the method has not yet been exercised through would encode
-guesses as contracts — the opposite of how `requisition` and `specification`
-arrived, which was after the handbook had documented what they had to do.
+**`deploy` stays planned, and deliberately so.** Building commands for stages
+the method has not yet been exercised through would encode guesses as contracts
+— the opposite of how `requisition` and `specification` arrived, which was
+after the handbook had documented what they had to do.
+
+This paragraph used to defer `verification` and `dod` as well. That was right
+when it was written and was overtaken by events: `macss-verification` shipped
+the method in 0.8.0, and the stage was exercised before either command existed
+— four records were written by hand against it. What shipped in 0.9.0 is
+narrower than what is deferred here, and the distinction is worth keeping. The
+**document and its publication** need nothing but a contract, a change and a
+human. **QA validating in a running environment** is what needs dev, uat, prod
+and demo, and that is still ahead.
 
 What comes before them is the ground they stand on: the four environments the
 handbook's environments chapter defines — **dev**, **uat**, **prod**, **demo**.
 
-They are what the remaining stages actually operate against. `verification` is
-QA checking out a branch and validating acceptance criteria *somewhere*, and the
-Product Owner signs off in **uat**. `deploy` promotes *between* environments,
-and cannot be specified without knowing what it promotes between. `dod` composes
-approvals that are given about a running system, not about a diff.
+They are what the remaining stages actually operate against. Verification as a
+*document* is shipped; verification as QA checking out a branch and validating
+acceptance criteria **somewhere** still needs that somewhere, and the Product
+Owner signs off in **uat**. `deploy` promotes *between* environments, and cannot
+be specified without knowing what it promotes between. The Definition of Done
+composes what can be read today — the two documents and the pull request — and
+gains the approvals that are given about a running system rather than about a
+diff once those environments exist.
 
 Defining them is not CLI work yet. It is standing them up and using the method
 against them long enough to learn what a command would have to do.
