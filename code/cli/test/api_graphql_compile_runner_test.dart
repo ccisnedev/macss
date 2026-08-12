@@ -4,6 +4,8 @@ import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
 import 'package:macss_cli/modules/api/graphql/commands/compile.dart';
+
+import 'support/graphql_run.dart';
 import 'package:macss_cli/src/api/graphql/compile_config.dart';
 import 'package:macss_cli/src/api/graphql/compile_config_resolver.dart';
 import 'package:macss_cli/src/api/graphql/compile_runner.dart';
@@ -35,21 +37,20 @@ void main() {
         ),
       );
 
-      final output = await GraphqlCompileCommand(
+      final output = await runOf(GraphqlCompileCommand(
         GraphqlCompileInput(
           sourceRoot: sourceRoot.path,
           metadataFile: metadataFile.path,
           outputDirectory: p.join(tempDir.path, 'out'),
           engine: 'sqlserver',
           workingDirectory: tempDir.path,
-          flags: const ChangeFlags(apply: true, autoapprove: true),
         ),
         configResolver: GraphqlCompileConfigResolver(environment: const {}),
         runner: runner,
-      ).execute();
+      ));
 
       expect(output.exitCode, 0);
-      expect(output.toText(), contains('compiled successfully'));
+      expect(output.text, contains('compiled successfully'));
       expect(runner.seenConfig, isNotNull);
       expect(runner.seenConfig!.sourceRoot, sourceRoot.path);
       expect(runner.seenConfig!.metadataFile, metadataFile.path);
@@ -62,41 +63,39 @@ void main() {
         ),
       );
 
-      final output = await GraphqlCompileCommand(
+      final output = await runOf(GraphqlCompileCommand(
         GraphqlCompileInput(
           sourceRoot: sourceRoot.path,
           metadataFile: metadataFile.path,
           outputDirectory: p.join(tempDir.path, 'out'),
           engine: 'sqlserver',
           workingDirectory: tempDir.path,
-          flags: const ChangeFlags(apply: true, autoapprove: true),
         ),
         configResolver: GraphqlCompileConfigResolver(environment: const {}),
         runner: runner,
-      ).execute();
+      ));
 
       expect(output.exitCode, 4);
-      expect(output.toText(), contains('blocking diagnostics'));
+      expect(output.text, contains('blocking diagnostics'));
     });
 
     test('unexpected runtime failures map to exit code 5', () async {
       final runner = _RecordingRunner(error: StateError('boom'));
 
-      final output = await GraphqlCompileCommand(
+      final output = await runOf(GraphqlCompileCommand(
         GraphqlCompileInput(
           sourceRoot: sourceRoot.path,
           metadataFile: metadataFile.path,
           outputDirectory: p.join(tempDir.path, 'out'),
           engine: 'sqlserver',
           workingDirectory: tempDir.path,
-          flags: const ChangeFlags(apply: true, autoapprove: true),
         ),
         configResolver: GraphqlCompileConfigResolver(environment: const {}),
         runner: runner,
-      ).execute();
+      ));
 
       expect(output.exitCode, 5);
-      expect(output.toText(), contains('boom'));
+      expect(output.text, contains('boom'));
     });
 
   });
