@@ -113,14 +113,37 @@ Every command that writes to disk, to GitHub, or to the installed system:
 | Module | Commands |
 |---|---|
 | `project` | `create`, `adopt` |
-| `requisition` | `new`, `export-template`, `publish` |
+| `requisition` | `new`, `export-template`, `publish`, `prune` |
 | `specification` | `new`, `export-template`, `publish` |
+| `delivery` | `new`, `publish` |
+| `verification` | `new`, `publish` |
 | `skill` | `deploy`, `clean` |
 | `api` | `graphql compile` |
 | (global) | `upgrade`, `uninstall` |
 
 And to no others. `doctor`, `version`, `help`, `skill list`, `project check`,
-`requisition check`, `specification check` and `dor check` read and report.
+`requisition check`, `specification check`, `delivery check` and
+`verification check` read and report.
+
+### One exception, and it is the gates
+
+`macss dor check` and `macss dod check` **write** — each records the state it
+has just established — and they still take neither flag.
+
+A gate is run constantly, by people and by agents, to find out where something
+stands. One that had to be told which of planning or applying it was doing
+would stop being runnable as a gate, and the answer to "am I ready?" would
+require a decision about writing before it could be given. What they write is
+one word the gate itself just proved, they write nothing when they do not pass,
+and they never move a state backwards.
+
+This costs something and the cost is named here rather than discovered.
+`dictated_commands.dart` derives whether a command mutates from whether it
+declares `--plan` — *"derived, never asserted"*, on the argument that a
+hand-kept list of the mutating commands would be a second answer free to
+disagree. That derivation is now wrong about these two. It stays derived,
+because it is right about every other command and a list would rot; the two
+gates are the documented exception rather than a silent one.
 
 ## Consequences
 

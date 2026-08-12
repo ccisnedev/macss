@@ -140,13 +140,22 @@ a consequence of publishing the delivery.
 ### 5. The modules mirror the ones that exist
 
 ```text
-macss delivery      new / check / --plan / --apply    → creates the pull request
-macss verification  new / check / --plan / --apply    → appends to its body
+macss delivery      new / check / publish             → opens the pull request
+macss verification  new / check / publish             → appends to its body
 macss dod check                                       → composes both, and review
 ```
 
 Same verbs, same convention (ADR 0007), same shape: `new` opens the artifact,
 `check` runs the stage gate, `publish` materializes it on GitHub.
+
+**Shipped, and two things were learned in the building.** `delivery publish`
+pushes before it opens the pull request, because `gh pr create` resolves the
+head on the remote — which makes it the first command here that writes outside
+the machine by a route that is not `gh`, and the first whose `--plan` names
+something other than a file. And the two stage gates read the contract from
+different places on purpose: `delivery check` from disk, where the implementer
+is and the file is there by construction, and `verification check` from the
+published issue, because the verifier may hold no copy at all.
 
 ### 6. `dod check` starts at its floor, and the floor is not arbitrary
 
@@ -181,13 +190,31 @@ purpose.
 | definition of ready | automated — `macss dor check` |
 | implementation | an agent: analyze, plan, execute under TDD |
 | ci + review | automated — the platform's runner and a reviewing agent |
-| verification | **human with an agent** — and not the agent that implemented |
+| verification | **human with an agent** |
 | definition of done | automated — `macss dod check` |
 | merge | the human, confirming the grant was honoured |
 
-The verifying agent must not be the implementing one. An agent that checks its
-own work confirms its own assumptions; the point of the separation is a reader
-that never saw the reasoning, only the frozen contract and the diff.
+**The verifying agent may be the implementing one.** This section first said it
+must not be, on the argument that an agent checking its own work confirms its
+own assumptions. `macss-verification` — written after this ADR and shipped in
+0.8.0 — reaches the opposite conclusion and is right:
+
+> Whether you also did the work does not matter. One person can be the
+> requester, the author of the criteria, the implementer and the one who signs.
+> What makes this a verification is not who conducts it — it is that every
+> criterion is faced one at a time, with evidence that can be reproduced, and
+> judged by someone who answers for the judgement.
+
+The worry the rule protected against is real and survives, better placed:
+*"check against the criteria, not against what you intended. If you implemented
+the change, the temptation is to verify the intention you remember rather than
+the sentence that was agreed."*
+
+What guarantees the outside reading is not **who** conducts the walk but **where
+it starts** — the frozen contract and the diff, which is what this section
+already said. `macss verification new` makes that mechanical: it reads the
+contract off the published issue rather than off the working tree, so the walk
+begins from what was agreed and not from what anybody remembers agreeing.
 
 ### 8. The merge asks about conformance, not quality
 
