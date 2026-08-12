@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:modular_cli_sdk/modular_cli_sdk.dart';
+import 'package:modular_cli_sdk/testing.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
@@ -86,21 +87,22 @@ void main() {
     if (tempRoot.existsSync()) tempRoot.deleteSync(recursive: true);
   });
 
-  CreateCommand makeCmd(
-    String resolvedPath, {
-    ChangeFlags flags = const ChangeFlags(apply: true, autoapprove: true),
-    String? lang = 'en',
-  }) =>
+  CreateCommand makeCmd(String resolvedPath, {String? lang = 'en'}) =>
       CreateCommand(
         CreateInput(
           resolvedPath: resolvedPath,
           workingDirectory: tempRoot.path,
-          flags: flags,
           lang: lang,
         ),
         assets: assets,
-        now: () => DateTime(2026, 8, 4, 9, 30, 15),
       );
+
+  Future<CreateOutput> create(String dest, {String? lang = 'en'}) async =>
+      await applyCommand(makeCmd(dest, lang: lang));
+
+  /// What it says it would do. Nothing is scaffolded.
+  Future<List<Preview>> plan(String dest, {String? lang = 'en'}) =>
+      previewCommand(makeCmd(dest, lang: lang));
 
   // Wires the real module with the test assets, so contract parsing (abbr,
   // rejection) is exercised through the registration that actually ships —
@@ -200,7 +202,7 @@ void main() {
     test('with --lang it writes the declaration', () async {
       final dest = p.join(tempRoot.path, 'declared-proj');
 
-      await makeCmd(dest, lang: 'es').execute();
+      await create(dest, lang: 'es');
 
       expect(projectLanguage(dest), 'es');
     });
@@ -226,29 +228,26 @@ void main() {
     test('the declaration is named in the plan before it is written', () async {
       final dest = p.join(tempRoot.path, 'planned-lang-proj');
 
-      final out =
-          await makeCmd(dest, flags: const ChangeFlags(plan: true), lang: 'es')
-              .execute();
+      final previews = await plan(dest, lang: 'es');
 
-      expect(File(out.planPath!).readAsStringSync(), contains('language: es'));
+      final declaration = previews.firstWhere((p) => p.verb == 'declare');
+      expect(declaration.detail, contains('language: es'));
       expect(Directory(dest).existsSync(), isFalse);
     });
   });
 
-  group('macss project create --plan', () {
-    test('writes the plan where invoked, not into the target', () async {
+  group('what macss project create would do', () {
+    test('names the target and the canon, and creates neither', () async {
       final dest = p.join(tempRoot.path, 'planned-proj');
 
-      final out =
-          await makeCmd(dest, flags: const ChangeFlags(plan: true)).execute();
+      final previews = await plan(dest);
 
-      // The target is what `create` would bring into existence. Planning must
+      // The target is what `create` would bring into existence. Asking must
       // not bring it into existence to say so.
       expect(Directory(dest).existsSync(), isFalse);
-      expect(out.created, isFalse);
-      expect(out.planPath, isNotNull);
-      expect(p.isWithin(tempRoot.path, out.planPath!), isTrue);
-      expect(File(out.planPath!).readAsStringSync(), contains('README.md'));
+      expect(previews.first.verb, 'create');
+      expect(previews.first.target, dest);
+      expect(previews.map((p) => p.target).join('\n'), contains('README.md'));
     });
   });
 
@@ -268,7 +267,7 @@ void main() {
 
     test('creates root directory when it does not exist', () async {
       final dest = p.join(tempRoot.path, 'my-project');
-      final output = await makeCmd(dest).execute();
+      final output = await create(dest);
 
       expect(Directory(dest).existsSync(), isTrue);
       expect(output.exitCode, 0);
@@ -279,7 +278,7 @@ void main() {
       'stamps a README anchor in each module (survives first commit)',
       () async {
         final dest = p.join(tempRoot.path, 'proj');
-        await makeCmd(dest).execute();
+        await create(dest);
 
         for (final mod in ['infra', 'db', 'api', 'app']) {
           expect(
@@ -293,7 +292,7 @@ void main() {
 
     test('creates doc files from templates', () async {
       final dest = p.join(tempRoot.path, 'proj2');
-      await makeCmd(dest).execute();
+      await create(dest);
 
       final adr = File(
         p.join(dest, 'docs', 'adr', '0001-record-architecture-decisions.md'),
@@ -308,7 +307,7 @@ void main() {
 
     test('doc file content matches template', () async {
       final dest = p.join(tempRoot.path, 'proj3');
-      await makeCmd(dest).execute();
+      await create(dest);
 
       final arch = File(p.join(dest, 'docs', 'architecture.md'));
       expect(arch.readAsStringSync(), '# Architecture');
@@ -316,46 +315,48 @@ void main() {
 
     test('does not overwrite existing files', () async {
       final dest = p.join(tempRoot.path, 'proj4');
-      await makeCmd(dest).execute();
+      await create(dest);
 
       // Modify a file manually
       final arch = File(p.join(dest, 'docs', 'architecture.md'));
       arch.writeAsStringSync('# My custom content');
 
       // Run again
-      await makeCmd(dest).execute();
+      await create(dest);
 
       expect(arch.readAsStringSync(), '# My custom content');
     });
 
     test('second run is idempotent and reports exists', () async {
       final dest = p.join(tempRoot.path, 'proj5');
-      await makeCmd(dest).execute();
-      final output2 = await makeCmd(dest).execute();
+      await create(dest);
+      final output2 = await create(dest);
 
       expect(output2.exitCode, 0);
-      expect(output2.message, contains('already initialized'));
+      expect(output2.toText(), contains('already initialized'));
     });
 
     test('fails with exitCode 2 when path is an existing file', () async {
       final filePath = p.join(tempRoot.path, 'not-a-dir.txt');
       File(filePath).writeAsStringSync('I am a file');
 
-      final output = await makeCmd(filePath).execute();
-      expect(output.exitCode, 2);
-      expect(output.created, isFalse);
+      await expectLater(
+        create(filePath),
+        throwsA(isA<CommandException>()
+            .having((e) => e.exitCode, 'exitCode', 2)),
+      );
     });
 
     test('works with absolute path', () async {
       final dest = p.join(tempRoot.path, 'abs-proj');
-      final output = await makeCmd(dest).execute();
+      final output = await create(dest);
       expect(output.exitCode, 0);
       expect(Directory(dest).existsSync(), isTrue);
     });
 
     test('creates README.md from template', () async {
       final dest = p.join(tempRoot.path, 'proj-readme');
-      await makeCmd(dest).execute();
+      await create(dest);
 
       final readme = File(p.join(dest, 'README.md'));
       expect(readme.existsSync(), isTrue);
@@ -364,7 +365,7 @@ void main() {
 
     test('creates .gitignore from template', () async {
       final dest = p.join(tempRoot.path, 'proj-gi');
-      await makeCmd(dest).execute();
+      await create(dest);
 
       final gitignore = File(p.join(dest, '.gitignore'));
       expect(gitignore.existsSync(), isTrue);
@@ -373,7 +374,7 @@ void main() {
 
     test('creates .gitattributes from template', () async {
       final dest = p.join(tempRoot.path, 'proj-ga');
-      await makeCmd(dest).execute();
+      await create(dest);
 
       final gitattributes = File(p.join(dest, '.gitattributes'));
       expect(gitattributes.existsSync(), isTrue);
@@ -384,19 +385,19 @@ void main() {
       // Skills are installed once per machine under the user's home, not per
       // repository — see `macss skill deploy`.
       final dest = p.join(tempRoot.path, 'proj-skills');
-      await makeCmd(dest).execute();
+      await create(dest);
 
       expect(Directory(p.join(dest, '.skills')).existsSync(), isFalse);
     });
 
     test('does not overwrite existing README.md', () async {
       final dest = p.join(tempRoot.path, 'proj-no-overwrite');
-      await makeCmd(dest).execute();
+      await create(dest);
 
       final readme = File(p.join(dest, 'README.md'));
       readme.writeAsStringSync('# Custom');
 
-      await makeCmd(dest).execute();
+      await create(dest);
       expect(readme.readAsStringSync(), '# Custom');
     });
   });
