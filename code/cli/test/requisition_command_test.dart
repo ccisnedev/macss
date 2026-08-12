@@ -8,7 +8,7 @@ import 'package:macss_cli/assets.dart';
 import 'package:macss_cli/modules/requisition/commands/check.dart';
 import 'package:macss_cli/modules/requisition/commands/export_template.dart';
 import 'package:macss_cli/modules/requisition/commands/new.dart';
-import 'package:macss_cli/modules/requisition/issue_metadata.dart';
+import 'package:macss_cli/modules/requisition/requisition_record.dart';
 import 'package:macss_cli/modules/requisition/commands/publish.dart';
 import 'package:macss_cli/modules/requisition/publisher.dart';
 import 'package:macss_cli/modules/requisition/requisition_builder.dart';
@@ -64,13 +64,24 @@ void main() {
       File(p.join(tempDir.path, p.joinAll(relative.split('/'))));
 
   group('macss requisition new', () {
-    test('writes the form, the issue metadata and the active pointer',
+    test('writes the form, the lifecycle record and the active pointer',
         () async {
       await open();
 
       expect(file('$folder/requisition.md').existsSync(), isTrue);
-      expect(file('$folder/issue.yaml').existsSync(), isTrue);
-      expect(file('.macss/state.yaml').existsSync(), isTrue);
+      expect(file('$folder/state.yaml').existsSync(), isTrue);
+      expect(file('.macss/active_requisition.yaml').existsSync(), isTrue);
+      expect(file('$folder/issue.yaml').existsSync(), isFalse,
+          reason: 'issue.yaml is replaced, not written alongside');
+    });
+
+    test('the requisition starts at the first state of the ladder', () async {
+      await open();
+
+      final record =
+          RequisitionRecord.read(p.dirname(file('$folder/x').path))!;
+      expect(record.state, RequisitionState.opened);
+      expect(record.issue, isNull);
     });
 
     test('does not create the specification', () async {
@@ -99,12 +110,13 @@ void main() {
 
     // A copy of the declaration is a second answer waiting to disagree with the
     // first. `.macss/config.yaml` says it once; nothing downstream repeats it.
-    test('copies the language into neither issue.yaml nor state.yaml', () async {
+    test('copies the language into neither state.yaml nor the pointer',
+        () async {
       await open(lang: 'es');
 
-      expect(file('$folder/issue.yaml').readAsStringSync(),
+      expect(file('$folder/state.yaml').readAsStringSync(),
           isNot(contains('lang')));
-      expect(file('.macss/state.yaml').readAsStringSync(),
+      expect(file('.macss/active_requisition.yaml').readAsStringSync(),
           isNot(contains('lang')));
     });
 
@@ -171,43 +183,21 @@ void main() {
           .execute();
 
       expect(file('$folder/requisition.md').existsSync(), isFalse);
-      expect(file('$folder/${IssueMetadata.fileName}').existsSync(), isFalse);
+      expect(file('$folder/${RequisitionRecord.fileName}').existsSync(), isFalse);
       expect(out.planPath, isNotNull);
 
       final plan = File(out.planPath!).readAsStringSync();
       expect(plan, contains('requisition.md'));
-      expect(plan, contains(IssueMetadata.fileName));
+      expect(plan, contains(RequisitionRecord.fileName));
       expect(plan, contains('active requisition'));
     });
   });
 
-  group('issue.yaml', () {
-    test('starts unpublished, which is how the DoR knows', () async {
-      await open();
-
-      final meta = IssueMetadata.read(p.dirname(file('$folder/x').path))!;
-      expect(meta.isPublished, isFalse);
-      expect(meta.issue, isNull);
-    });
-
+  group('state.yaml', () {
     test('carries no repo — gh infers it from the directory', () async {
       await open();
-      expect(file('$folder/issue.yaml').readAsStringSync(),
+      expect(file('$folder/state.yaml').readAsStringSync(),
           isNot(contains('repo:')));
-    });
-
-    test('round-trips the fields a person edits', () {
-      const meta = IssueMetadata(
-        title: 'Consulta del estado de un pedido',
-        labels: ['enhancement', 'app'],
-      );
-      final dir = tempDir.path;
-      meta.write(dir);
-
-      final read = IssueMetadata.read(dir)!;
-      expect(read.title, meta.title);
-      expect(read.labels, meta.labels);
-      expect(read.withIssue(42).issue, 42);
     });
   });
 
@@ -451,7 +441,10 @@ void main() {
       expect(calls.single, isNot(contains('--repo')));
 
       final dir = p.dirname(file('$folder/x').path);
-      expect(IssueMetadata.read(dir)!.issue, 42);
+      final record = RequisitionRecord.read(dir)!;
+      expect(record.issue, 42);
+      expect(record.state, RequisitionState.published,
+          reason: 'the number and the state it justifies are written together');
     });
 
     test('a second publish edits the issue it already created', () async {
@@ -474,8 +467,11 @@ void main() {
     test('creating an issue labels it with --label', () async {
       await open();
       await fillForm();
-      const IssueMetadata(title: 'Un título', labels: ['bug'])
-          .write(p.dirname(file('$folder/x').path));
+      const RequisitionRecord(
+        title: 'Un título',
+        labels: ['bug'],
+        state: RequisitionState.opened,
+      ).write(p.dirname(file('$folder/x').path));
 
       await publish(
           apply: true, run: runner(stdout: 'https://github.com/o/r/issues/42'));
@@ -487,9 +483,10 @@ void main() {
     test('editing an issue labels it with --add-label', () async {
       await open();
       await fillForm();
-      const IssueMetadata(
+      const RequisitionRecord(
         title: 'Un título',
         labels: ['bug', 'app'],
+        state: RequisitionState.published,
         issue: 42,
       ).write(p.dirname(file('$folder/x').path));
 

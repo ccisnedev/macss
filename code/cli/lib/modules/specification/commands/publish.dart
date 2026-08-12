@@ -17,7 +17,7 @@ import 'package:path/path.dart' as p;
 import '../../../assets.dart';
 import '../../../src/plan_apply.dart';
 import '../../../src/vocabulary.dart';
-import '../../requisition/issue_metadata.dart';
+import '../../requisition/requisition_record.dart';
 import '../../requisition/publisher.dart';
 import '../slug.dart';
 import '../specification_gate.dart';
@@ -139,7 +139,7 @@ class SpecificationPublishCommand
       return 'No specification.md — run `macss specification new --apply` '
           'first.';
     }
-    final meta = IssueMetadata.read(dir);
+    final meta = RequisitionRecord.read(dir);
     if (meta == null || !meta.isPublished) {
       return 'The requisition has not been published yet — run '
           '`macss requisition publish --apply` first, so there is an issue to '
@@ -151,7 +151,7 @@ class SpecificationPublishCommand
   @override
   Future<SpecificationPublishOutput> execute() async {
     final dir = _dir!;
-    final meta = IssueMetadata.read(dir)!;
+    final meta = RequisitionRecord.read(dir)!;
 
     final result = gate.evaluate(
       File(p.join(dir, 'specification.md')).readAsStringSync(),
@@ -199,9 +199,16 @@ class SpecificationPublishCommand
     }
 
     final published = await publisher.publish(meta, body, repo: input.repo);
-    return published.ok
-        ? SpecificationPublishOutput(
-            message: 'Issue ${meta.issue} updated: ${published.url}')
-        : SpecificationPublishOutput(ok: false, message: published.error!);
+    if (!published.ok) {
+      return SpecificationPublishOutput(ok: false, message: published.error!);
+    }
+
+    // The contract is on the issue, so the requirement is specified. Recorded
+    // only after `gh` returned: a state written before the call would claim
+    // something the platform never received.
+    meta.at(RequisitionState.specified).write(dir);
+
+    return SpecificationPublishOutput(
+        message: 'Issue ${meta.issue} updated: ${published.url}');
   }
 }

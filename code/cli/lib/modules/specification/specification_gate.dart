@@ -134,6 +134,28 @@ class SpecificationGate {
     }
   }
 
+  /// Every acceptance criterion the contract declares, by its canonical id, in
+  /// reading order: `US1-AC1`, `US1-AC2`, `US2-AC1`, …
+  ///
+  /// Public because the id is the join between the contract and the two
+  /// documents that answer it. `delivery check` asks for the list to see that
+  /// the implementer's claim covers all of it, and the verification's record is
+  /// opened listing exactly these, unjudged. Generated in one place so the
+  /// three cannot disagree about what a criterion is called.
+  ///
+  /// Only **filled** stories and rows count, for the same reason the gate
+  /// ignores them: a blank template row is not a criterion anybody agreed to.
+  List<String> acIds(String specificationMd) {
+    final body = _section(_splitSections(specificationMd), 2);
+    if (body == null) return const [];
+
+    final stories = _splitStories(body);
+    return [
+      for (var i = 0; i < stories.length; i++)
+        ..._acIds(stories[i].title, stories[i].body, i),
+    ];
+  }
+
   // ─── Parsing helpers ──────────────────────────────────────────────────────
 
   /// Splits the doc into `## ` sections, keyed by the trimmed header text.

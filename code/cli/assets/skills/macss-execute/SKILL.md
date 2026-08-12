@@ -40,8 +40,18 @@ Dependencies point from the feature to the base, never the reverse.
 5. Commit the phase.
 6. Repeat until every phase is done, then do the release preparation the plan
    specifies: version bump, CHANGELOG entry, final commit.
-7. Open the pull request, referencing the issue so the chain closes: request,
-   contract, diagnosis, plan, code. Present the result to the human.
+7. Write the delivery, and publish it:
+   `macss delivery new --apply --autoapprove`, then fill it — every acceptance
+   criterion with somewhere a reader can look, what was deliberately not done,
+   and how to reproduce it. Record `pr_title` in `state.yaml`: it is a commit
+   message, so English and Conventional Commits whatever language the documents
+   are in. Then `macss delivery check`, and
+   `macss delivery publish --plan` before `--apply --autoapprove`.
+
+   The pull request appears as the consequence. You do not open it: what you
+   write is the document, and the document is what the person verifying reads.
+   You are stating what you built; you are **not** saying it is correct. Nobody
+   signs a delivery.
 
 ## Done when
 
@@ -50,4 +60,4 @@ Dependencies point from the feature to the base, never the reverse.
 - [ ] The full suite passes, with nothing skipped, disabled or loosened to get
       there.
 - [ ] Release preparation is done as the plan specified.
-- [ ] The pull request references the issue.
+- [ ] The delivery claims every criterion with its evidence, and is published.

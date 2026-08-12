@@ -11,12 +11,15 @@ import 'package:path/path.dart' as p;
 import 'assets.dart';
 import 'src/api/graphql/compile_runner.dart';
 import 'modules/api/api_builder.dart';
+import 'modules/delivery/delivery_builder.dart';
+import 'modules/dod/dod_builder.dart';
 import 'modules/dor/dor_builder.dart';
 import 'modules/global/global_builder.dart';
 import 'modules/project/project_builder.dart';
 import 'modules/requisition/requisition_builder.dart';
 import 'modules/skill/skill_builder.dart';
 import 'modules/specification/specification_builder.dart';
+import 'modules/verification/verification_builder.dart';
 
 /// `--help` / `-h` are left to the SDK, which routes every help request itself
 /// (including the focused `macss <command> --help`). Only `--version` / `-v`
@@ -60,6 +63,12 @@ Future<int> runMacss(
     (m) => buildSpecificationModule(m, assets: assets),
   );
   cli.module('dor', (m) => buildDorModule(m, assets: assets));
+  cli.module('dod', (m) => buildDodModule(m, assets: assets));
+  cli.module('delivery', (m) => buildDeliveryModule(m, assets: assets));
+  cli.module(
+    'verification',
+    (m) => buildVerificationModule(m, assets: assets),
+  );
   cli.module('skill', (m) => buildSkillModule(m, assets: assets));
   cli.module('project', (m) => buildProjectModule(m, assets: assets));
   cli.module(

@@ -40,6 +40,33 @@ void main() {
     test('returns null when the pointer is absent', () {
       expect(activeRequisitionPath(root()), isNull);
     });
+
+    /// The file holds `slug`, `path` and `created`: a **pointer**, not a state.
+    /// It was already renamed once for this reason — `.macss/specification.yaml`
+    /// → `.macss/state.yaml`, *"the old name said something else"* — and that
+    /// rename fixed the wrong half. Nothing else in the project held a state
+    /// then, so the name cost nothing; a requisition that records its own state
+    /// makes it a second answer to a different question.
+    ///
+    /// Pinned on both names, because a rename that leaves one caller behind
+    /// still round-trips through the other and the test above would pass.
+    test('the pointer is active_requisition.yaml, and not state.yaml', () {
+      writeActiveRequisition(root(),
+          slug: 'x',
+          relDir: 'docs/requisitions/20260709-x',
+          isoDate: '2026-07-09');
+
+      expect(
+        File(p.join(root(), '.macss', activeRequisitionFileName)).existsSync(),
+        isTrue,
+        reason: 'the pointer was not written under its own name',
+      );
+      expect(
+        File(p.join(root(), '.macss', 'state.yaml')).existsSync(),
+        isFalse,
+        reason: 'the old name survived the rename',
+      );
+    });
   });
 
   group('resolveRequisitionDir', () {

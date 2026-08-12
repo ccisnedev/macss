@@ -34,8 +34,10 @@ void main() {
       File(p.join(dir.path, 'specification.md'))
           .writeAsStringSync('# Specification\n');
     }
-    File(p.join(dir.path, 'issue.yaml')).writeAsStringSync(
-      'title: "t"\nlabels: []\nlang: en\n${issue == null ? '' : 'issue: $issue\n'}',
+    File(p.join(dir.path, 'state.yaml')).writeAsStringSync(
+      'title: "t"\nlabels: []\n'
+      'state: ${issue == null ? 'opened' : 'published'}\n'
+      '${issue == null ? '' : 'issue: $issue\n'}',
     );
   }
 
@@ -74,18 +76,68 @@ void main() {
       expect(entry.toText(), contains('alpha'));
     });
 
-    test('how far the work has got, and which issue carries it', () async {
+    /// The state is what the commands recorded, not what the files imply. The
+    /// two used to be the same answer badly: a `specification.md` on disk says
+    /// the document was written, never that anybody else can read it.
+    test('how far the work has got, and what carries it', () async {
       makeRequisition('20260804-alpha');
-      makeRequisition('20260805-beta', withSpecification: true);
       makeRequisition('20260806-gamma', withSpecification: true, issue: 31);
 
       final byslug = {for (final e in (await list()).entries) e.slug: e};
 
-      expect(byslug['alpha']!.stage, 'requisition');
+      expect(byslug['alpha']!.stage, 'opened');
       expect(byslug['alpha']!.issue, isNull);
-      expect(byslug['beta']!.stage, 'specification');
-      expect(byslug['beta']!.issue, isNull);
+      expect(byslug['gamma']!.stage, 'published');
       expect(byslug['gamma']!.issue, 31);
+    });
+
+    /// The fact `prune` will act on, displayed before anything acts on it: a
+    /// destructive command whose criterion has never been shown is one nobody
+    /// can audit before running it.
+    test('the pull request beside the issue', () async {
+      final dir = Directory(
+          p.join(root.path, 'docs', 'requisitions', '20260807-delta'))
+        ..createSync(recursive: true);
+      File(p.join(dir.path, 'state.yaml')).writeAsStringSync(
+          'title: "t"\nstate: delivered\nissue: 56\npr: 57\n');
+
+      final entry = (await list()).entries.single;
+
+      expect(entry.pr, 57);
+      expect(entry.toText(), contains('#56'));
+      expect(entry.toText(), contains('!57'));
+      expect(entry.toJson()['pr'], 57);
+    });
+
+    /// A folder with no readable record is **broken**, not empty, and the
+    /// listing says so instead of leaving it out. It is the same rule the
+    /// dangling pointer already follows: a listing that hides a broken state is
+    /// how it becomes trusted and wrong — and this one decides what `prune`
+    /// will eventually be allowed to destroy.
+    test('a folder with no readable record is shown as unreadable', () async {
+      makeRequisition('20260804-alpha');
+      Directory(p.join(root.path, 'docs', 'requisitions', '20260805-broken'))
+          .createSync(recursive: true);
+
+      final out = await list();
+
+      final broken =
+          out.entries.firstWhere((e) => e.slug == 'broken');
+      expect(broken.isReadable, isFalse);
+      expect(out.toText(), contains('unreadable'));
+    });
+
+    test('a record whose state is a word nobody defined is unreadable too',
+        () async {
+      final dir =
+          Directory(p.join(root.path, 'docs', 'requisitions', '20260805-typo'))
+            ..createSync(recursive: true);
+      File(p.join(dir.path, 'state.yaml'))
+          .writeAsStringSync('title: "t"\nstate: dsicarded\n');
+
+      final out = await list();
+
+      expect(out.entries.single.isReadable, isFalse);
     });
 
     // The date column was removed: it existed to tell two rows apart, and the

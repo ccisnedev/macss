@@ -31,15 +31,24 @@ void main() {
   /// Each was in the abandoned draft. This is the list of what was actually
   /// there, not a guess at what might be: a guessed list would grow forever and
   /// mean nothing.
+  /// Two left this list when the commands that serve the stage were built:
+  /// `macss ` and `pull request`. The method now opens its own record and
+  /// publishes it, and it says where the record goes — instructing a stage
+  /// without naming the tool that performs it is how a documented convention
+  /// becomes one nobody follows (#39).
+  ///
+  /// **The other six stay.** Naming the commands of its own stage is not the
+  /// same as knowing about the stages around it: what the implementer wrote,
+  /// which gates sit either side, or what the harness does afterwards. Those
+  /// were in the abandoned draft, none of them helped it verify, and all of
+  /// them made it unusable where those stages do not exist.
   const foreign = <String, String>{
     'delivery.md': 'the artifact the implementer writes',
-    'pull request': 'the vehicle, which need not exist',
     'definition of ready': 'a gate before this stage',
     'definition of done': 'a gate after it',
     'state machine': 'the harness that may enforce this',
     'requisition': 'the stage where the request is written',
     'specification': 'the stage where the contract is written',
-    'macss ': 'a command of the CLI that ships this',
   };
 
   group('the verification method knows only verification', () {

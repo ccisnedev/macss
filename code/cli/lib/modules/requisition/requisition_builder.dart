@@ -13,6 +13,7 @@ import 'commands/check.dart';
 import 'commands/list.dart';
 import 'commands/export_template.dart';
 import 'commands/new.dart';
+import 'commands/prune.dart';
 import 'commands/publish.dart';
 
 void buildRequisitionModule(ModuleBuilder m, {required Assets assets}) {
@@ -72,6 +73,17 @@ void buildRequisitionModule(ModuleBuilder m, {required Assets assets}) {
     description:
         'Choose the requisition the following commands act on — --plan or --apply',
     params: RequisitionActivateInput.params,
+  );
+
+  m.command<RequisitionPruneInput, RequisitionPruneOutput>(
+    'prune',
+    (req) => RequisitionPruneCommand(
+      RequisitionPruneInput.fromCliRequest(req),
+      workingDirectory: Directory.current.path,
+    ),
+    description: 'Remove the requisitions whose work is done or discarded '
+        '— --plan or --apply',
+    params: RequisitionPruneInput.params,
   );
 
   m.command<RequisitionCheckInput, RequisitionCheckOutput>(

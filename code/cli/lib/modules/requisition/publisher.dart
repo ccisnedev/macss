@@ -10,7 +10,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
-import 'issue_metadata.dart';
+import 'requisition_record.dart';
 
 typedef ProcessRunner = Future<ProcessResult> Function(
   String executable,
@@ -37,19 +37,56 @@ class AssembledBody {
   int get lines => content.split('\n').length;
 }
 
+/// The documents each side of the cycle publishes, in reading order.
+///
+/// The issue carries the request and then the contract; the pull request
+/// carries the delivery and then the evidence. Same assembly, different pair —
+/// a twin function would let the two drift in how they join documents.
+const issueDocuments = ['requisition.md', 'specification.md'];
+const pullRequestDocuments = ['delivery.md', 'verification.md'];
+
+/// Says where the contract starts inside an assembled body.
+///
+/// The two documents number their sections identically — the requisition's
+/// *Need and value* and the specification's *Commitment date* are both `## 1.`
+/// — so anything reading the contract back out of the published body must be
+/// told where it begins. Without this it reads the request as the contract and
+/// never fails while doing it.
+///
+/// A comment rather than a heading: it belongs to the tool, and GitHub renders
+/// nothing for it.
+const specificationMarker = '<!-- macss:specification -->';
+
+/// The contract half of an assembled [body], or null when it carries no marker.
+///
+/// Null is the answer for bodies published before the marker existed. They
+/// cannot acquire one — the issue froze at its Definition of Ready, and
+/// re-publishing to add a marker is the edit the freeze forbids — so the caller
+/// says the contract predates the marker instead of guessing at it.
+String? contractIn(String body) {
+  final at = body.indexOf(specificationMarker);
+  if (at < 0) return null;
+  return body.substring(at + specificationMarker.length).trimLeft();
+}
+
 /// Assembles the issue body from whatever documents exist, in reading order:
 /// the request first, then the contract.
-AssembledBody assembleBody(String requisitionDir) {
+AssembledBody assembleBody(
+  String requisitionDir, {
+  List<String> documents = issueDocuments,
+}) {
   final parts = <String>[];
   final sections = <String>[];
 
-  for (final name in const ['requisition.md', 'specification.md']) {
+  for (final name in documents) {
     final file = File(p.join(requisitionDir, name));
     if (!file.existsSync()) continue;
     final content = file.readAsStringSync().trim();
     if (content.isEmpty) continue;
     parts.add(name);
-    sections.add(content);
+    sections.add(name == 'specification.md'
+        ? '$specificationMarker\n\n$content'
+        : content);
   }
 
   return AssembledBody(sections.join('\n\n---\n\n'), parts);
@@ -72,7 +109,7 @@ class IssuePublisher {
   /// without removing — so labels put on the issue by hand survive a
   /// republish. Using `--label` for both is what shipped, and it made every
   /// update fail once a requisition declared any label.
-  List<String> plannedArgs(IssueMetadata meta, {String? repo}) => [
+  List<String> plannedArgs(RequisitionRecord meta, {String? repo}) => [
         'issue',
         if (meta.isPublished) ...['edit', '${meta.issue}'] else 'create',
         if (repo != null) ...['--repo', repo],
@@ -86,7 +123,7 @@ class IssuePublisher {
   ///
   /// Returns the issue number on create, or the existing one on edit.
   Future<PublishResult> publish(
-    IssueMetadata meta,
+    RequisitionRecord meta,
     AssembledBody body, {
     String? repo,
   }) async {
