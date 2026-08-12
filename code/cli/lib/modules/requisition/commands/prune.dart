@@ -40,50 +40,111 @@ const prunableStates = {RequisitionState.done, RequisitionState.discarded};
 // ─── Input ──────────────────────────────────────────────────────────────────
 
 class RequisitionPruneInput extends Input {
-  final ChangeFlags flags;
-
-  RequisitionPruneInput({required this.flags});
+  RequisitionPruneInput();
 
   factory RequisitionPruneInput.fromCliRequest(CliRequest req) =>
-      RequisitionPruneInput(flags: ChangeFlags.fromCliRequest(req));
+      RequisitionPruneInput();
 
-  static final List<CliParam> params = [...ChangeFlags.params];
+  /// Declares no options of its own: it takes none, and any it is given is
+  /// rejected. The three change flags are the SDK's.
+  static const List<CliParam> params = [];
 
   @override
   List<CliParam> get schemaFields => params;
 
   @override
-  Map<String, dynamic> toJson() => {
-        'plan': flags.plan,
-        'apply': flags.apply,
-        'autoapprove': flags.autoapprove,
-      };
+  Map<String, dynamic> toJson() => const {};
+}
+
+// ─── Steps ──────────────────────────────────────────────────────────────────
+
+/// Removes one finished requisition's folder.
+class RemoveRequisition implements Step {
+  RemoveRequisition({required this.path, required this.shownAs});
+
+  final String path;
+  final String shownAs;
+
+  @override
+  Preview preview() => Preview(verb: 'remove', target: shownAs);
+
+  @override
+  Future<Outcome> perform(StepContext context) async {
+    Directory(path).deleteSync(recursive: true);
+    return Outcome(verb: 'remove', target: shownAs);
+  }
+}
+
+/// Clears the active-requisition pointer.
+///
+/// A pointer at a folder this command deleted on purpose is exactly the
+/// dangling state the listing exists to report, so clearing it is part of the
+/// removal rather than a tidy-up afterwards — and it is a step of its own, so
+/// the plan says so before it happens.
+class ClearActiveRequisition implements Step {
+  ClearActiveRequisition(this.pointerPath);
+
+  final String pointerPath;
+
+  @override
+  Preview preview() => Preview(
+    verb: 'clear',
+    target: 'the active requisition pointer',
+    detail: 'it names a requisition this removes',
+  );
+
+  @override
+  Future<Outcome> perform(StepContext context) async {
+    final file = File(pointerPath);
+    if (file.existsSync()) file.deleteSync();
+    return Outcome(verb: 'clear', target: 'the active requisition pointer');
+  }
 }
 
 // ─── Output ─────────────────────────────────────────────────────────────────
 
 class RequisitionPruneOutput extends Output {
-  final String message;
-  final List<String> removed;
-  final String? planPath;
-  final bool blocked;
-
   RequisitionPruneOutput({
-    required this.message,
-    this.removed = const [],
-    this.planPath,
-    this.blocked = false,
+    required this.removed,
+    this.unreadable = const [],
+    this.clearedPointer = false,
   });
 
-  @override
-  Map<String, dynamic> toJson() =>
-      {'message': message, 'removed': removed, 'planPath': planPath};
+  final List<String> removed;
+
+  /// Folders nothing could read. Named rather than counted: "I cannot tell"
+  /// and "it is finished" are different answers, and only one of them
+  /// authorises destruction.
+  final List<String> unreadable;
+
+  final bool clearedPointer;
 
   @override
-  int get exitCode => blocked ? ExitCode.genericError : ExitCode.ok;
+  Map<String, dynamic> toJson() => {
+    'removed': removed,
+    if (unreadable.isNotEmpty) 'unreadable': unreadable,
+    'clearedPointer': clearedPointer,
+  };
 
   @override
-  String? toText() => message;
+  int get exitCode => ExitCode.ok;
+
+  @override
+  String? toText() => [
+    if (removed.isEmpty)
+      'Nothing to remove: no requisition is done or discarded.'
+    else ...[
+      'Removed ${removed.length} finished '
+          'requisition${removed.length == 1 ? '' : 's'}:',
+      ...removed.map((f) => '  removed  docs/requisitions/$f'),
+      if (clearedPointer) '  cleared  the active requisition pointer',
+    ],
+    if (unreadable.isNotEmpty) ...[
+      '',
+      'Left alone because nothing could read them:',
+      ...unreadable.map((f) => '  unreadable  $f'),
+    ],
+  ].join('\n');
 }
 
 // ─── Command ────────────────────────────────────────────────────────────────
@@ -105,22 +166,32 @@ class RequisitionPruneCommand
   });
 
   @override
-  String? validate() => input.flags.validate();
+  String? validate() => null;
 
+  /// Folders whose record could not be read, filled by [steps] and reported by
+  /// [describe]. They are not a step — nothing is done to them, and that is the
+  /// point.
+  List<String> _unreadable = const [];
+
+  /// One removal per finished requisition, and the pointer last if it named
+  /// any of them.
+  ///
+  /// Reading the records is the whole decision, and it happens here so the plan
+  /// can name every folder before one of them is gone. Nothing about this is
+  /// recoverable: `docs/requisitions/` is not versioned, so there is no git
+  /// restore behind it.
   @override
-  Future<RequisitionPruneOutput> execute() async {
+  Future<List<Step>> steps() async {
     final base = Directory(p.join(workingDirectory, 'docs', 'requisitions'));
-    if (!base.existsSync()) {
-      return RequisitionPruneOutput(
-          message: 'No requisitions in this project.');
-    }
+    if (!base.existsSync()) return const [];
 
-    final folders = base
-        .listSync()
-        .whereType<Directory>()
-        .map((d) => p.basename(d.path))
-        .toList()
-      ..sort();
+    final folders =
+        base
+            .listSync()
+            .whereType<Directory>()
+            .map((d) => p.basename(d.path))
+            .toList()
+          ..sort();
 
     final finished = <String>[];
     final unreadable = <String>[];
@@ -128,90 +199,39 @@ class RequisitionPruneCommand
       final record = RequisitionRecord.read(p.join(base.path, folder));
       if (record == null) {
         // "I cannot tell" and "it is finished" are different answers, and only
-        // one of them authorises destruction. Named rather than counted, so a
-        // folder is never left out of the report for being unreadable.
+        // one of them authorises destruction.
         unreadable.add(folder);
         continue;
       }
       if (prunableStates.contains(record.state)) finished.add(folder);
     }
-
-    if (finished.isEmpty) {
-      return RequisitionPruneOutput(
-        message: [
-          'Nothing to remove: no requisition is done or discarded.',
-          if (unreadable.isNotEmpty) ...[
-            '',
-            'Left alone because nothing could read them:',
-            ...unreadable.map((f) => '  unreadable  $f'),
-          ],
-        ].join('\n'),
-      );
-    }
-
-    final decision = await ChangeGate(
-      flags: input.flags,
-      approver: approver,
-      now: now,
-    ).decide(
-      command: 'requisition prune',
-      workingDirectory: workingDirectory,
-      body: [
-        'would remove ${finished.length} finished '
-            'requisition${finished.length == 1 ? '' : 's'}, with every document '
-            'in them:',
-        '',
-        ...finished.map((f) => '  remove   docs/requisitions/$f'),
-        if (unreadable.isNotEmpty) ...[
-          '',
-          'Left alone because nothing could read them:',
-          ...unreadable.map((f) => '  keep     docs/requisitions/$f '
-              '(unreadable)'),
-        ],
-        '',
-        'This is not recoverable: docs/requisitions/ is not versioned, so there '
-        'is no git restore behind it. What each folder held is published — the '
-        'request and contract on its issue, the delivery and evidence on its '
-        'pull request, the diagnosis and plan as issue comments.',
-      ].join('\n'),
-    );
-
-    if (!decision.proceed) {
-      return RequisitionPruneOutput(
-        message: decision.message!,
-        planPath: decision.planPath,
-        blocked: decision.blocked,
-      );
-    }
+    _unreadable = unreadable;
 
     final active = activeRequisitionPath(workingDirectory);
-    final steps = <String>[];
-    for (final folder in finished) {
-      Directory(p.join(base.path, folder)).deleteSync(recursive: true);
-      steps.add('  removed  docs/requisitions/$folder');
-    }
+    final pointerIsDoomed =
+        active != null && finished.any((f) => active.endsWith(f));
 
-    // A pointer at a folder this command deleted on purpose is exactly the
-    // dangling state the listing exists to report. Clearing it is part of the
-    // removal, not a tidy-up afterwards.
-    if (active != null && finished.any((f) => active.endsWith(f))) {
-      File(p.join(workingDirectory, workspaceDirName, activeRequisitionFileName))
-          .deleteSync();
-      steps.add('  cleared  the active requisition pointer');
-    }
-
-    return RequisitionPruneOutput(
-      removed: finished,
-      message: [
-        'Removed ${finished.length} finished '
-            'requisition${finished.length == 1 ? '' : 's'}:',
-        ...steps,
-        if (unreadable.isNotEmpty) ...[
-          '',
-          'Left alone because nothing could read them:',
-          ...unreadable.map((f) => '  unreadable  $f'),
-        ],
-      ].join('\n'),
-    );
+    return [
+      for (final folder in finished)
+        RemoveRequisition(
+          path: p.join(base.path, folder),
+          shownAs: folder,
+        ),
+      if (pointerIsDoomed)
+        ClearActiveRequisition(
+          p.join(workingDirectory, workspaceDirName, activeRequisitionFileName),
+        ),
+    ];
   }
+
+  @override
+  RequisitionPruneOutput describe(Execution execution) =>
+      RequisitionPruneOutput(
+        removed: [
+          for (final o in execution.outcomes)
+            if (o.verb == 'remove') o.target,
+        ],
+        unreadable: _unreadable,
+        clearedPointer: execution.outcomes.any((o) => o.verb == 'clear'),
+      );
 }

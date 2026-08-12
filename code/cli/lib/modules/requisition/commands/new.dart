@@ -16,32 +16,28 @@
 /// a different author. `macss specification new` adds it once the request is in.
 library;
 
-import 'dart:io';
 
 import 'package:cli_router/cli_router.dart';
 import 'package:modular_cli_sdk/modular_cli_sdk.dart';
 import 'package:path/path.dart' as p;
 
-import '../../../src/gitignore.dart';
 import '../../../src/project_config.dart';
+import '../../../src/steps.dart';
 import '../../../templates/template_resolver.dart';
 import '../../specification/slug.dart';
 import '../../specification/workspace.dart';
 import '../requisition_record.dart';
+import '../steps.dart';
 
 // ─── Input ──────────────────────────────────────────────────────────────────
 
 class RequisitionNewInput extends Input {
   final String slug;
-  final ChangeFlags flags;
 
-  RequisitionNewInput({required this.slug, required this.flags});
+  RequisitionNewInput({required this.slug});
 
   factory RequisitionNewInput.fromCliRequest(CliRequest req) =>
-      RequisitionNewInput(
-        slug: normalizeSlug(req.param('slug') ?? ''),
-        flags: ChangeFlags.fromCliRequest(req),
-      );
+      RequisitionNewInput(slug: normalizeSlug(req.param('slug') ?? ''));
 
   /// No `--lang`. The project declared its language once, in
   /// `.macss/config.yaml`, and this derives it from there: a setting passed per
@@ -49,45 +45,54 @@ class RequisitionNewInput extends Input {
   /// answers differently on Tuesday does not have an answer.
   static final List<CliParam> params = [
     CliParam.positional('slug', description: 'Short name for the requisition'),
-    ...ChangeFlags.params,
   ];
 
   @override
   List<CliParam> get schemaFields => params;
 
   @override
-  Map<String, dynamic> toJson() => {
-        'slug': slug,
-        'plan': flags.plan,
-        'apply': flags.apply,
-        'autoapprove': flags.autoapprove,
-      };
+  Map<String, dynamic> toJson() => {'slug': slug};
 }
 
 // ─── Output ─────────────────────────────────────────────────────────────────
 
 class RequisitionNewOutput extends Output {
-  final String message;
-  final String relDir;
-  final String? planPath;
-  final bool blocked;
-
   RequisitionNewOutput({
-    required this.message,
+    required this.slug,
     required this.relDir,
-    this.planPath,
-    this.blocked = false,
+    required this.did,
+    this.notice,
   });
 
-  @override
-  Map<String, dynamic> toJson() =>
-      {'message': message, 'dir': relDir, 'planPath': planPath};
+  final String slug;
+  final String relDir;
+
+  /// One `verb  target` line per step that ran, in order.
+  final List<({String verb, String target})> did;
+
+  /// What the template resolver had to say — a fallback language, usually.
+  final String? notice;
 
   @override
-  int get exitCode => blocked ? ExitCode.genericError : ExitCode.ok;
+  Map<String, dynamic> toJson() => {
+    'slug': slug,
+    'dir': relDir,
+    'did': {for (final step in did) step.target: step.verb},
+    if (notice != null) 'notice': notice,
+  };
 
   @override
-  String? toText() => message;
+  int get exitCode => ExitCode.ok;
+
+  @override
+  String? toText() => [
+    'Requisition opened for "$slug":',
+    ...did.map((s) => '  ${s.verb.padRight(8)} ${s.target}'),
+    if (notice != null) '  note     $notice',
+    '',
+    'Next: fill $relDir/requisition.md with what the Product Owner sent, '
+        'then `macss requisition check`.',
+  ].join('\n');
 }
 
 // ─── Command ────────────────────────────────────────────────────────────────
@@ -100,14 +105,12 @@ class RequisitionNewCommand
   final TemplateResolver resolver;
   final String workingDirectory;
   final DateTime Function() now;
-  final Approver? approver;
 
   RequisitionNewCommand(
     this.input, {
     required this.resolver,
     required this.workingDirectory,
     DateTime Function()? now,
-    this.approver,
   }) : now = now ?? DateTime.now;
 
   @override
@@ -120,100 +123,69 @@ class RequisitionNewCommand
     final undeclared = undeclaredLanguageFailure(workingDirectory);
     if (undeclared != null) return undeclared;
 
-    return input.flags.validate();
+    return null;
   }
 
   /// The project's language, declared once. Safe once validation has passed.
   String get lang => projectLanguage(workingDirectory)!;
 
+  /// Four steps, in the order they must happen.
+  ///
+  /// The workspace is git-ignored **first**: it is local and reproducible, and
+  /// a project should never have a committed `.macss/`, not even for the
+  /// duration of one command.
+  ///
+  /// `new` is idempotent, so the two writes keep what is already there rather
+  /// than overwriting it — which each step decides for itself, once. The
+  /// `existsSync()` that used to be asked in the preview and asked again forty
+  /// lines later is now asked inside the step that acts on the answer.
   @override
-  Future<RequisitionNewOutput> execute() async {
+  Future<List<Step>> steps() async {
     final stamp = now();
     final folder = datedFolder(input.slug, stamp);
     final dir = requisitionDir(workingDirectory, folder);
     final relDir = requisitionRelDir(folder);
 
-    // What opening a requisition would touch, decided before it touches
-    // anything. `new` is idempotent, so an existing file is named as kept.
-    final formExists = File(p.join(dir, 'requisition.md')).existsSync();
-    final metaExists = File(RequisitionRecord.pathIn(dir)).existsSync();
-    final body = [
-      'would open the requisition "${input.slug}" at $relDir:',
-      '',
-      formExists
-          ? '  keep     $relDir/requisition.md (already exists)'
-          : '  create   $relDir/requisition.md',
-      metaExists
-          ? '  keep     $relDir/${RequisitionRecord.fileName}'
-          : '  create   $relDir/${RequisitionRecord.fileName}',
-      '  record   $relDir as the active requisition',
-      '  ensure   the MACSS workspace is git-ignored',
-    ].join('\n');
+    // Resolved here, so the form that is described is the form that is written.
+    _resolution = resolver.resolve('requisition', lang: lang);
 
-    final decision = await ChangeGate(
-      flags: input.flags,
-      approver: approver,
-      now: now,
-    ).decide(
-      command: 'requisition new',
-      workingDirectory: workingDirectory,
-      body: body,
-    );
-
-    if (!decision.proceed) {
-      return RequisitionNewOutput(
-        message: decision.message!,
+    return [
+      EnsureWorkspaceGitignored(workingDirectory),
+      WriteFile(
+        path: p.join(dir, 'requisition.md'),
+        contents: _resolution!.content.replaceAll('{{DATE}}', _iso(stamp)),
+        shownAs: '$relDir/requisition.md',
+      ),
+      WriteFile(
+        path: RequisitionRecord.pathIn(dir),
+        contents: RequisitionRecord(
+          title: input.slug,
+          state: RequisitionState.opened,
+        ).toYaml(),
+        shownAs: '$relDir/${RequisitionRecord.fileName}',
+      ),
+      RecordActiveRequisition(
+        workingDirectory: workingDirectory,
+        slug: input.slug,
         relDir: relDir,
-        planPath: decision.planPath,
-        blocked: decision.blocked,
-      );
-    }
-
-    final steps = <String>[];
-
-    // The workspace is local and reproducible; keep it out of version control
-    // before anything is written into it.
-    final gitignore = ensureGitignoreEntries(workingDirectory);
-    if (gitignore != null) steps.add('  $gitignore');
-
-    Directory(dir).createSync(recursive: true);
-
-    final resolution = resolver.resolve('requisition', lang: lang);
-    final form = File(p.join(dir, 'requisition.md'));
-    if (form.existsSync()) {
-      steps.add('  kept     $relDir/requisition.md (already exists)');
-    } else {
-      form.writeAsStringSync(
-        resolution.content.replaceAll('{{DATE}}', _iso(stamp)),
-      );
-      steps.add('  created  $relDir/requisition.md');
-    }
-
-    if (File(RequisitionRecord.pathIn(dir)).existsSync()) {
-      steps.add('  kept     $relDir/${RequisitionRecord.fileName}');
-    } else {
-      RequisitionRecord(title: input.slug, state: RequisitionState.opened)
-          .write(dir);
-      steps.add('  created  $relDir/${RequisitionRecord.fileName}');
-    }
-
-    writeActiveRequisition(
-      workingDirectory,
-      slug: input.slug,
-      relDir: relDir,
-      isoDate: _iso(stamp),
-    );
-
-    final lines = [
-      'Requisition opened for "${input.slug}":',
-      ...steps,
-      if (resolution.notice != null) '  note     ${resolution.notice}',
-      '',
-      'Next: fill $relDir/requisition.md with what the Product Owner sent, '
-          'then `macss requisition check`.',
+        isoDate: _iso(stamp),
+      ),
     ];
-    return RequisitionNewOutput(message: lines.join('\n'), relDir: relDir);
   }
+
+  /// Kept from [steps] so [describe] can report the resolver's notice. Not read
+  /// by any step: what the steps needed, they were given.
+  TemplateResolution? _resolution;
+
+  @override
+  RequisitionNewOutput describe(Execution execution) => RequisitionNewOutput(
+    slug: input.slug,
+    relDir: requisitionRelDir(datedFolder(input.slug, now())),
+    did: [
+      for (final o in execution.outcomes) (verb: o.verb, target: o.target),
+    ],
+    notice: _resolution?.notice,
+  );
 
   String _iso(DateTime d) => '${d.year.toString().padLeft(4, '0')}-'
       '${d.month.toString().padLeft(2, '0')}-'

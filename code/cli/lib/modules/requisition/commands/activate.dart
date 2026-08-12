@@ -23,6 +23,7 @@ import 'package:path/path.dart' as p;
 
 import '../../specification/slug.dart';
 import '../../specification/workspace.dart';
+import '../steps.dart';
 
 // ─── Input ──────────────────────────────────────────────────────────────────
 
@@ -52,44 +53,6 @@ class RequisitionActivateInput extends Input {
 
   @override
   Map<String, dynamic> toJson() => {'slug': slug};
-}
-
-// ─── Steps ──────────────────────────────────────────────────────────────────
-
-/// Points `.macss/active_requisition.yaml` at one requisition.
-///
-/// The same writer `requisition new` uses, so the pointer keeps its keys and
-/// its format.
-class RecordActiveRequisition implements Step {
-  RecordActiveRequisition({
-    required this.workingDirectory,
-    required this.slug,
-    required this.relDir,
-    required this.isoDate,
-  });
-
-  final String workingDirectory;
-  final String slug;
-  final String relDir;
-  final String isoDate;
-
-  @override
-  Preview preview() => Preview(
-    verb: 'activate',
-    target: relDir,
-    detail: 'commands that take no --slug act on the active requisition',
-  );
-
-  @override
-  Future<Outcome> perform(StepContext context) async {
-    writeActiveRequisition(
-      workingDirectory,
-      slug: slug,
-      relDir: relDir,
-      isoDate: isoDate,
-    );
-    return Outcome(verb: 'activate', target: relDir, values: {'slug': slug});
-  }
 }
 
 // ─── Output ─────────────────────────────────────────────────────────────────

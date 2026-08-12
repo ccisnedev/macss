@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:modular_cli_sdk/modular_cli_sdk.dart';
+import 'package:modular_cli_sdk/testing.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
@@ -239,20 +240,15 @@ void main() {
   });
 
   group('macss requisition export-template', () {
-    Future<ExportTemplateOutput> export({
-      String lang = 'es',
-      ChangeFlags flags = const ChangeFlags(apply: true, autoapprove: true),
-    }) =>
+    ExportTemplateCommand exporter({String lang = 'es'}) =>
         ExportTemplateCommand(
-          ExportTemplateInput(
-            resolvedPath: tempDir.path,
-            lang: lang,
-            flags: flags,
-          ),
+          ExportTemplateInput(resolvedPath: tempDir.path, lang: lang),
           resolver: resolver,
           artifact: 'requisition',
-          now: clock,
-        ).execute();
+        );
+
+    Future<ExportTemplateOutput> export({String lang = 'es'}) async =>
+        await applyCommand(exporter(lang: lang));
 
     test('writes the blank form where asked, project or not', () async {
       // tempDir is not a MACSS project: no `.macss/`, nothing to derive the
@@ -275,23 +271,53 @@ void main() {
       expect(file('.macss').existsSync(), isFalse);
     });
 
-    test('--plan names the form it would write, and writes none', () async {
-      final out = await export(flags: const ChangeFlags(plan: true));
+    test('names the form it would write, and writes none', () async {
+      final previews = await previewCommand(exporter());
 
+      expect(previews.single.verb, 'create');
+      expect(previews.single.target, endsWith('requisition.md'));
       expect(file('requisition.md').existsSync(), isFalse);
-      expect(out.planPath, isNotNull);
-      expect(File(out.planPath!).readAsStringSync(), contains('requisition'));
+    });
+
+    // The defect the plan sink's rule corrects. This command exists to be run
+    // where no project does, so filing a plan would answer a request for a
+    // blank form by creating a workspace nobody asked for.
+    test('asking what it would do creates no workspace either', () async {
+      await previewCommand(exporter());
+
+      expect(file('.macss').existsSync(), isFalse);
+    });
+
+    test('carries the template it resolved, not a promise to resolve it later',
+        () async {
+      // The contents are settled when the step is built. Deriving them again
+      // inside perform is how a preview comes to describe a different change
+      // from the one that happens.
+      final previews = await previewCommand(exporter());
+
+      expect(previews.single.detail, isNotNull);
     });
 
     test('refuses to overwrite an existing file', () async {
       await export();
       File(p.join(tempDir.path, 'requisition.md')).writeAsStringSync('MINE');
 
-      final out = await export();
-
-      expect(out.exitCode, ExitCode.conflict);
-      expect(File(p.join(tempDir.path, 'requisition.md')).readAsStringSync(),
-          'MINE');
+      // Thrown rather than reported, so it stays a conflict and not a
+      // validation failure — and so it happens before anything is planned.
+      await expectLater(
+        previewCommand(exporter()),
+        throwsA(
+          isA<CommandException>().having(
+            (e) => e.exitCode,
+            'exitCode',
+            ExitCode.conflict,
+          ),
+        ),
+      );
+      expect(
+        File(p.join(tempDir.path, 'requisition.md')).readAsStringSync(),
+        'MINE',
+      );
     });
   });
 
