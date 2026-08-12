@@ -214,10 +214,11 @@ verification or record it for later is the human's call, not yours.
 
 ## The record
 
-**Open the record before you start.** Create the document first, listing every
-criterion from the contract, unjudged. Fill each one in as it is judged — the
-claim, the evidence, the warrant, the gap, and the human's decision in their own
-words — before moving to the next.
+**Open the record before you start:** `macss verification new --apply
+--autoapprove`. It lists every criterion of the frozen contract, unjudged, in
+the contract's order. Fill each one in as it is judged — the claim, the
+evidence, the warrant, the gap, and the human's decision in their own words —
+before moving to the next.
 
 Written afterwards, the record is a reconstruction: what survives is what you
 remember, which is the part that went smoothly. Written as you go, each entry
@@ -259,6 +260,9 @@ yourself is the exact failure it exists to prevent.
       recorded as such, and named again at the end.
 - [ ] The record would let someone who was not present reproduce the whole thing.
 - [ ] The human concluded. You did not.
+- [ ] `macss verification check` passes, and the record is published with
+      `macss verification publish --plan`, then `--apply --autoapprove` once the
+      human has seen what would be published.
 
 ## What this does not do
 

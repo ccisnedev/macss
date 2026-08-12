@@ -8,6 +8,29 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **`macss verification check` / `publish`** — the record is judged complete and
+  then joins the pull request the delivery opened, the way the contract joins
+  the issue the requisition opened. The body then reads as one thing: what was
+  built, and that it holds.
+
+  `check` asks three things and none of them is truth: every criterion of the
+  contract is carried, none is left with the placeholder `new` wrote, and the
+  conclusion exists. A criterion nobody judged is not the same as one that
+  held, and a record must not read as if it were. Anything rejected or accepted
+  with reservations counts as judged — a gate that only accepted agreement would
+  push the walk towards recording agreement.
+
+  `publish` pushes as a **safety net rather than a requirement**: verification
+  produces no code, so "everything up to date" is the ordinary answer and is
+  not a failure. What it covers is the walk that turned up a fix.
+
+  `macss-verification` may now name the two commands of its own stage. Six
+  entries stay barred from it — the delivery, the two gates either side, the
+  harness, and the two stages before it. Naming the tool that performs your own
+  stage is not the same as knowing about the stages around it, and instructing
+  a stage without naming that tool is how a documented convention becomes one
+  nobody follows.
+
 - **`macss verification new`** — the record is opened before the walk starts,
   listing every criterion of the contract and judging none of them. Written
   afterwards a record is a reconstruction: what survives is what somebody

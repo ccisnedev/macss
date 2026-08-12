@@ -30,6 +30,7 @@ import '../../requisition/requisition_record.dart';
 import '../../specification/slug.dart';
 import '../../specification/specification_gate.dart';
 import '../../specification/workspace.dart';
+import '../contract_source.dart';
 
 // ─── Input ──────────────────────────────────────────────────────────────────
 
@@ -159,38 +160,15 @@ class VerificationNewCommand
       );
     }
 
-    final fetched = await runProcess(
-      'gh',
-      ['issue', 'view', '${record.issue}', '--json', 'body', '--jq', '.body'],
+    final contract = await criteriaFromPlatform(
+      record,
+      runProcess: runProcess,
+      gate: gate,
     );
-    if (fetched.exitCode != 0) {
-      return VerificationNewOutput(
-        ok: false,
-        message: 'Could not read issue #${record.issue}:\n'
-            '${fetched.stderr}'.trimRight(),
-      );
+    if (!contract.ok) {
+      return VerificationNewOutput(ok: false, message: contract.failure!);
     }
-
-    final contract = contractIn(fetched.stdout.toString());
-    if (contract == null) {
-      return VerificationNewOutput(
-        ok: false,
-        message: 'Issue #${record.issue} carries no `$specificationMarker` '
-            'marker, so the contract cannot be told apart from the request it '
-            'follows. The body predates the marker and cannot acquire one — it '
-            'froze at its Definition of Ready. Walk it from the issue by hand.',
-      );
-    }
-
-    final criteria = gate.acIds(contract);
-    if (criteria.isEmpty) {
-      return VerificationNewOutput(
-        ok: false,
-        message: 'The contract on issue #${record.issue} declares no acceptance '
-            'criterion. There is nothing to verify against, and that is a '
-            'defect of the contract rather than of this walk.',
-      );
-    }
+    final criteria = contract.ids;
 
     final lang = projectLanguage(workingDirectory)!;
     final resolution = resolver.resolve('verification', lang: lang);
