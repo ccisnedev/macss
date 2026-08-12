@@ -52,7 +52,7 @@ void main() {
     ));
   }
 
-  Future<void> addContract() => applyCommand(SpecificationNewCommand(
+  Future<void> addContract() => applyCommand(specificationNewCommand(
         SpecificationNewInput(),
         resolver: resolver,
         workingDirectory: tempDir.path,

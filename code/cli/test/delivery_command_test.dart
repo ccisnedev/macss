@@ -3,6 +3,7 @@ library;
 
 import 'dart:io';
 
+import 'package:macss_cli/src/scaffold_document.dart';
 import 'package:modular_cli_sdk/testing.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
@@ -44,7 +45,7 @@ void main() {
     if (root.existsSync()) root.deleteSync(recursive: true);
   });
 
-  DeliveryNewCommand opener() => DeliveryNewCommand(
+  ScaffoldDocumentCommand opener() => deliveryNewCommand(
         DeliveryNewInput(),
         resolver: TemplateResolver(assets),
         workingDirectory: root.path,

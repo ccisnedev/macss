@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:macss_cli/src/scaffold_document.dart';
 import 'package:modular_cli_sdk/testing.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
@@ -47,7 +48,7 @@ void main() {
     );
   }
 
-  SpecificationNewCommand contractCommand() => SpecificationNewCommand(
+  ScaffoldDocumentCommand contractCommand() => specificationNewCommand(
     SpecificationNewInput(),
     resolver: resolver,
     workingDirectory: tempDir.path,
@@ -91,7 +92,7 @@ void main() {
     // and the per-invocation flag was the only way to produce one.
     test('takes no --lang to write against the project with', () {
       expect(
-        SpecificationNewInput.params.map((p) => p.name),
+        specificationNewParams.map((p) => p.name),
         isNot(contains('lang')),
       );
     });
