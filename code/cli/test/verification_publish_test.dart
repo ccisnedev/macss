@@ -5,6 +5,8 @@ library;
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
+import 'package:modular_cli_sdk/modular_cli_sdk.dart';
+import 'package:modular_cli_sdk/testing.dart';
 import 'package:test/test.dart';
 
 import 'package:macss_cli/assets.dart';
@@ -46,30 +48,31 @@ void main() {
     if (root.existsSync()) root.deleteSync(recursive: true);
   });
 
-  Future<VerificationPublishOutput> publish({bool apply = true}) =>
-      VerificationPublishCommand(
-        VerificationPublishInput(
-          flags: apply
-              ? const ChangeFlags(apply: true, autoapprove: true)
-              : const ChangeFlags(plan: true),
-        ),
-        workingDirectory: root.path,
-        assets: Assets(root: Directory.current.path),
-        runProcess: (exe, args) async {
-          calls.add([exe, ...args]);
-          final at = args.indexOf('--body-file');
-          if (at >= 0) sentBody = File(args[at + 1]).readAsStringSync();
-          if (args.contains('view')) {
-            return ProcessResult(0, 0, _publishedBody, '');
-          }
-          return ProcessResult(0, 0, 'https://github.com/o/r/pull/57', '');
-        },
-        runGit: (args) {
-          calls.add(['git', ...args]);
-          // The ordinary answer for a stage that produces no code.
-          return ProcessResult(0, 0, 'Everything up-to-date\n', '');
-        },
-      ).execute();
+  VerificationPublishCommand publisher() => VerificationPublishCommand(
+    VerificationPublishInput(),
+    workingDirectory: root.path,
+    assets: Assets(root: Directory.current.path),
+    runProcess: (exe, args) async {
+      calls.add([exe, ...args]);
+      final at = args.indexOf('--body-file');
+      if (at >= 0) sentBody = File(args[at + 1]).readAsStringSync();
+      if (args.contains('view')) {
+        return ProcessResult(0, 0, _publishedBody, '');
+      }
+      return ProcessResult(0, 0, 'https://github.com/o/r/pull/57', '');
+    },
+    runGit: (args) {
+      calls.add(['git', ...args]);
+      // The ordinary answer for a stage that produces no code.
+      return ProcessResult(0, 0, 'Everything up-to-date\n', '');
+    },
+  );
+
+  Future<VerificationPublishOutput> publish() async =>
+      await applyCommand(publisher());
+
+  /// What it says it would do. Nothing reaches the pull request.
+  Future<List<Preview>> plan() => previewCommand(publisher());
 
   List<String> ghEdit() =>
       calls.lastWhere((c) => c.first == 'gh' && c.contains('pr'));
@@ -78,7 +81,7 @@ void main() {
       () async {
     final out = await publish();
 
-    expect(out.ok, isTrue, reason: out.toText());
+    expect(out.pr, 57, reason: out.toText());
     expect(ghEdit(), containsAllInOrder(['pr', 'edit', '57']));
     expect(sentBody, contains('what was built'));
     expect(sentBody!.indexOf('what was built'),
@@ -99,7 +102,7 @@ void main() {
     final out = await publish();
 
     expect(calls.any((c) => c.first == 'git' && c.contains('push')), isTrue);
-    expect(out.ok, isTrue);
+    expect(out.recordedState, RequisitionState.verified.name);
   });
 
   test('an unfinished record is not published', () async {
@@ -107,20 +110,24 @@ void main() {
         .writeAsStringSync(_walked.replaceAll('accepted, in their words',
             '<!-- not yet judged -->'));
 
-    final out = await publish();
-
-    expect(out.ok, isFalse);
-    expect(out.message, contains('VERIFICATION_AC_UNJUDGED'));
+    await expectLater(
+      publish(),
+      throwsA(isA<CommandException>().having(
+          (e) => e.message, 'message', contains('VERIFICATION_AC_UNJUDGED'))),
+    );
     expect(calls.any((c) => c.first == 'gh' && c.contains('edit')), isFalse);
   });
 
-  test('--plan names what would change and changes nothing', () async {
-    final out = await publish(apply: false);
+  test('names what would change and changes nothing', () async {
+    final previews = await plan();
 
-    expect(out.planPath, isNotNull);
-    final plan = File(out.planPath!).readAsStringSync();
-    expect(plan, contains('#57'));
-    expect(plan, contains('verified'));
+    // Push, publish, record — and the order is what makes the last one honest:
+    // a state written before gh returned would claim something the platform
+    // never received.
+    expect(previews.map((p) => p.verb), ['push', 'update', 'record']);
+    expect(previews[1].target, contains('57'));
+    expect(previews.last.detail, contains('verified'));
+
     expect(calls.any((c) => c.contains('edit')), isFalse);
     expect(RequisitionRecord.read(dir())!.state, RequisitionState.delivered);
   });
