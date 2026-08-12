@@ -16,6 +16,7 @@ import '../../assets.dart';
 import '../../templates/template_resolver.dart';
 import 'commands/check.dart';
 import 'commands/new.dart';
+import 'commands/publish.dart';
 
 void buildDeliveryModule(ModuleBuilder m, {required Assets assets}) {
   final resolver = TemplateResolver(assets);
@@ -42,5 +43,18 @@ void buildDeliveryModule(ModuleBuilder m, {required Assets assets}) {
     description: 'Verify every acceptance criterion is claimed with its '
         'evidence, and the branch can carry a pull request',
     params: DeliveryCheckInput.params,
+  );
+
+  m.command<DeliveryPublishInput, DeliveryPublishOutput>(
+    'publish',
+    (req) => DeliveryPublishCommand(
+      DeliveryPublishInput.fromCliRequest(req),
+      workingDirectory: Directory.current.path,
+      runProcess: Process.run,
+      assets: assets,
+    ),
+    description: 'Push the branch and open the pull request from the delivery '
+        '— --plan or --apply',
+    params: DeliveryPublishInput.params,
   );
 }

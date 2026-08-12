@@ -8,6 +8,27 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **`macss delivery publish`** — the pull request appears as the consequence of
+  publishing the delivery, the way the issue appears from publishing the
+  requisition. There is no `macss pr` module for the same reason there is no
+  `macss issue` one.
+
+  It is the first command in this CLI that writes outside the machine by a route
+  that is not `gh`: it pushes, because `gh pr create` resolves the head on the
+  remote and a branch the remote has never seen is not there to resolve. So
+  `--plan` names the push and performs neither it nor the `gh` call, and the
+  gate runs before any of it — nothing leaves the machine on a red gate, and a
+  push is the one step that cannot be taken back.
+
+  The body points at the issue with a plain reference, never `Closes #N`. An
+  issue may deliberately outlive the pull request that answered it, and
+  auto-closing would fight a method that allows it.
+
+  It records the pull request, the branches it was opened between, and the
+  state, together. The branches are read from git at publish time rather than
+  from the record: the record stores them afterwards, as the fact the transition
+  produced.
+
 - **`macss delivery new` / `check`** — the first stage of the pull-request side.
 
   `delivery.md` is the mirror of `requisition.md`: the first document of each

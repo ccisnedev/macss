@@ -37,6 +37,14 @@ class AssembledBody {
   int get lines => content.split('\n').length;
 }
 
+/// The documents each side of the cycle publishes, in reading order.
+///
+/// The issue carries the request and then the contract; the pull request
+/// carries the delivery and then the evidence. Same assembly, different pair —
+/// a twin function would let the two drift in how they join documents.
+const issueDocuments = ['requisition.md', 'specification.md'];
+const pullRequestDocuments = ['delivery.md', 'verification.md'];
+
 /// Says where the contract starts inside an assembled body.
 ///
 /// The two documents number their sections identically — the requisition's
@@ -63,11 +71,14 @@ String? contractIn(String body) {
 
 /// Assembles the issue body from whatever documents exist, in reading order:
 /// the request first, then the contract.
-AssembledBody assembleBody(String requisitionDir) {
+AssembledBody assembleBody(
+  String requisitionDir, {
+  List<String> documents = issueDocuments,
+}) {
   final parts = <String>[];
   final sections = <String>[];
 
-  for (final name in const ['requisition.md', 'specification.md']) {
+  for (final name in documents) {
     final file = File(p.join(requisitionDir, name));
     if (!file.existsSync()) continue;
     final content = file.readAsStringSync().trim();
