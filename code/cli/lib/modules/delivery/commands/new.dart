@@ -14,13 +14,13 @@
 /// the way `requisition.md` has never carried its own.
 library;
 
-import 'dart:io';
 
 import 'package:cli_router/cli_router.dart';
 import 'package:modular_cli_sdk/modular_cli_sdk.dart';
 import 'package:path/path.dart' as p;
 
 import '../../../src/project_config.dart';
+import '../../../src/steps.dart';
 import '../../../templates/template_resolver.dart';
 import '../../specification/slug.dart';
 import '../../specification/workspace.dart';
@@ -29,15 +29,11 @@ import '../../specification/workspace.dart';
 
 class DeliveryNewInput extends Input {
   final String? slug;
-  final ChangeFlags flags;
 
-  DeliveryNewInput({this.slug, required this.flags});
+  DeliveryNewInput({this.slug});
 
   factory DeliveryNewInput.fromCliRequest(CliRequest req) =>
-      DeliveryNewInput(
-        slug: optionalSlug(req.flagString('slug')),
-        flags: ChangeFlags.fromCliRequest(req),
-      );
+      DeliveryNewInput(slug: optionalSlug(req.flagString('slug')));
 
   /// No `--lang`: the project declared its language once, and every document
   /// derives from it — including this one, which follows the project and not
@@ -47,42 +43,57 @@ class DeliveryNewInput extends Input {
       'slug',
       description: 'Requisition to open the delivery for; defaults to the active one',
     ),
-    ...ChangeFlags.params,
   ];
 
   @override
   List<CliParam> get schemaFields => params;
 
   @override
-  Map<String, dynamic> toJson() => {
-        'slug': slug,
-        'plan': flags.plan,
-        'apply': flags.apply,
-        'autoapprove': flags.autoapprove,
-      };
+  Map<String, dynamic> toJson() => {'slug': slug};
 }
 
 // ─── Output ─────────────────────────────────────────────────────────────────
 
 class DeliveryNewOutput extends Output {
-  final String message;
-  final String? planPath;
-  final bool blocked;
-
   DeliveryNewOutput({
-    required this.message,
-    this.planPath,
-    this.blocked = false,
+    required this.path,
+    required this.kept,
+    required this.lang,
+    this.notice,
   });
 
-  @override
-  Map<String, dynamic> toJson() => {'message': message, 'planPath': planPath};
+  final String path;
+
+  /// Whether one was already there. `new` is idempotent, so this is the
+  /// ordinary second-run answer rather than a failure.
+  final bool kept;
+
+  final String lang;
+  final String? notice;
 
   @override
-  int get exitCode => blocked ? ExitCode.genericError : ExitCode.ok;
+  Map<String, dynamic> toJson() => {
+    'path': path,
+    'kept': kept,
+    'lang': lang,
+    if (notice != null) 'notice': notice,
+  };
 
   @override
-  String? toText() => message;
+  int get exitCode => ExitCode.ok;
+
+  @override
+  String? toText() => kept
+      ? '  kept     $path (already exists)'
+      : [
+          'Delivery scaffolded ($lang):',
+          '  created  $path',
+          if (notice != null) '  note     $notice',
+          '',
+          'Next: claim every acceptance criterion with somewhere to look, say '
+              'what was not done, and record `pr_title` in state.yaml. Then '
+              '`macss delivery check`.',
+        ].join('\n');
 }
 
 // ─── Command ────────────────────────────────────────────────────────────────
@@ -95,14 +106,12 @@ class DeliveryNewCommand
   final TemplateResolver resolver;
   final String workingDirectory;
   final DateTime Function() _now;
-  final Approver? approver;
 
   DeliveryNewCommand(
     this.input, {
     required this.resolver,
     required this.workingDirectory,
     DateTime Function()? now,
-    this.approver,
   }) : _now = now ?? DateTime.now;
 
   String? get _dir => resolveRequisitionDir(workingDirectory, input.slug);
@@ -120,69 +129,43 @@ class DeliveryNewCommand
     final undeclared = undeclaredLanguageFailure(workingDirectory);
     if (undeclared != null) return undeclared;
 
-    return input.flags.validate();
+    return null;
+  }
+
+  String get _lang => projectLanguage(workingDirectory)!;
+
+  String get _relPath => p.posix.join(
+    p.posix.joinAll(p.split(p.relative(_dir!, from: workingDirectory))),
+    'delivery.md',
+  );
+
+  TemplateResolution? _resolution;
+
+  /// One step: the delivery.
+  ///
+  /// Idempotence used to be answered ahead of the convention, so `--plan` on a
+  /// requisition that already had a delivery said nothing at all. The step
+  /// answers now, and says `keep`.
+  @override
+  Future<List<Step>> steps() async {
+    _resolution = resolver.resolve('delivery', lang: _lang);
+    return [
+      WriteFile(
+        path: p.join(_dir!, 'delivery.md'),
+        contents: _resolution!.content.replaceAll(
+          '{{DATE}}',
+          _now().toIso8601String().substring(0, 10),
+        ),
+        shownAs: _relPath,
+      ),
+    ];
   }
 
   @override
-  Future<DeliveryNewOutput> execute() async {
-    final dir = _dir!;
-    final relDir = p.posix.joinAll(
-      p.split(p.relative(dir, from: workingDirectory)),
-    );
-    final relPath = p.posix.join(relDir, 'delivery.md');
-    final file = File(p.join(dir, 'delivery.md'));
-
-    // Idempotence answers before the convention does: an existing contract is
-    // kept either way, so there is nothing to plan or approve.
-    if (file.existsSync()) {
-      return DeliveryNewOutput(
-        message: '  kept     $relPath (already exists)',
-      );
-    }
-
-    final lang = projectLanguage(workingDirectory)!;
-    final resolution = resolver.resolve('delivery', lang: lang);
-
-    final decision = await ChangeGate(
-      flags: input.flags,
-      approver: approver,
-      now: _now,
-    ).decide(
-      command: 'delivery new',
-      workingDirectory: workingDirectory,
-      body: [
-        'would open the delivery for "${p.basename(dir)}":',
-        '',
-        '  create   $relPath ($lang)',
-        if (resolution.notice != null) '  note     ${resolution.notice}',
-      ].join('\n'),
-    );
-
-    if (!decision.proceed) {
-      return DeliveryNewOutput(
-        message: decision.message!,
-        planPath: decision.planPath,
-        blocked: decision.blocked,
-      );
-    }
-
-    file.writeAsStringSync(
-      resolution.content.replaceAll(
-        '{{DATE}}',
-        _now().toIso8601String().substring(0, 10),
-      ),
-    );
-
-    return DeliveryNewOutput(
-      message: [
-        'Delivery scaffolded ($lang):',
-        '  created  $relPath',
-        if (resolution.notice != null) '  note     ${resolution.notice}',
-        '',
-        'Next: claim every acceptance criterion with somewhere to look, say '
-            'what was not done, and record `pr_title` in state.yaml. Then '
-            '`macss delivery check`.',
-      ].join('\n'),
-    );
-  }
+  DeliveryNewOutput describe(Execution execution) => DeliveryNewOutput(
+    path: _relPath,
+    kept: execution.outcomes.single.verb == 'keep',
+    lang: _lang,
+    notice: _resolution?.notice,
+  );
 }

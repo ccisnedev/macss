@@ -15,13 +15,13 @@
 /// different problem, and it is not this one.
 library;
 
-import 'dart:io';
 
 import 'package:cli_router/cli_router.dart';
 import 'package:modular_cli_sdk/modular_cli_sdk.dart';
 import 'package:path/path.dart' as p;
 
 import '../../../src/project_config.dart';
+import '../../../src/steps.dart';
 import '../../../src/vocabulary.dart';
 import '../../../templates/template_resolver.dart';
 import '../../requisition/publisher.dart';
@@ -35,59 +35,73 @@ import '../contract_source.dart';
 
 class VerificationNewInput extends Input {
   final String? slug;
-  final ChangeFlags flags;
 
-  VerificationNewInput({this.slug, required this.flags});
+  VerificationNewInput({this.slug});
 
   factory VerificationNewInput.fromCliRequest(CliRequest req) =>
-      VerificationNewInput(
-        slug: optionalSlug(req.flagString('slug')),
-        flags: ChangeFlags.fromCliRequest(req),
-      );
+      VerificationNewInput(slug: optionalSlug(req.flagString('slug')));
 
   static final List<CliParam> params = [
     CliParam.string('slug',
         description: 'Requisition to open the record for; defaults to the '
             'active one'),
-    ...ChangeFlags.params,
   ];
 
   @override
   List<CliParam> get schemaFields => params;
 
   @override
-  Map<String, dynamic> toJson() => {
-        'slug': slug,
-        'plan': flags.plan,
-        'apply': flags.apply,
-        'autoapprove': flags.autoapprove,
-      };
+  Map<String, dynamic> toJson() => {'slug': slug};
 }
 
 // ─── Output ─────────────────────────────────────────────────────────────────
 
 class VerificationNewOutput extends Output {
-  final String message;
-  final bool ok;
-  final String? planPath;
-  final List<String> criteria;
-
   VerificationNewOutput({
-    required this.message,
-    this.ok = true,
-    this.planPath,
-    this.criteria = const [],
+    required this.path,
+    required this.kept,
+    required this.lang,
+    required this.criteria,
+    this.issue,
+    this.notice,
   });
 
-  @override
-  Map<String, dynamic> toJson() =>
-      {'message': message, 'ok': ok, 'planPath': planPath, 'criteria': criteria};
+  final String path;
+
+  /// Whether a walk had already begun. Re-opening the record would throw away
+  /// exactly what it exists to preserve: how far it got.
+  final bool kept;
+
+  final String lang;
+  final List<String> criteria;
+  final int? issue;
+  final String? notice;
 
   @override
-  int get exitCode => ok ? ExitCode.ok : ExitCode.genericError;
+  Map<String, dynamic> toJson() => {
+    'path': path,
+    'kept': kept,
+    'lang': lang,
+    'criteria': criteria,
+    if (issue != null) 'issue': issue,
+    if (notice != null) 'notice': notice,
+  };
 
   @override
-  String? toText() => message;
+  int get exitCode => ExitCode.ok;
+
+  @override
+  String? toText() => kept
+      ? '  kept     $path (a walk already begun)'
+      : [
+          'Record opened ($lang):',
+          '  created  $path',
+          '  listing  ${criteria.length} criteria from issue #$issue, '
+              'none judged',
+          if (notice != null) '  note     $notice',
+          '',
+          'One criterion at a time, and the human judges before the next.',
+        ].join('\n');
 }
 
 // ─── Command ────────────────────────────────────────────────────────────────
@@ -102,7 +116,6 @@ class VerificationNewCommand
   final ProcessRunner runProcess;
   final SpecificationGate gate;
   final DateTime Function() _now;
-  final Approver? approver;
 
   VerificationNewCommand(
     this.input, {
@@ -111,7 +124,6 @@ class VerificationNewCommand
     required this.runProcess,
     SpecificationGate? gate,
     DateTime Function()? now,
-    this.approver,
   })  : gate = gate ??
             SpecificationGate(vocabulary: Vocabularies.fromAssets(resolver.assets)),
         _now = now ?? DateTime.now;
@@ -138,26 +150,37 @@ class VerificationNewCommand
     final undeclared = undeclaredLanguageFailure(workingDirectory);
     if (undeclared != null) return undeclared;
 
-    return input.flags.validate();
+    return null;
   }
 
+  String get _lang => projectLanguage(workingDirectory)!;
+
+  String get _relPath => p.posix.join(
+    p.posix.joinAll(p.split(p.relative(_dir!, from: workingDirectory))),
+    'verification.md',
+  );
+
+  List<String> _criteria = const [];
+  int? _issue;
+  String? _notice;
+
+  /// One step: the record.
+  ///
+  /// The criteria come from the platform — the frozen contract on the issue,
+  /// not the working copy on disk — so the read happens here, before the plan
+  /// is built, and what it returned travels inside the step. Asking again at
+  /// perform time could answer differently, and the record would then not be
+  /// the one that was approved.
+  ///
+  /// The read happens even when a record already exists and the step will only
+  /// keep it. That is a wasted call on the idempotent path, and it is the price
+  /// of the step carrying real contents: contents that were never fetched would
+  /// write an empty record if the file vanished between preview and perform.
   @override
-  Future<VerificationNewOutput> execute() async {
+  Future<List<Step>> steps() async {
     final dir = _dir!;
     final record = RequisitionRecord.read(dir)!;
-    final relDir =
-        p.posix.joinAll(p.split(p.relative(dir, from: workingDirectory)));
-    final relPath = p.posix.join(relDir, 'verification.md');
-    final file = File(p.join(dir, 'verification.md'));
-
-    // Idempotence answers before the convention does. A record already open is
-    // a walk already begun, and re-opening it would throw away exactly what it
-    // exists to preserve: how far it got.
-    if (file.existsSync()) {
-      return VerificationNewOutput(
-        message: '  kept     $relPath (a walk already begun)',
-      );
-    }
+    _issue = record.issue;
 
     final contract = await criteriaFromPlatform(
       record,
@@ -165,57 +188,36 @@ class VerificationNewCommand
       gate: gate,
     );
     if (!contract.ok) {
-      return VerificationNewOutput(ok: false, message: contract.failure!);
-    }
-    final criteria = contract.ids;
-
-    final lang = projectLanguage(workingDirectory)!;
-    final resolution = resolver.resolve('verification', lang: lang);
-
-    final decision = await ChangeGate(
-      flags: input.flags,
-      approver: approver,
-      now: _now,
-    ).decide(
-      command: 'verification new',
-      workingDirectory: workingDirectory,
-      body: [
-        'would open the record for "${p.basename(dir)}":',
-        '',
-        '  create   $relPath ($lang)',
-        '  from     issue #${record.issue}, the frozen contract',
-        '  listing  ${criteria.length} criteria, none judged: '
-            '${criteria.join(', ')}',
-        if (resolution.notice != null) '  note     ${resolution.notice}',
-      ].join('\n'),
-    );
-
-    if (!decision.proceed) {
-      return VerificationNewOutput(
-        message: decision.message!,
-        ok: !decision.blocked,
-        planPath: decision.planPath,
+      throw CommandException(
+        code: 'NO_FROZEN_CONTRACT',
+        message: contract.failure!,
       );
     }
+    _criteria = contract.ids;
 
-    file.writeAsStringSync(
-      resolution.content
-          .replaceAll('{{DATE}}', _now().toIso8601String().substring(0, 10))
-          .replaceAll('{{CRITERIA}}', _entries(criteria)),
-    );
+    final resolution = resolver.resolve('verification', lang: _lang);
+    _notice = resolution.notice;
 
-    return VerificationNewOutput(
-      criteria: criteria,
-      message: [
-        'Record opened ($lang):',
-        '  created  $relPath',
-        '  listing  ${criteria.length} criteria from issue #${record.issue}, '
-            'none judged',
-        '',
-        'One criterion at a time, and the human judges before the next.',
-      ].join('\n'),
-    );
+    return [
+      WriteFile(
+        path: p.join(dir, 'verification.md'),
+        contents: resolution.content
+            .replaceAll('{{DATE}}', _now().toIso8601String().substring(0, 10))
+            .replaceAll('{{CRITERIA}}', _entries(_criteria)),
+        shownAs: _relPath,
+      ),
+    ];
   }
+
+  @override
+  VerificationNewOutput describe(Execution execution) => VerificationNewOutput(
+    path: _relPath,
+    kept: execution.outcomes.single.verb == 'keep',
+    lang: _lang,
+    criteria: _criteria,
+    issue: _issue,
+    notice: _notice,
+  );
 
   /// One block per criterion, in the contract's order, none of them judged.
   ///

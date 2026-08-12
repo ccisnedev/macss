@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:modular_cli_sdk/modular_cli_sdk.dart';
 import 'package:modular_cli_sdk/testing.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';

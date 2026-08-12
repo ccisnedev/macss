@@ -25,6 +25,7 @@ import '../../specification/specification_gate.dart';
 import '../../specification/workspace.dart';
 import '../delivery_gate.dart';
 import '../pull_request_publisher.dart';
+import '../steps.dart';
 import 'check.dart' show GitRunner;
 
 // ─── Input ──────────────────────────────────────────────────────────────────
@@ -32,15 +33,13 @@ import 'check.dart' show GitRunner;
 class DeliveryPublishInput extends Input {
   final String? slug;
   final String? repo;
-  final ChangeFlags flags;
 
-  DeliveryPublishInput({this.slug, this.repo, required this.flags});
+  DeliveryPublishInput({this.slug, this.repo});
 
   factory DeliveryPublishInput.fromCliRequest(CliRequest req) =>
       DeliveryPublishInput(
         slug: optionalSlug(req.flagString('slug')),
         repo: req.flagString('repo'),
-        flags: ChangeFlags.fromCliRequest(req),
       );
 
   static final List<CliParam> params = [
@@ -48,46 +47,57 @@ class DeliveryPublishInput extends Input {
         description: 'Requisition to publish; defaults to the active one'),
     CliParam.string('repo',
         description: 'owner/name; defaults to what gh infers here'),
-    ...ChangeFlags.params,
   ];
 
   @override
   List<CliParam> get schemaFields => params;
 
   @override
-  Map<String, dynamic> toJson() => {
-        'slug': slug,
-        'repo': repo,
-        'plan': flags.plan,
-        'apply': flags.apply,
-        'autoapprove': flags.autoapprove,
-      };
+  Map<String, dynamic> toJson() => {'slug': slug, 'repo': repo};
 }
 
 // ─── Output ─────────────────────────────────────────────────────────────────
 
 class DeliveryPublishOutput extends Output {
-  final String message;
-  final bool ok;
-  final String? planPath;
-  final int? pr;
-
   DeliveryPublishOutput({
-    required this.message,
-    this.ok = true,
-    this.planPath,
+    required this.updated,
     this.pr,
+    this.url,
+    this.base,
+    this.head,
+    this.recorded = false,
   });
 
-  @override
-  Map<String, dynamic> toJson() =>
-      {'message': message, 'ok': ok, 'planPath': planPath, 'pr': pr};
+  /// Whether an open pull request was updated rather than a new one opened.
+  final bool updated;
+
+  final int? pr;
+  final String? url;
+  final String? base;
+  final String? head;
+
+  /// Whether the number was written into the record — only ever on an open.
+  final bool recorded;
 
   @override
-  int get exitCode => ok ? ExitCode.ok : ExitCode.genericError;
+  Map<String, dynamic> toJson() => {
+    'updated': updated,
+    if (pr != null) 'pr': pr,
+    if (url != null) 'url': url,
+    if (base != null) 'base': base,
+    if (head != null) 'head': head,
+    'recorded': recorded,
+  };
 
   @override
-  String? toText() => message;
+  int get exitCode => ExitCode.ok;
+
+  @override
+  String? toText() => [
+    'Pull request ${updated ? 'updated' : 'opened'}: $url',
+    if (recorded && pr != null)
+      '  recorded pr: $pr ($head → $base) in ${RequisitionRecord.fileName}',
+  ].join('\n');
 }
 
 // ─── Command ────────────────────────────────────────────────────────────────
@@ -101,7 +111,6 @@ class DeliveryPublishCommand
   final PullRequestPublisher publisher;
   final SpecificationGate specificationGate;
   final DeliveryGate deliveryGate;
-  final ChangeGate changeGate;
   final GitRunner runGit;
 
   DeliveryPublishCommand(
@@ -110,14 +119,11 @@ class DeliveryPublishCommand
     required ProcessRunner runProcess,
     required Assets assets,
     GitRunner? runGit,
-    Approver? approver,
-    DateTime Function()? now,
     this.deliveryGate = const DeliveryGate(),
     SpecificationGate? specificationGate,
   })  : publisher = PullRequestPublisher(runProcess: runProcess),
         specificationGate = specificationGate ??
             SpecificationGate(vocabulary: Vocabularies.fromAssets(assets)),
-        changeGate = ChangeGate(flags: input.flags, approver: approver, now: now),
         runGit = runGit ??
             ((args) => Process.runSync('git', args,
                 workingDirectory: workingDirectory));
@@ -139,13 +145,25 @@ class DeliveryPublishCommand
     if (!File(p.join(dir, 'delivery.md')).existsSync()) {
       return 'No delivery.md — run `macss delivery new --apply` first.';
     }
-    return input.flags.validate();
+    return null;
   }
 
+  bool _wasDelivered = false;
+  String? _base;
+  String? _head;
+
+  /// Three steps: push, publish, record — and the order is the whole point.
+  ///
+  /// The push comes first because `gh pr create` resolves the head on the
+  /// remote, and a branch the remote has never seen is not there to resolve.
+  /// The record comes last because a pull request number written before `gh`
+  /// returned would claim something the platform never received. Both used to
+  /// be comments above consecutive statements; the plan shows them now.
   @override
-  Future<DeliveryPublishOutput> execute() async {
+  Future<List<Step>> steps() async {
     final dir = _dir!;
     final record = RequisitionRecord.read(dir)!;
+    _wasDelivered = record.isDelivered;
 
     // The gate first: nothing leaves the machine on a red gate, and a push is
     // the one step of this command that cannot be taken back.
@@ -158,8 +176,8 @@ class DeliveryPublishCommand
       prTitle: record.prTitle,
     );
     if (!result.passed) {
-      return DeliveryPublishOutput(
-        ok: false,
+      throw CommandException(
+        code: 'DELIVERY_NOT_READY',
         message: [
           'The delivery is not ready, so there is nothing worth publishing yet:',
           ...result.violations.map((v) => '  - ${v.code}: ${v.message}'),
@@ -172,13 +190,15 @@ class DeliveryPublishCommand
         ?.split('/')
         .last;
     if (head == null || base == null) {
-      return DeliveryPublishOutput(
-        ok: false,
+      throw CommandException(
+        code: 'BRANCHES_UNKNOWN',
         message: 'Cannot tell which branches this would go between — git '
             'answered for neither HEAD nor origin/HEAD. Run '
             '`macss delivery check` to see which.',
       );
     }
+    _base = base;
+    _head = head;
 
     final body = assembleBody(dir, documents: pullRequestDocuments);
     final annotated = AssembledBody(
@@ -186,72 +206,51 @@ class DeliveryPublishCommand
       body.parts,
     );
     if (annotated.exceedsLimit) {
-      return DeliveryPublishOutput(
-        ok: false,
+      throw CommandException(
+        code: 'BODY_TOO_LONG',
         message: 'The assembled body is ${annotated.length} characters; GitHub '
             'accepts $githubBodyLimit. Shorten ${body.parts.join(' + ')}.',
       );
     }
 
-    final verb = record.isDelivered ? 'update' : 'open';
-    final decision = await changeGate.decide(
-      command: 'delivery publish',
-      workingDirectory: workingDirectory,
-      body: [
-        'would $verb the pull request for "${p.basename(dir)}"',
-        '',
-        '  title:  ${record.prTitle}',
-        '  labels: '
-            '${record.labels.isEmpty ? '(none)' : record.labels.join(', ')}',
-        '  body:   ${annotated.lines} lines from ${body.parts.join(' + ')}',
-        '  issue:  #${record.issue} (referenced, not closed)',
-        '',
-        'Would run:',
-        '  git push --set-upstream origin $head',
-        '  gh ${publisher.plannedArgs(record, base: base, head: head, repo: input.repo).join(' ')} '
-            '--body-file <body>',
-      ].join('\n'),
+    final publish = PublishPullRequest(
+      publisher: publisher,
+      record: record,
+      body: annotated,
+      base: base,
+      head: head,
+      dir: dir,
+      repo: input.repo,
     );
 
-    if (!decision.proceed) {
-      return DeliveryPublishOutput(
-        message: decision.message!,
-        ok: !decision.blocked,
-        planPath: decision.planPath,
-      );
-    }
+    return [
+      PushBranch(runGit: runGit, branch: head),
+      publish,
+      // A pull request that already has a number has nothing to record: the
+      // record is where the number came from.
+      if (!record.isDelivered)
+        RecordDelivered(
+          source: publish,
+          record: record,
+          dir: dir,
+          base: base,
+          head: head,
+        ),
+    ];
+  }
 
-    // Push first: `gh pr create` resolves the head on the remote, and a branch
-    // it has never seen is not there to resolve.
-    final push = runGit(['push', '--set-upstream', 'origin', head]);
-    if (push.exitCode != 0) {
-      return DeliveryPublishOutput(
-        ok: false,
-        message: 'git push failed:\n${push.stderr}'.trimRight(),
-      );
-    }
-
-    final published =
-        await publisher.publish(record, annotated,
-            base: base, head: head, repo: input.repo);
-    if (!published.ok) {
-      return DeliveryPublishOutput(ok: false, message: published.error!);
-    }
-
-    final number = published.number;
-    if (number != null && !record.isDelivered) {
-      record.delivered(pr: number, base: base, head: head).write(dir);
-    }
-
+  @override
+  DeliveryPublishOutput describe(Execution execution) {
+    final published = execution.outcomes
+        .where((o) => o.values.containsKey('pr'))
+        .firstOrNull;
     return DeliveryPublishOutput(
-      pr: number ?? record.pr,
-      message: [
-        'Pull request ${record.isDelivered ? 'updated' : 'opened'}: '
-            '${published.url}',
-        if (!record.isDelivered && number != null)
-          '  recorded pr: $number ($head → $base) in '
-              '${RequisitionRecord.fileName}',
-      ].join('\n'),
+      updated: _wasDelivered,
+      pr: published?.values['pr'] as int?,
+      url: published?.values['url'] as String?,
+      base: _base,
+      head: _head,
+      recorded: execution.outcomes.any((o) => o.verb == 'record'),
     );
   }
 
