@@ -8,6 +8,21 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **`macss dod check`** — the Definition of Done, and the mirror of `dor check`.
+  It composes the two stage gates rather than replacing them — the delivery
+  judges the implementer's claim, the record judges the verifier's judgement —
+  and adds what neither owns: that the work has a pull request. From here the
+  pull-request body freezes, as the issue body freezes at the Definition of
+  Ready.
+
+  It reads the contract from the platform **once** and hands the same criteria
+  to both gates. Composing means one question asked in one place; two gates each
+  fetching their own copy could disagree about what the contract says.
+
+  Review is not in it, and that is not an omission: ADR 0008 and the roadmap
+  both decide it the same way — review fires on the pull request, on the
+  platform, and joins when that integration exists.
+
 - **`macss verification check` / `publish`** — the record is judged complete and
   then joins the pull request the delivery opened, the way the contract joins
   the issue the requisition opened. The body then reads as one thing: what was

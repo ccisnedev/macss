@@ -12,6 +12,7 @@ import 'assets.dart';
 import 'src/api/graphql/compile_runner.dart';
 import 'modules/api/api_builder.dart';
 import 'modules/delivery/delivery_builder.dart';
+import 'modules/dod/dod_builder.dart';
 import 'modules/dor/dor_builder.dart';
 import 'modules/global/global_builder.dart';
 import 'modules/project/project_builder.dart';
@@ -62,6 +63,7 @@ Future<int> runMacss(
     (m) => buildSpecificationModule(m, assets: assets),
   );
   cli.module('dor', (m) => buildDorModule(m, assets: assets));
+  cli.module('dod', (m) => buildDodModule(m, assets: assets));
   cli.module('delivery', (m) => buildDeliveryModule(m, assets: assets));
   cli.module(
     'verification',
