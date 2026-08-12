@@ -10,6 +10,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
+import 'package:modular_cli_sdk/testing.dart';
 
 import 'package:macss_cli/assets.dart';
 import 'package:macss_cli/modules/requisition/requisition_record.dart';
@@ -41,17 +42,16 @@ void main() {
     if (root.existsSync()) root.deleteSync(recursive: true);
   });
 
-  Future<SpecificationPublishOutput> publish() =>
-      SpecificationPublishCommand(
-        SpecificationPublishInput(flags: const ChangeFlags(
-          apply: true,
-          autoapprove: true,
-        )),
-        workingDirectory: root.path,
-        runProcess: (_, _) async =>
-            ProcessResult(0, 0, 'https://github.com/o/r/issues/42', ''),
-        assets: Assets(root: Directory.current.path),
-      ).execute();
+  SpecificationPublishCommand publisher() => SpecificationPublishCommand(
+    SpecificationPublishInput(),
+    workingDirectory: root.path,
+    runProcess: (_, _) async =>
+        ProcessResult(0, 0, 'https://github.com/o/r/issues/42', ''),
+    assets: Assets(root: Directory.current.path),
+  );
+
+  Future<SpecificationPublishOutput> publish() async =>
+      await applyCommand(publisher());
 
   test('publishing the contract records that the requisition is specified',
       () async {
@@ -65,6 +65,22 @@ void main() {
       () async {
     await publish();
     expect(RequisitionRecord.read(dir())!.issue, 42);
+  });
+
+  // The order is the guarantee, and the plan is where it is visible: a state
+  // written before `gh` returned would claim something the platform never
+  // received.
+  test('says it would publish first and record the state second', () async {
+    final previews = await previewCommand(publisher());
+
+    expect(previews.map((p) => p.verb), ['update', 'record']);
+    expect(previews.last.detail, contains('specified'));
+  });
+
+  test('asking records nothing', () async {
+    await previewCommand(publisher());
+
+    expect(RequisitionRecord.read(dir())!.state, isNot(RequisitionState.specified));
   });
 }
 

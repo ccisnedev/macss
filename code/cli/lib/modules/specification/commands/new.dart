@@ -10,13 +10,12 @@
 /// contract about is not a document anyone can write.
 library;
 
-import 'dart:io';
-
 import 'package:cli_router/cli_router.dart';
 import 'package:modular_cli_sdk/modular_cli_sdk.dart';
 import 'package:path/path.dart' as p;
 
 import '../../../src/project_config.dart';
+import '../../../src/steps.dart';
 import '../../../templates/template_resolver.dart';
 import '../slug.dart';
 import '../workspace.dart';
@@ -25,15 +24,11 @@ import '../workspace.dart';
 
 class SpecificationNewInput extends Input {
   final String? slug;
-  final ChangeFlags flags;
 
-  SpecificationNewInput({this.slug, required this.flags});
+  SpecificationNewInput({this.slug});
 
   factory SpecificationNewInput.fromCliRequest(CliRequest req) =>
-      SpecificationNewInput(
-        slug: optionalSlug(req.flagString('slug')),
-        flags: ChangeFlags.fromCliRequest(req),
-      );
+      SpecificationNewInput(slug: optionalSlug(req.flagString('slug')));
 
   /// No `--lang`. It used to inherit the requisition's, which was the right
   /// instinct applied one hop at a time; the project now declares it once and
@@ -43,42 +38,58 @@ class SpecificationNewInput extends Input {
       'slug',
       description: 'Requisition to add the contract to; defaults to the active one',
     ),
-    ...ChangeFlags.params,
   ];
 
   @override
   List<CliParam> get schemaFields => params;
 
   @override
-  Map<String, dynamic> toJson() => {
-        'slug': slug,
-        'plan': flags.plan,
-        'apply': flags.apply,
-        'autoapprove': flags.autoapprove,
-      };
+  Map<String, dynamic> toJson() => {'slug': slug};
 }
 
 // ─── Output ─────────────────────────────────────────────────────────────────
 
 class SpecificationNewOutput extends Output {
-  final String message;
-  final String? planPath;
-  final bool blocked;
-
   SpecificationNewOutput({
-    required this.message,
-    this.planPath,
-    this.blocked = false,
+    required this.path,
+    required this.kept,
+    required this.lang,
+    this.notice,
   });
 
-  @override
-  Map<String, dynamic> toJson() => {'message': message, 'planPath': planPath};
+  /// Where the contract is, relative to the project.
+  final String path;
+
+  /// Whether one was already there. `new` is idempotent, so this is the
+  /// ordinary second-run answer rather than a failure.
+  final bool kept;
+
+  final String lang;
+  final String? notice;
 
   @override
-  int get exitCode => blocked ? ExitCode.genericError : ExitCode.ok;
+  Map<String, dynamic> toJson() => {
+    'path': path,
+    'kept': kept,
+    'lang': lang,
+    if (notice != null) 'notice': notice,
+  };
 
   @override
-  String? toText() => message;
+  int get exitCode => ExitCode.ok;
+
+  @override
+  String? toText() => kept
+      ? '  kept     $path (already exists)'
+      : [
+          'Contract scaffolded ($lang):',
+          '  created  $path',
+          if (notice != null) '  note     $notice',
+          '',
+          'Next: fill the committed date, the user stories with their '
+              'acceptance criteria, and the explicit scope. Then '
+              '`macss specification check`.',
+        ].join('\n');
 }
 
 // ─── Command ────────────────────────────────────────────────────────────────
@@ -91,14 +102,12 @@ class SpecificationNewCommand
   final TemplateResolver resolver;
   final String workingDirectory;
   final DateTime Function() _now;
-  final Approver? approver;
 
   SpecificationNewCommand(
     this.input, {
     required this.resolver,
     required this.workingDirectory,
     DateTime Function()? now,
-    this.approver,
   }) : _now = now ?? DateTime.now;
 
   String? get _dir => resolveRequisitionDir(workingDirectory, input.slug);
@@ -116,68 +125,46 @@ class SpecificationNewCommand
     final undeclared = undeclaredLanguageFailure(workingDirectory);
     if (undeclared != null) return undeclared;
 
-    return input.flags.validate();
+    return null;
+  }
+
+  String get _lang => projectLanguage(workingDirectory)!;
+
+  String get _relPath => p.posix.join(
+    p.posix.joinAll(p.split(p.relative(_dir!, from: workingDirectory))),
+    'specification.md',
+  );
+
+  TemplateResolution? _resolution;
+
+  /// One step: the contract.
+  ///
+  /// Idempotence used to be answered here, ahead of the convention — an
+  /// existing contract was reported kept before any plan was built. It is
+  /// answered by the step now, which is better: `--plan` on a requisition that
+  /// already has one says `keep` instead of the command quietly deciding there
+  /// was nothing to show.
+  @override
+  Future<List<Step>> steps() async {
+    _resolution = resolver.resolve('specification', lang: _lang);
+    return [
+      WriteFile(
+        path: p.join(_dir!, 'specification.md'),
+        contents: _resolution!.content.replaceAll(
+          '{{DATE}}',
+          _now().toIso8601String().substring(0, 10),
+        ),
+        shownAs: _relPath,
+      ),
+    ];
   }
 
   @override
-  Future<SpecificationNewOutput> execute() async {
-    final dir = _dir!;
-    final relDir = p.posix.joinAll(
-      p.split(p.relative(dir, from: workingDirectory)),
-    );
-    final relPath = p.posix.join(relDir, 'specification.md');
-    final file = File(p.join(dir, 'specification.md'));
-
-    // Idempotence answers before the convention does: an existing contract is
-    // kept either way, so there is nothing to plan or approve.
-    if (file.existsSync()) {
-      return SpecificationNewOutput(
-        message: '  kept     $relPath (already exists)',
+  SpecificationNewOutput describe(Execution execution) =>
+      SpecificationNewOutput(
+        path: _relPath,
+        kept: execution.outcomes.single.verb == 'keep',
+        lang: _lang,
+        notice: _resolution?.notice,
       );
-    }
-
-    final lang = projectLanguage(workingDirectory)!;
-    final resolution = resolver.resolve('specification', lang: lang);
-
-    final decision = await ChangeGate(
-      flags: input.flags,
-      approver: approver,
-      now: _now,
-    ).decide(
-      command: 'specification new',
-      workingDirectory: workingDirectory,
-      body: [
-        'would add the contract to "${p.basename(dir)}":',
-        '',
-        '  create   $relPath ($lang)',
-        if (resolution.notice != null) '  note     ${resolution.notice}',
-      ].join('\n'),
-    );
-
-    if (!decision.proceed) {
-      return SpecificationNewOutput(
-        message: decision.message!,
-        planPath: decision.planPath,
-        blocked: decision.blocked,
-      );
-    }
-
-    file.writeAsStringSync(
-      resolution.content.replaceAll(
-        '{{DATE}}',
-        _now().toIso8601String().substring(0, 10),
-      ),
-    );
-
-    return SpecificationNewOutput(
-      message: [
-        'Contract scaffolded ($lang):',
-        '  created  $relPath',
-        if (resolution.notice != null) '  note     ${resolution.notice}',
-        '',
-        'Next: fill the committed date, the user stories with their acceptance '
-            'criteria, and the explicit scope. Then `macss specification check`.',
-      ].join('\n'),
-    );
-  }
 }

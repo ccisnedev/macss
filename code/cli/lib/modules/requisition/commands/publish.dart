@@ -21,6 +21,7 @@ import '../../specification/workspace.dart';
 import '../requisition_record.dart';
 import '../publisher.dart';
 import '../requisition_gate.dart';
+import '../steps.dart';
 
 // ─── Input ──────────────────────────────────────────────────────────────────
 
@@ -56,68 +57,6 @@ class RequisitionPublishInput extends Input {
 }
 
 // ─── Steps ──────────────────────────────────────────────────────────────────
-
-/// Creates or updates the issue on GitHub.
-///
-/// The issue's number and URL do not exist until it does, so the preview
-/// **declares** them rather than staying silent: a plan that listed this step
-/// without saying what it could not yet know would read as complete when it
-/// was not. The step after this one reads the number from here rather than
-/// asking GitHub a second time.
-class PublishIssue implements Step {
-  PublishIssue({
-    required this.publisher,
-    required this.record,
-    required this.body,
-    required this.dir,
-    this.repo,
-  });
-
-  final IssuePublisher publisher;
-  final RequisitionRecord record;
-
-  /// Assembled when this step was built, and not again — it is what is going to
-  /// GitHub, and what the plan counted the lines of.
-  final AssembledBody body;
-
-  final String dir;
-  final String? repo;
-
-  String get _verb => record.isPublished ? 'update' : 'create';
-
-  String get _target =>
-      'the issue for "${p.basename(dir)}"${repo == null ? '' : ' in $repo'}';
-
-  @override
-  Preview preview() => Preview(
-    verb: _verb,
-    target: _target,
-    // The exact `gh` line is part of the claim: what reaches GitHub is the
-    // thing being approved, and a reviewer who cannot see the command cannot
-    // judge it.
-    detail: [
-      'title: ${record.title}',
-      'labels: ${record.labels.isEmpty ? '(none)' : record.labels.join(', ')}',
-      '${body.lines} lines from ${body.parts.join(' + ')}',
-      if (repo == null) 'repo inferred by gh from this directory',
-      'gh ${publisher.plannedArgs(record, repo: repo).join(' ')} '
-          '--body-file <body>',
-    ].join('; '),
-    pending: const ['issue', 'url'],
-  );
-
-  @override
-  Future<Outcome> perform(StepContext context) async {
-    final result = await publisher.publish(record, body, repo: repo);
-    if (!result.ok) throw StateError(result.error!);
-
-    return Outcome(
-      verb: _verb,
-      target: _target,
-      values: {'issue': result.number, 'url': result.url},
-    );
-  }
-}
 
 /// Writes the issue number into the requisition's record.
 ///

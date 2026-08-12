@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:modular_cli_sdk/modular_cli_sdk.dart';
+import 'package:modular_cli_sdk/testing.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
@@ -36,26 +38,25 @@ void main() {
 
   Future<void> openRequisition({String lang = 'es'}) {
     writeProjectConfig(tempDir.path, language: lang);
-    return RequisitionNewCommand(
-      RequisitionNewInput(
-        slug: 'demo',
-        flags: const ChangeFlags(apply: true, autoapprove: true),
-      ),
-      resolver: resolver,
-      workingDirectory: tempDir.path,
-      now: clock,
-    ).execute();
-  }
-
-  Future<SpecificationNewOutput> addContract({
-    ChangeFlags flags = const ChangeFlags(apply: true, autoapprove: true),
-  }) =>
-      SpecificationNewCommand(
-        SpecificationNewInput(flags: flags),
+    return applyCommand(
+      RequisitionNewCommand(
+        RequisitionNewInput(slug: 'demo'),
         resolver: resolver,
         workingDirectory: tempDir.path,
         now: clock,
-      ).execute();
+      ),
+    );
+  }
+
+  SpecificationNewCommand contractCommand() => SpecificationNewCommand(
+    SpecificationNewInput(),
+    resolver: resolver,
+    workingDirectory: tempDir.path,
+    now: clock,
+  );
+
+  Future<SpecificationNewOutput> addContract() async =>
+      await applyCommand(contractCommand());
 
   group('SpecificationNewCommand', () {
     test('adds the contract to the active requisition', () async {
@@ -113,9 +114,23 @@ void main() {
 
       final out = await addContract();
 
-      expect(out.message, contains('kept'));
+      expect(out.kept, isTrue);
       expect(
           file('$folder/specification.md').readAsStringSync(), 'WRITTEN BY QA');
+    });
+
+    // It used to short-circuit before the plan was built, so `--plan` on a
+    // requisition that already had a contract said nothing at all. The step
+    // answers now, and says `keep`.
+    test('says it would keep an existing contract, rather than staying silent',
+        () async {
+      await openRequisition();
+      await addContract();
+
+      final previews = await previewCommand(contractCommand());
+
+      expect(previews.single.verb, 'keep');
+      expect(previews.single.target, endsWith('specification.md'));
     });
 
     test('output names the file and the next step', () async {
@@ -123,21 +138,13 @@ void main() {
 
       final out = await addContract();
 
-      expect(out.message, contains('specification.md'));
-      expect(out.message, contains('specification check'));
+      expect(out.toText(), contains('specification.md'));
+      expect(out.toText(), contains('specification check'));
     });
 
     test('refuses to write a contract with nothing to contract about', () {
       // No requisition open: there is no request to turn into an agreement.
-      final cmd = SpecificationNewCommand(
-        SpecificationNewInput(
-          flags: const ChangeFlags(apply: true, autoapprove: true),
-        ),
-        resolver: resolver,
-        workingDirectory: tempDir.path,
-      );
-
-      expect(cmd.validate(), contains('requisition new'));
+      expect(contractCommand().validate(), contains('requisition new'));
     });
 
     // The project must have said which language it speaks. There is nothing
@@ -146,15 +153,10 @@ void main() {
       await openRequisition();
       File(p.join(tempDir.path, '.macss', 'config.yaml')).deleteSync();
 
-      final cmd = SpecificationNewCommand(
-        SpecificationNewInput(
-          flags: const ChangeFlags(apply: true, autoapprove: true),
-        ),
-        resolver: resolver,
-        workingDirectory: tempDir.path,
+      expect(
+        contractCommand().validate(),
+        contains('macss project adopt --lang <en|es>'),
       );
-
-      expect(cmd.validate(), contains('macss project adopt --lang <en|es>'));
     });
   });
 }
