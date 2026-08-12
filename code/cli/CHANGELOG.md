@@ -8,6 +8,31 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **`macss requisition prune --plan` / `--apply`** — the workspace lets go of
+  what is finished. Nothing removed a requisition, so the ratio of noise to
+  signal only grew and the command whose purpose is to answer *"what is next?"*
+  had stopped answering it.
+
+  The criterion is local: the state the gates recorded, never a question put to
+  the platform. That is not a shortcut — `dod` is the method's own definition of
+  finished, and the merge only confirms the grant was honoured. It also
+  expresses what no platform can: a requisition **discarded**, superseded or
+  abandoned, which was never delivered and never will be.
+
+  A folder nothing can read is never removed. "I cannot tell" and "it is
+  finished" are different answers, and only one of them authorises destruction —
+  so unreadable folders are named in the plan and left alone.
+
+  It destroys with no `git restore` behind it, and what makes that safe is not
+  the command's caution: after the Definition of Done nothing in the folder is
+  unique. The request and the contract are the issue body, the delivery and the
+  evidence are the pull-request body, and the diagnosis and the plan are
+  comments on the issue. The working documents go with the rest on purpose — the
+  code is what they became, and decisions worth keeping are in `adr/`.
+
+  If it removes the active requisition it clears the pointer, rather than
+  manufacturing the dangling state the listing exists to report.
+
 - **`macss dod check`** — the Definition of Done, and the mirror of `dor check`.
   It composes the two stage gates rather than replacing them — the delivery
   judges the implementer's claim, the record judges the verifier's judgement —

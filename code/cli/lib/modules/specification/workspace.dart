@@ -16,6 +16,8 @@ import 'package:path/path.dart' as p;
 
 import '../../src/workspace_dir.dart';
 
+export '../../src/workspace_dir.dart' show workspaceDirName;
+
 /// The two path segments under the project root where requisitions live.
 const _base = ['docs', 'requisitions'];
 
