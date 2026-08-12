@@ -37,6 +37,30 @@ class AssembledBody {
   int get lines => content.split('\n').length;
 }
 
+/// Says where the contract starts inside an assembled body.
+///
+/// The two documents number their sections identically — the requisition's
+/// *Need and value* and the specification's *Commitment date* are both `## 1.`
+/// — so anything reading the contract back out of the published body must be
+/// told where it begins. Without this it reads the request as the contract and
+/// never fails while doing it.
+///
+/// A comment rather than a heading: it belongs to the tool, and GitHub renders
+/// nothing for it.
+const specificationMarker = '<!-- macss:specification -->';
+
+/// The contract half of an assembled [body], or null when it carries no marker.
+///
+/// Null is the answer for bodies published before the marker existed. They
+/// cannot acquire one — the issue froze at its Definition of Ready, and
+/// re-publishing to add a marker is the edit the freeze forbids — so the caller
+/// says the contract predates the marker instead of guessing at it.
+String? contractIn(String body) {
+  final at = body.indexOf(specificationMarker);
+  if (at < 0) return null;
+  return body.substring(at + specificationMarker.length).trimLeft();
+}
+
 /// Assembles the issue body from whatever documents exist, in reading order:
 /// the request first, then the contract.
 AssembledBody assembleBody(String requisitionDir) {
@@ -49,7 +73,9 @@ AssembledBody assembleBody(String requisitionDir) {
     final content = file.readAsStringSync().trim();
     if (content.isEmpty) continue;
     parts.add(name);
-    sections.add(content);
+    sections.add(name == 'specification.md'
+        ? '$specificationMarker\n\n$content'
+        : content);
   }
 
   return AssembledBody(sections.join('\n\n---\n\n'), parts);
