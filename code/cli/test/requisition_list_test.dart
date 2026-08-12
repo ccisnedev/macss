@@ -76,18 +76,37 @@ void main() {
       expect(entry.toText(), contains('alpha'));
     });
 
-    test('how far the work has got, and which issue carries it', () async {
+    /// The state is what the commands recorded, not what the files imply. The
+    /// two used to be the same answer badly: a `specification.md` on disk says
+    /// the document was written, never that anybody else can read it.
+    test('how far the work has got, and what carries it', () async {
       makeRequisition('20260804-alpha');
-      makeRequisition('20260805-beta', withSpecification: true);
       makeRequisition('20260806-gamma', withSpecification: true, issue: 31);
 
       final byslug = {for (final e in (await list()).entries) e.slug: e};
 
-      expect(byslug['alpha']!.stage, 'requisition');
+      expect(byslug['alpha']!.stage, 'opened');
       expect(byslug['alpha']!.issue, isNull);
-      expect(byslug['beta']!.stage, 'specification');
-      expect(byslug['beta']!.issue, isNull);
+      expect(byslug['gamma']!.stage, 'published');
       expect(byslug['gamma']!.issue, 31);
+    });
+
+    /// The fact `prune` will act on, displayed before anything acts on it: a
+    /// destructive command whose criterion has never been shown is one nobody
+    /// can audit before running it.
+    test('the pull request beside the issue', () async {
+      final dir = Directory(
+          p.join(root.path, 'docs', 'requisitions', '20260807-delta'))
+        ..createSync(recursive: true);
+      File(p.join(dir.path, 'state.yaml')).writeAsStringSync(
+          'title: "t"\nstate: delivered\nissue: 56\npr: 57\n');
+
+      final entry = (await list()).entries.single;
+
+      expect(entry.pr, 57);
+      expect(entry.toText(), contains('#56'));
+      expect(entry.toText(), contains('!57'));
+      expect(entry.toJson()['pr'], 57);
     });
 
     /// A folder with no readable record is **broken**, not empty, and the

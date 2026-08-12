@@ -118,6 +118,19 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
   criterion is called.
 
 ### Changed
+- **`macss requisition list` reports the state and the pull request.**
+  *(breaking for `--json`: `stage` becomes `state`, and `pr` joins `issue`.)*
+
+  It used to answer "how far has this got?" from which documents were on disk,
+  which could only ever report the five stages that write a file — `dor` and
+  `dod` are gates and leave no artifact, so the listing said so in its own
+  source. Now the gates record what they establish, and the listing reports the
+  record. Deriving it a second way would be a second answer.
+
+  The pull request is shown beside the issue **before** anything acts on it. It
+  is the fact `prune` will decide by, and a destructive command whose criterion
+  has never been displayed is one nobody can audit before running it (ADR 0010).
+
 - **`issue.yaml` → `state.yaml`, the requisition's lifecycle record.**
   *(breaking, no fallback)* The old file held the title, the labels and the
   issue number: everything the issue needed, and nothing about what became of

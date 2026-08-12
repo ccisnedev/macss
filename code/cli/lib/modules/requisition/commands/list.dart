@@ -1,9 +1,14 @@
 /// `macss requisition list` — what exists, and which one is active.
 ///
-/// Reads the workspace on disk. It does **not** run the stage gates: how far a
-/// requisition has got is answered by which documents exist, not by whether
-/// they pass. Running three gates per row would be slow and could fail for
+/// Reads the workspace on disk and runs no gate: how far a requisition has got
+/// is what the commands that took it there recorded, not something re-derived
+/// per row. Running three gates per row would be slow and could fail for
 /// reasons that have nothing to do with listing.
+///
+/// It used to answer the question from which documents existed, which could
+/// only ever report the five stages that write a file — `dor` and `dod` are
+/// gates and leave no artifact. Now they record what they establish, so the
+/// listing reports them without running anything.
 ///
 /// It changes nothing, so it declares neither `--plan` nor `--apply` and rejects
 /// both (ADR 0007 applies to commands that write).
@@ -48,14 +53,26 @@ class RequisitionEntry {
   final String slug;
 
   final bool isActive;
-  final bool hasRequisition;
-  final bool hasSpecification;
-  final bool hasImplementation;
-  final bool hasDelivery;
-  final bool hasVerification;
+
+  /// How far the work has got, as the commands that took it there recorded.
+  ///
+  /// Null when the folder carries no readable record. It used to be derived
+  /// from which documents were on disk, which could only ever report the five
+  /// stages that write a file: `dor` and `dod` are gates, and knowing either
+  /// was met meant running it. Now they write what they establish, so the
+  /// listing can report them without running anything — and two answers to
+  /// "how far has this got?" would be none.
+  final RequisitionState? state;
 
   /// The issue carrying it, when it has been published.
   final int? issue;
+
+  /// The pull request carrying the work, when it has been opened.
+  ///
+  /// Shown beside the issue because it is the fact `prune` will act on, and a
+  /// destructive command whose criterion has never been displayed is one nobody
+  /// can audit before running it (ADR 0010).
+  final int? pr;
 
   /// Whether `state.yaml` could be read at all.
   ///
@@ -70,38 +87,22 @@ class RequisitionEntry {
     required this.folder,
     required this.slug,
     required this.isActive,
-    required this.hasRequisition,
-    required this.hasSpecification,
-    required this.hasImplementation,
-    required this.hasDelivery,
-    required this.hasVerification,
     required this.isReadable,
+    this.state,
     this.issue,
+    this.pr,
   });
 
-  /// How far the work has got, named with the lifecycle's own stages.
-  ///
-  /// Five of the seven leave an artifact on disk and are therefore observable
-  /// without running anything. **`dor` and `dod` are gates, not artifacts**:
-  /// knowing either has been met means running it, which this listing
-  /// deliberately does not do. So the furthest stage reported is the furthest
-  /// one that wrote a file.
-  String get stage {
-    if (!isReadable) return 'unreadable';
-    if (hasVerification) return 'verification';
-    if (hasDelivery) return 'delivery';
-    if (hasImplementation) return 'implementation';
-    if (hasSpecification) return 'specification';
-    if (hasRequisition) return 'requisition';
-    return 'empty';
-  }
+  /// The word shown for how far it has got.
+  String get stage => state?.name ?? 'unreadable';
 
   Map<String, dynamic> toJson() => {
         'folder': folder,
         'slug': slug,
         'active': isActive,
-        'stage': stage,
+        'state': stage,
         if (issue != null) 'issue': issue,
+        if (pr != null) 'pr': pr,
       };
 
   /// One row.
@@ -121,6 +122,7 @@ class RequisitionEntry {
         if (disambiguate) folder,
         stage,
         if (issue != null) '#$issue',
+        if (pr != null) '!$pr',
       ].join('  ').trimRight();
 }
 
@@ -215,16 +217,10 @@ class RequisitionListCommand
         folder: folder,
         slug: _slugOf(folder),
         isActive: folder == activeFolder,
-        hasRequisition: _has(base, folder, 'requisition.md'),
-        hasSpecification: _has(base, folder, 'specification.md'),
-        // The implementation stage writes two artifacts across its phases;
-        // either one means it has been entered.
-        hasImplementation: _has(base, folder, 'diagnosis.md') ||
-            _has(base, folder, 'plan.md'),
-        hasDelivery: _has(base, folder, 'delivery.md'),
-        hasVerification: _has(base, folder, 'verification.md'),
         isReadable: record != null,
+        state: record?.state,
         issue: record?.issue,
+        pr: record?.pr,
       ));
     }
 
@@ -241,6 +237,4 @@ class RequisitionListCommand
     return m?.group(1) ?? folder;
   }
 
-  bool _has(Directory base, String folder, String file) =>
-      File(p.join(base.path, folder, file)).existsSync();
 }
