@@ -70,7 +70,7 @@ void main() {
 
       expect(file('$folder/requisition.md').existsSync(), isTrue);
       expect(file('$folder/issue.yaml').existsSync(), isTrue);
-      expect(file('.macss/state.yaml').existsSync(), isTrue);
+      expect(file('.macss/active_requisition.yaml').existsSync(), isTrue);
     });
 
     test('does not create the specification', () async {
@@ -99,12 +99,12 @@ void main() {
 
     // A copy of the declaration is a second answer waiting to disagree with the
     // first. `.macss/config.yaml` says it once; nothing downstream repeats it.
-    test('copies the language into neither issue.yaml nor state.yaml', () async {
+    test('copies the language into neither issue.yaml nor active_requisition.yaml', () async {
       await open(lang: 'es');
 
       expect(file('$folder/issue.yaml').readAsStringSync(),
           isNot(contains('lang')));
-      expect(file('.macss/state.yaml').readAsStringSync(),
+      expect(file('.macss/active_requisition.yaml').readAsStringSync(),
           isNot(contains('lang')));
     });
 

@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+- **`.macss/state.yaml` → `.macss/active_requisition.yaml`.** *(breaking, no
+  fallback)* The file holds `slug`, `path` and `created`: it says **which**
+  requisition is being worked on, which is a pointer and not a state. It was
+  already renamed once for this reason — `.macss/specification.yaml` →
+  `.macss/state.yaml`, *"the old name said something else"* — and that rename
+  fixed the wrong half. The name cost nothing while nothing else in the project
+  held a state; a requisition that records its own is what makes it a second
+  answer to a different question.
+
+  The old file is not read. It is git-ignored and local, so there is nothing to
+  migrate and nothing to lose — but whoever upgrades stops having an active
+  requisition, with no indication why. `macss requisition list` says so, and
+  `macss requisition activate <slug> --apply` restores it in one command.
+
 ## [0.8.1]
 
 ### Changed

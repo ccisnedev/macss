@@ -42,7 +42,7 @@ void main() {
       );
 
   String? pointerSlug() {
-    final f = File(p.join(root.path, '.macss', 'state.yaml'));
+    final f = File(p.join(root.path, '.macss', 'active_requisition.yaml'));
     if (!f.existsSync()) return null;
     return RegExp(r'^slug:\s*(.+)$', multiLine: true)
         .firstMatch(f.readAsStringSync())

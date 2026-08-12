@@ -72,10 +72,10 @@ void main() {
 
     test('local state is ignored', () {
       ensureWorkspace(repo.path);
-      writeInWorkspace('state.yaml', 'slug: demo\n');
+      writeInWorkspace('active_requisition.yaml', 'slug: demo\n');
       writeInWorkspace('plans/20260805-120000-project-adopt.md', '# Plan\n');
 
-      expect(ignored('.macss/state.yaml'), isTrue);
+      expect(ignored('.macss/active_requisition.yaml'), isTrue);
       expect(ignored('.macss/plans/20260805-120000-project-adopt.md'), isTrue);
     });
 
@@ -99,7 +99,7 @@ void main() {
     test('nothing of the workspace shows up as pending, except what is kept',
         () {
       ensureWorkspace(repo.path);
-      writeInWorkspace('state.yaml', 'slug: demo\n');
+      writeInWorkspace('active_requisition.yaml', 'slug: demo\n');
       writeInWorkspace('plans/a.md', '# Plan\n');
       writeInWorkspace('config.yaml', 'language: en\n');
 
@@ -157,7 +157,7 @@ void main() {
 
       expect(File(p.join(repo.path, '.macss', '.gitignore')).existsSync(),
           isTrue);
-      expect(ignored('.macss/state.yaml'), isTrue);
+      expect(ignored('.macss/active_requisition.yaml'), isTrue);
     });
   });
 
