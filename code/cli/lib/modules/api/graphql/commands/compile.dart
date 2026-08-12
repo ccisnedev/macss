@@ -10,7 +10,6 @@ import '../../../../src/api/graphql/compile_config.dart';
 import '../../../../src/api/graphql/compile_config_resolver.dart';
 import '../../../../src/api/graphql/compile_runner.dart';
 import '../../../../src/api/graphql/compile_validation.dart';
-import '../../../../src/plan_apply.dart';
 
 class GraphqlCompileInput extends Input {
   final String? sourceRoot;

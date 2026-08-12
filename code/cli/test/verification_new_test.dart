@@ -16,7 +16,6 @@ import 'package:macss_cli/modules/requisition/publisher.dart';
 import 'package:macss_cli/modules/requisition/requisition_record.dart';
 import 'package:macss_cli/modules/specification/workspace.dart';
 import 'package:macss_cli/modules/verification/commands/new.dart';
-import 'package:macss_cli/src/plan_apply.dart';
 import 'package:macss_cli/src/project_config.dart';
 import 'package:macss_cli/templates/template_resolver.dart';
 

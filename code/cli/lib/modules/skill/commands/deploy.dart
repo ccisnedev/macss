@@ -20,7 +20,6 @@ import 'package:cli_router/cli_router.dart';
 import 'package:modular_cli_sdk/modular_cli_sdk.dart';
 
 import '../../../assets.dart';
-import '../../../src/plan_apply.dart';
 import '../deployer.dart';
 import '../host.dart';
 

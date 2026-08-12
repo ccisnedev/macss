@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
-import 'package:macss_cli/src/plan_apply.dart';
 import 'package:macss_cli/src/workspace_dir.dart';
 import 'package:macss_cli/modules/specification/workspace.dart';
 

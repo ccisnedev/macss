@@ -6,7 +6,6 @@ import 'package:test/test.dart';
 
 import 'package:macss_cli/modules/requisition/commands/activate.dart';
 import 'package:macss_cli/modules/specification/workspace.dart';
-import 'package:macss_cli/src/plan_apply.dart';
 
 /// Selecting a requisition is the operation that used to be a hand edit.
 ///

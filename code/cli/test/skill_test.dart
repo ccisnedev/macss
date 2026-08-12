@@ -9,7 +9,6 @@ import 'package:macss_cli/modules/skill/commands/deploy.dart';
 import 'package:macss_cli/modules/skill/commands/list.dart';
 import 'package:macss_cli/modules/skill/host.dart';
 import 'package:macss_cli/modules/skill/skill_builder.dart';
-import 'package:macss_cli/src/plan_apply.dart';
 import 'package:modular_cli_sdk/modular_cli_sdk.dart';
 
 import 'support/memory_sink.dart';

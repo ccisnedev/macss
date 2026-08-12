@@ -7,7 +7,6 @@ import 'package:test/test.dart';
 import 'package:macss_cli/assets.dart';
 import 'package:macss_cli/modules/project/commands/create.dart';
 import 'package:macss_cli/modules/project/project_builder.dart';
-import 'package:macss_cli/src/plan_apply.dart';
 import 'package:macss_cli/src/project_config.dart';
 
 import 'support/memory_sink.dart';

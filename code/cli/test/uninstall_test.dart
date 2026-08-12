@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
-import 'package:macss_cli/src/plan_apply.dart';
 
 import 'package:macss_cli/macss_cli.dart';
 import 'package:macss_cli/modules/global/commands/uninstall.dart';

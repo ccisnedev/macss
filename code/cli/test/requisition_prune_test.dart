@@ -12,7 +12,6 @@ import 'package:test/test.dart';
 
 import 'package:macss_cli/modules/requisition/commands/prune.dart';
 import 'package:macss_cli/modules/specification/workspace.dart';
-import 'package:macss_cli/src/plan_apply.dart';
 
 void main() {
   late Directory root;

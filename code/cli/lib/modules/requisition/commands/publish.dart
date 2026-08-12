@@ -16,7 +16,6 @@ import 'package:cli_router/cli_router.dart';
 import 'package:modular_cli_sdk/modular_cli_sdk.dart';
 import 'package:path/path.dart' as p;
 
-import '../../../src/plan_apply.dart';
 import '../../specification/slug.dart';
 import '../../specification/workspace.dart';
 import '../requisition_record.dart';

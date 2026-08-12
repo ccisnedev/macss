@@ -13,7 +13,6 @@ import 'package:modular_cli_sdk/modular_cli_sdk.dart';
 import 'package:path/path.dart' as p;
 
 import '../../../assets.dart';
-import '../../../src/plan_apply.dart';
 import '../host.dart';
 
 // ─── Input ──────────────────────────────────────────────────────────────────

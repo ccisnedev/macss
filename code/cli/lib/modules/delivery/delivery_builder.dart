@@ -33,7 +33,7 @@ void buildDeliveryModule(ModuleBuilder m, {required Assets assets}) {
     params: DeliveryNewInput.params,
   );
 
-  m.command<DeliveryCheckInput, DeliveryCheckOutput>(
+  m.query<DeliveryCheckInput, DeliveryCheckOutput>(
     'check',
     (req) => DeliveryCheckCommand(
       DeliveryCheckInput.fromCliRequest(req),

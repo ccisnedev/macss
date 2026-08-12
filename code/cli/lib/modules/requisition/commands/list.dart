@@ -181,7 +181,7 @@ class RequisitionListOutput extends Output {
 // ─── Command ────────────────────────────────────────────────────────────────
 
 class RequisitionListCommand
-    implements Command<RequisitionListInput, RequisitionListOutput> {
+    implements Query<RequisitionListInput, RequisitionListOutput> {
   @override
   final RequisitionListInput input;
 

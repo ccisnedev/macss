@@ -84,7 +84,7 @@ class VerificationCheckOutput extends Output {
 // ─── Command ────────────────────────────────────────────────────────────────
 
 class VerificationCheckCommand
-    implements Command<VerificationCheckInput, VerificationCheckOutput> {
+    implements Query<VerificationCheckInput, VerificationCheckOutput> {
   @override
   final VerificationCheckInput input;
 

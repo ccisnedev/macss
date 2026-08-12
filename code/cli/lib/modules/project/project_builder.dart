@@ -9,7 +9,6 @@ library;
 import 'package:modular_cli_sdk/modular_cli_sdk.dart';
 
 import '../../assets.dart';
-import '../../src/plan_apply.dart';
 import 'commands/adopt.dart';
 import 'commands/check.dart';
 import 'commands/create.dart';
@@ -42,7 +41,7 @@ void buildProjectModule(
     params: CreateInput.params,
   );
 
-  m.command<ProjectCheckInput, ProjectCheckOutput>(
+  m.query<ProjectCheckInput, ProjectCheckOutput>(
     'check',
     (req) => ProjectCheckCommand(ProjectCheckInput.fromCliRequest(req)),
     description:

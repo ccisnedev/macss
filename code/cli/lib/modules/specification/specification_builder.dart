@@ -47,7 +47,7 @@ void buildSpecificationModule(ModuleBuilder m, {required Assets assets}) {
     params: SpecificationPublishInput.params,
   );
 
-  m.command<SpecificationCheckInput, SpecificationCheckOutput>(
+  m.query<SpecificationCheckInput, SpecificationCheckOutput>(
     'check',
     (req) => SpecificationCheckCommand(
       SpecificationCheckInput.fromCliRequest(req),

@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:test/test.dart';
 
-import 'package:macss_cli/src/plan_apply.dart';
 
 import 'support/memory_sink.dart';
 

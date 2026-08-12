@@ -8,14 +8,14 @@ import 'commands/upgrade.dart';
 import 'commands/version.dart';
 
 void buildGlobalModule(ModuleBuilder m, {required Assets assets}) {
-  m.command<TuiInput, TuiOutput>(
+  m.query<TuiInput, TuiOutput>(
     '',
     (req) => TuiCommand(TuiInput.fromCliRequest(req)),
     description: 'Display MACSS banner and available commands',
     params: TuiInput.params,
   );
 
-  m.command<DoctorInput, DoctorOutput>(
+  m.query<DoctorInput, DoctorOutput>(
     'doctor',
     (req) => DoctorCommand(DoctorInput.fromCliRequest(req), assets: assets),
     description: 'Verify local installation and assets integrity',
@@ -36,7 +36,7 @@ void buildGlobalModule(ModuleBuilder m, {required Assets assets}) {
     params: UninstallInput.params,
   );
 
-  m.command<VersionInput, VersionOutput>(
+  m.query<VersionInput, VersionOutput>(
     'version',
     (req) => VersionCommand(VersionInput.fromCliRequest(req)),
     description: 'Print the current CLI version',

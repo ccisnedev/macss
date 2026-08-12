@@ -32,7 +32,7 @@ void buildVerificationModule(ModuleBuilder m, {required Assets assets}) {
     params: VerificationNewInput.params,
   );
 
-  m.command<VerificationCheckInput, VerificationCheckOutput>(
+  m.query<VerificationCheckInput, VerificationCheckOutput>(
     'check',
     (req) => VerificationCheckCommand(
       VerificationCheckInput.fromCliRequest(req),

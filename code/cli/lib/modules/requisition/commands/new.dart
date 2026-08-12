@@ -23,7 +23,6 @@ import 'package:modular_cli_sdk/modular_cli_sdk.dart';
 import 'package:path/path.dart' as p;
 
 import '../../../src/gitignore.dart';
-import '../../../src/plan_apply.dart';
 import '../../../src/project_config.dart';
 import '../../../templates/template_resolver.dart';
 import '../../specification/slug.dart';

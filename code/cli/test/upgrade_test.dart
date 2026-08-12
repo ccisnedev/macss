@@ -1,5 +1,4 @@
 import 'package:test/test.dart';
-import 'package:macss_cli/src/plan_apply.dart';
 
 import 'package:macss_cli/macss_cli.dart';
 import 'package:macss_cli/modules/global/commands/upgrade.dart';

@@ -15,7 +15,6 @@ import 'package:macss_cli/assets.dart';
 import 'package:macss_cli/modules/requisition/requisition_record.dart';
 import 'package:macss_cli/modules/specification/commands/publish.dart';
 import 'package:macss_cli/modules/specification/workspace.dart';
-import 'package:macss_cli/src/plan_apply.dart';
 
 void main() {
   late Directory root;

@@ -10,7 +10,6 @@ import 'package:macss_cli/modules/project/commands/adopt.dart';
 import 'package:macss_cli/modules/project/commands/check.dart';
 import 'package:macss_cli/modules/project/commands/create.dart';
 import 'package:macss_cli/modules/project/project_builder.dart';
-import 'package:macss_cli/src/plan_apply.dart';
 import 'package:macss_cli/src/project_config.dart';
 
 import 'support/memory_sink.dart';

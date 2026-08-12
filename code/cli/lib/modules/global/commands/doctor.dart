@@ -48,7 +48,7 @@ class DoctorOutput extends Output {
 
 // ─── Command ────────────────────────────────────────────────────────────────
 
-class DoctorCommand implements Command<DoctorInput, DoctorOutput> {
+class DoctorCommand implements Query<DoctorInput, DoctorOutput> {
   @override
   final DoctorInput input;
 
