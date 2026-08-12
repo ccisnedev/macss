@@ -19,6 +19,7 @@ import 'package:path/path.dart' as p;
 
 import '../../../assets.dart';
 import '../../../src/project_config.dart';
+import '../../../src/steps.dart';
 import '../canon.dart';
 
 // ─── Input ──────────────────────────────────────────────────────────────────
@@ -34,12 +35,9 @@ class CreateInput extends Input {
   /// still be a choice nobody made (ADR 0009).
   final String? lang;
 
-  final ChangeFlags flags;
-
   CreateInput({
     required this.resolvedPath,
     required this.workingDirectory,
-    required this.flags,
     this.lang,
   });
 
@@ -48,27 +46,16 @@ class CreateInput extends Input {
     String? workingDirectory,
   }) {
     final rawPath = req.flagString('path', aliases: const ['p']);
-    final lang = req.flagString('lang');
     workingDirectory ??= Directory.current.path;
-    final flags = ChangeFlags.fromCliRequest(req);
-
-    if (rawPath == null) {
-      return CreateInput(
-        resolvedPath: null,
-        workingDirectory: workingDirectory,
-        flags: flags,
-        lang: lang,
-      );
-    }
-
-    final resolved =
-        p.isAbsolute(rawPath) ? rawPath : p.join(workingDirectory, rawPath);
 
     return CreateInput(
-      resolvedPath: resolved,
+      resolvedPath: rawPath == null
+          ? null
+          : (p.isAbsolute(rawPath)
+                ? rawPath
+                : p.join(workingDirectory, rawPath)),
       workingDirectory: workingDirectory,
-      flags: flags,
-      lang: lang,
+      lang: req.flagString('lang'),
     );
   }
 
@@ -93,7 +80,6 @@ class CreateInput extends Input {
           'Language of this project documents. There is no default: a fallback '
           'would be a choice nobody made',
     ),
-    ...ChangeFlags.params,
   ];
 
   @override
@@ -104,36 +90,40 @@ class CreateInput extends Input {
         'resolvedPath': resolvedPath,
         'workingDirectory': workingDirectory,
         'lang': lang,
-        'plan': flags.plan,
-        'apply': flags.apply,
-        'autoapprove': flags.autoapprove,
       };
 }
 
 // ─── Output ─────────────────────────────────────────────────────────────────
 
 class CreateOutput extends Output {
-  final String message;
-  final bool created;
-  final String? planPath;
-  final int _exitCode;
+  CreateOutput({required this.root, required this.did});
 
-  CreateOutput({
-    required this.message,
-    required this.created,
-    this.planPath,
-    int exitCode = ExitCode.ok,
-  }) : _exitCode = exitCode;
+  final String root;
 
-  @override
-  Map<String, dynamic> toJson() =>
-      {'message': message, 'created': created, 'planPath': planPath};
+  /// One `verb  target` line per step that ran, in order.
+  final List<({String verb, String target})> did;
+
+  /// Whether anything was actually stamped. A second run creates nothing, and
+  /// that is the ordinary answer rather than a failure.
+  bool get created => did.any((s) => s.verb == 'create');
 
   @override
-  int get exitCode => _exitCode;
+  Map<String, dynamic> toJson() => {
+    'root': root,
+    'created': created,
+    'did': {for (final s in did) s.target: s.verb},
+  };
 
   @override
-  String? toText() => message;
+  int get exitCode => ExitCode.ok;
+
+  @override
+  String? toText() => created
+      ? did.map((s) => '${s.verb.padRight(8)} ${s.target}').join('\n')
+      : [
+          'Project already initialized at $root',
+          ...did.map((s) => '${s.verb.padRight(8)} ${s.target}'),
+        ].join('\n');
 }
 
 // ─── Command ────────────────────────────────────────────────────────────────
@@ -143,105 +133,102 @@ class CreateCommand implements Command<CreateInput, CreateOutput> {
   final CreateInput input;
 
   final Assets assets;
-  final Approver? approver;
-  final DateTime Function()? now;
 
-  CreateCommand(this.input, {required this.assets, this.approver, this.now});
+  CreateCommand(this.input, {required this.assets});
 
   @override
   String? validate() {
     // Neither `--path` nor `--lang` is checked here: both are declared
     // required, so an invocation missing either is refused before this runs.
-    return input.flags.validate();
+    return null;
   }
 
+  /// The root, then the canon, then the configuration.
+  ///
+  /// `create` is idempotent, so the answer is per file: stamp it, or leave the
+  /// one already there — and each step decides that for itself, once. The list
+  /// used to be built twice, as a preview and again as the work.
   @override
-  Future<CreateOutput> execute() async {
+  Future<List<Step>> steps() async {
     final root = input.resolvedPath!;
 
-    // Guard: path must not be an existing file.
     if (File(root).existsSync()) {
-      return CreateOutput(
+      throw CommandException(
+        code: 'PATH_IS_A_FILE',
         message: 'Error: "$root" is an existing file, not a directory.',
-        created: false,
         exitCode: 2,
       );
     }
 
-    // What would happen, decided before anything happens. `create` is
-    // idempotent, so the answer is per file: stamp it, or leave the one that
-    // is already there.
-    final absent = canonFiles.where((f) => !_target(root, f).existsSync());
-    final rootExists = Directory(root).existsSync();
-
-    if (absent.isEmpty && rootExists) {
-      return CreateOutput(
-        message: 'Project already initialized at $root\n'
-            '${[
-          'exists   $root',
-          ...canonFiles.map((f) => 'exists   ${f.path}')
-        ].join('\n')}',
-        created: false,
-      );
-    }
-
-    final body = [
-      if (!rootExists) '  create   $root' else '  exists   $root',
-      ...canonFiles.map((f) => absent.contains(f)
-          ? '  create   ${f.path}'
-          : '  exists   ${f.path}'),
-      '  declare  $projectConfigPath (language: ${input.lang})',
-      '',
-      'An existing file is never overwritten.',
-    ].join('\n');
-
-    final decision = await ChangeGate(
-      flags: input.flags,
-      approver: approver,
-      now: now,
-    ).decide(
-      command: 'project create',
-      workingDirectory: input.workingDirectory,
-      body: body,
-    );
-
-    if (!decision.proceed) {
-      return CreateOutput(
-        message: decision.message!,
-        created: false,
-        planPath: decision.planPath,
-        exitCode: decision.blocked ? ExitCode.genericError : ExitCode.ok,
-      );
-    }
-
-    final steps = <String>[];
-    if (!rootExists) {
-      Directory(root).createSync(recursive: true);
-      steps.add('created  $root');
-    } else {
-      steps.add('exists   $root');
-    }
-    for (final file in canonFiles) {
-      steps.add(_stamp(root, file));
-    }
-
-    // The project's own configuration, and the one thing in .macss/ that is
-    // versioned: its language must be the same for everyone who clones.
-    writeProjectConfig(root, language: input.lang!);
-    steps.add('created  $projectConfigPath (language: ${input.lang})');
-
-    return CreateOutput(message: steps.join('\n'), created: true);
+    return [
+      EnsureDirectory(root),
+      for (final file in canonFiles)
+        WriteFile(
+          path: p.join(root, p.joinAll(file.path.split('/'))),
+          contents: assets.loadString(file.template),
+          shownAs: file.path,
+        ),
+      DeclareProjectLanguage(root: root, language: input.lang!),
+    ];
   }
 
-  File _target(String root, CanonFile file) =>
-      File(p.join(root, p.joinAll(file.path.split('/'))));
+  @override
+  CreateOutput describe(Execution execution) => CreateOutput(
+    root: input.resolvedPath!,
+    did: [
+      for (final o in execution.outcomes) (verb: o.verb, target: o.target),
+    ],
+  );
+}
 
-  String _stamp(String root, CanonFile file) {
-    final target = _target(root, file);
-    if (target.existsSync()) return 'exists   ${file.path}';
+// ─── Steps ──────────────────────────────────────────────────────────────────
 
-    target.parent.createSync(recursive: true);
-    target.writeAsStringSync(assets.loadString(file.template));
-    return 'created  ${file.path}';
+/// Creates a directory, or reports the one already there.
+class EnsureDirectory implements Step {
+  EnsureDirectory(this.path);
+
+  final String path;
+
+  @override
+  Preview preview() => Directory(path).existsSync()
+      ? Preview(verb: 'exists', target: path)
+      : Preview(verb: 'create', target: path);
+
+  @override
+  Future<Outcome> perform(StepContext context) async {
+    if (Directory(path).existsSync()) {
+      return Outcome(verb: 'exists', target: path);
+    }
+    Directory(path).createSync(recursive: true);
+    return Outcome(verb: 'create', target: path);
+  }
+}
+
+/// Writes the project's own configuration.
+///
+/// The one thing in `.macss/` that is versioned: the language must be the same
+/// for everyone who clones. Rewritten rather than kept — unlike the canon,
+/// which is the author's to edit, this is the answer the invocation gave.
+class DeclareProjectLanguage implements Step {
+  DeclareProjectLanguage({required this.root, required this.language});
+
+  final String root;
+  final String language;
+
+  @override
+  Preview preview() => Preview(
+    verb: 'declare',
+    target: projectConfigPath,
+    detail: 'language: $language',
+  );
+
+  @override
+  Future<Outcome> perform(StepContext context) async {
+    writeProjectConfig(root, language: language);
+    return Outcome(
+      verb: 'declare',
+      target: projectConfigPath,
+      values: {'language': language},
+    );
   }
 }

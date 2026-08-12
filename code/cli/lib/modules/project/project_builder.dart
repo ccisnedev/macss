@@ -27,7 +27,6 @@ import 'commands/create.dart';
 void buildProjectModule(
   ModuleBuilder m, {
   required Assets assets,
-  Approver? approver,
   String? workingDirectory,
 }) {
   m.command<CreateInput, CreateOutput>(
@@ -35,7 +34,6 @@ void buildProjectModule(
     (req) => CreateCommand(
       CreateInput.fromCliRequest(req, workingDirectory: workingDirectory),
       assets: assets,
-      approver: approver,
     ),
     description: 'Scaffold a new MACSS project',
     params: CreateInput.params,
@@ -54,7 +52,6 @@ void buildProjectModule(
     (req) => ProjectAdoptCommand(
       ProjectAdoptInput.fromCliRequest(req, workingDirectory: workingDirectory),
       assets: assets,
-      approver: approver,
     ),
     description:
         'Create what an existing project is missing to follow the canon — --plan or --apply',

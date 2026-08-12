@@ -17,15 +17,12 @@ class GraphqlCompileInput extends Input {
   final String? outputDirectory;
   final String? engine;
   final String workingDirectory;
-  final ChangeFlags flags;
-
   GraphqlCompileInput({
     required this.sourceRoot,
     required this.metadataFile,
     required this.outputDirectory,
     required this.engine,
     required this.workingDirectory,
-    this.flags = const ChangeFlags(),
   });
 
   factory GraphqlCompileInput.fromCliRequest(
@@ -38,7 +35,6 @@ class GraphqlCompileInput extends Input {
       outputDirectory: req.flagString('output'),
       engine: req.flagString('engine'),
       workingDirectory: workingDirectory ?? Directory.current.path,
-      flags: ChangeFlags.fromCliRequest(req),
     );
   }
 
@@ -61,7 +57,6 @@ class GraphqlCompileInput extends Input {
       'engine',
       description: 'GraphQL engine. Supported: sqlserver',
     ),
-    ...ChangeFlags.params,
   ];
 
   @override
@@ -74,22 +69,52 @@ class GraphqlCompileInput extends Input {
     'outputDirectory': outputDirectory,
     'engine': engine,
     'workingDirectory': workingDirectory,
-    'plan': flags.plan,
-    'apply': flags.apply,
-    'autoapprove': flags.autoapprove,
   };
 }
 
-class GraphqlCompileOutput extends Output {
-  final String message;
-  final int _exitCode;
-  final GraphqlCompileResolvedConfig? resolvedConfig;
+// ─── Steps ──────────────────────────────────────────────────────────────────
 
-  GraphqlCompileOutput({
-    required this.message,
-    int exitCode = ExitCode.ok,
-    this.resolvedConfig,
-  }) : _exitCode = exitCode;
+/// Runs the compiler over the resolved configuration.
+///
+/// The configuration is resolved and validated when the step is built, so the
+/// plan describes the compile that actually runs — and a configuration that
+/// cannot compile never reaches a plan at all.
+class CompileGraphqlArtifacts implements Step {
+  CompileGraphqlArtifacts({required this.runner, required this.config});
+
+  final GraphqlCompileRunner runner;
+  final GraphqlCompileResolvedConfig config;
+
+  @override
+  Preview preview() => Preview(
+    verb: 'compile',
+    target: config.outputDirectory,
+    detail: [
+      'source ${config.sourceRoot}',
+      'metadata ${config.metadataFile}',
+      'engine ${config.engine}',
+      'the output directory is written by the compiler, so anything already '
+          'there is replaced by what this run produces',
+    ].join('; '),
+  );
+
+  @override
+  Future<Outcome> perform(StepContext context) async {
+    final result = await runner.run(config);
+    return Outcome(
+      verb: 'compile',
+      target: config.outputDirectory,
+      detail: result.message,
+      values: {'message': result.message},
+    );
+  }
+}
+
+class GraphqlCompileOutput extends Output {
+  GraphqlCompileOutput({required this.message, this.resolvedConfig});
+
+  final String message;
+  final GraphqlCompileResolvedConfig? resolvedConfig;
 
   @override
   Map<String, dynamic> toJson() => {
@@ -98,7 +123,7 @@ class GraphqlCompileOutput extends Output {
   };
 
   @override
-  int get exitCode => _exitCode;
+  int get exitCode => ExitCode.ok;
 
   @override
   String? toText() => message;
@@ -111,91 +136,72 @@ class GraphqlCompileCommand
 
   final GraphqlCompileConfigResolver configResolver;
   final GraphqlCompileRunner runner;
-  final Approver? approver;
-  final DateTime Function()? now;
 
   GraphqlCompileCommand(
     this.input, {
     GraphqlCompileConfigResolver? configResolver,
     GraphqlCompileRunner? runner,
-    this.approver,
-    this.now,
   }) : configResolver = configResolver ??
             GraphqlCompileConfigResolver(environment: Platform.environment),
        runner = runner ??
             ModularApiGraphqlCompileRunner(environment: Platform.environment);
 
   @override
-  String? validate() => input.flags.validate();
+  String? validate() => null;
 
+  GraphqlCompileResolvedConfig? _resolved;
+
+  /// One step, over a configuration resolved and validated first.
+  ///
+  /// A plan built from a configuration that cannot compile would describe work
+  /// that will never happen, so the validation throws before any step exists —
+  /// and it keeps the exit codes it always had: 2 for a usage error, 3 for a
+  /// configuration error.
   @override
-  Future<GraphqlCompileOutput> execute() async {
+  Future<List<Step>> steps() async {
     final resolved = configResolver.resolve(input);
+    _resolved = resolved;
 
     try {
       validateGraphqlCompileConfig(resolved);
     } on GraphqlCompileUsageError catch (error) {
-      return GraphqlCompileOutput(
+      throw CommandException(
+        code: 'GRAPHQL_COMPILE_USAGE',
         message: error.message,
         exitCode: 2,
-        resolvedConfig: resolved,
       );
     } on GraphqlCompileConfigError catch (error) {
-      return GraphqlCompileOutput(
+      throw CommandException(
+        code: 'GRAPHQL_COMPILE_CONFIG',
         message: error.message,
         exitCode: 3,
-        resolvedConfig: resolved,
       );
     }
 
-    // The config is validated first: a plan built from a configuration that
-    // cannot compile would describe work that will never happen.
-    final decision = await ChangeGate(
-      flags: input.flags,
-      approver: approver,
-      now: now,
-    ).decide(
-      command: 'api graphql compile',
-      workingDirectory: input.workingDirectory,
-      body: [
-        'would compile GraphQL artifacts:',
-        '',
-        '  source   ${resolved.sourceRoot}',
-        '  metadata ${resolved.metadataFile}',
-        '  engine   ${resolved.engine}',
-        '  output   ${resolved.outputDirectory}',
-        '',
-        'The output directory is written by the compiler, so anything already '
-            'there is replaced by what this run produces.',
-      ].join('\n'),
-    );
+    return [CompileGraphqlArtifacts(runner: runner, config: resolved)];
+  }
 
-    if (!decision.proceed) {
-      return GraphqlCompileOutput(
-        message: decision.message!,
-        exitCode: decision.blocked ? ExitCode.genericError : ExitCode.ok,
-        resolvedConfig: resolved,
+  @override
+  GraphqlCompileOutput describe(Execution execution) {
+    final failure = execution.failure?.error;
+    if (failure is GraphqlCompileExecutionError) {
+      throw CommandException(
+        code: 'GRAPHQL_COMPILE_FAILED',
+        message: failure.message,
+        exitCode: failure.hasBlockingDiagnostics ? 4 : 5,
       );
     }
-
-    try {
-      final result = await runner.run(resolved);
-      return GraphqlCompileOutput(
-        message: result.message,
-        resolvedConfig: result.resolvedConfig ?? resolved,
-      );
-    } on GraphqlCompileExecutionError catch (error) {
-      return GraphqlCompileOutput(
-        message: error.message,
-        exitCode: error.hasBlockingDiagnostics ? 4 : 5,
-        resolvedConfig: resolved,
-      );
-    } catch (error) {
-      return GraphqlCompileOutput(
-        message: 'Unexpected GraphQL compile failure: $error',
+    if (failure != null) {
+      throw CommandException(
+        code: 'GRAPHQL_COMPILE_FAILED',
+        message: 'Unexpected GraphQL compile failure: $failure',
         exitCode: 5,
-        resolvedConfig: resolved,
       );
     }
+
+    return GraphqlCompileOutput(
+      message: execution.outcomes.single.values['message'] as String,
+      resolvedConfig: _resolved,
+    );
   }
 }

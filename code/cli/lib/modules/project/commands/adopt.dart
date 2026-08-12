@@ -35,7 +35,9 @@ import 'package:path/path.dart' as p;
 import '../../../assets.dart';
 import '../../../src/gitignore.dart';
 import '../../../src/project_config.dart';
+import '../../../src/steps.dart';
 import '../canon.dart';
+import 'create.dart' show DeclareProjectLanguage;
 
 // ─── Input ──────────────────────────────────────────────────────────────────
 
@@ -53,11 +55,8 @@ class ProjectAdoptInput extends Input {
   /// decision, and a fallback would be a choice nobody made (ADR 0009).
   final String? lang;
 
-  final ChangeFlags flags;
-
   ProjectAdoptInput({
     required this.resolvedPath,
-    required this.flags,
     String? workingDirectory,
     this.lang,
   }) : workingDirectory = workingDirectory ?? resolvedPath;
@@ -73,7 +72,6 @@ class ProjectAdoptInput extends Input {
           raw == null ? cwd : (p.isAbsolute(raw) ? raw : p.join(cwd, raw)),
       workingDirectory: cwd,
       lang: req.flagString('lang'),
-      flags: ChangeFlags.fromCliRequest(req),
     );
   }
 
@@ -93,7 +91,6 @@ class ProjectAdoptInput extends Input {
           'Language of this project documents. There is no default: a fallback '
           'would be a choice nobody made',
     ),
-    ...ChangeFlags.params,
   ];
 
   @override
@@ -103,49 +100,53 @@ class ProjectAdoptInput extends Input {
   Map<String, dynamic> toJson() => {
         'resolvedPath': resolvedPath,
         'lang': lang,
-        'plan': flags.plan,
-        'apply': flags.apply,
-        'autoapprove': flags.autoapprove,
       };
 }
 
 // ─── Output ─────────────────────────────────────────────────────────────────
 
 class ProjectAdoptOutput extends Output {
-  final String message;
-  final List<String> created;
-  final bool applied;
-
-  /// Where the plan was written, when the caller asked for `--plan`.
-  final String? planPath;
-
-  /// True when `--apply` reached a human who said no. Not an error in the
-  /// command — the answer was taken and honoured — but a non-zero exit, so a
-  /// script cannot mistake a refusal for a change.
-  final bool declined;
-
   ProjectAdoptOutput({
-    required this.message,
     required this.created,
-    required this.applied,
-    this.planPath,
-    this.declined = false,
+    required this.declared,
+    required this.retired,
   });
+
+  /// The canon files this stamped.
+  final List<String> created;
+
+  /// Whether the language was declared or re-declared.
+  final bool declared;
+
+  /// The `.gitignore` entries MACSS itself wrote and no longer manages.
+  final List<String> retired;
+
+  /// Whether anything changed at all. Nothing to adopt is the ordinary answer
+  /// for a project already at the canon, not a failure.
+  bool get applied => created.isNotEmpty || declared || retired.isNotEmpty;
 
   @override
   Map<String, dynamic> toJson() => {
-        'message': message,
-        'created': created,
-        'applied': applied,
-        'planPath': planPath,
-        'declined': declined,
-      };
+    'created': created,
+    'declared': declared,
+    'retired': retired,
+    'applied': applied,
+  };
 
   @override
-  int get exitCode => declined ? ExitCode.genericError : ExitCode.ok;
+  int get exitCode => ExitCode.ok;
 
   @override
-  String? toText() => message;
+  String? toText() => applied
+      ? [
+          ...created.map((path) => '  created  $path'),
+          if (declared) '  declared $projectConfigPath',
+          ...retired.map((e) => '  retired  $e'),
+          '',
+          'Adopted. Run `macss project check` to see what still needs your '
+              'judgement.',
+        ].join('\n')
+      : 'Nothing to adopt — every canonical file is already present.';
 }
 
 // ─── Command ────────────────────────────────────────────────────────────────
@@ -177,104 +178,71 @@ class ProjectAdoptCommand
     }
     // `--lang` is declared required, so an invocation without it never reaches
     // this method.
-    return input.flags.validate();
+    return null;
+  }
+
+  /// What the canon requires and the project lacks, then the language, then
+  /// the entries MACSS itself wrote and no longer manages.
+  ///
+  /// The retirement is a step of its own rather than a side effect of applying:
+  /// it is the one thing `adopt` removes, so it is the one thing a reader most
+  /// needs the plan to have told them about.
+  @override
+  Future<List<Step>> steps() async {
+    final root = input.resolvedPath;
+
+    return [
+      for (final file in missingCanonFiles(root))
+        WriteFile(
+          path: p.join(root, p.joinAll(file.path.split('/'))),
+          contents: assets.loadString(file.template),
+          shownAs: file.path,
+        ),
+      if (projectLanguage(root) != input.lang)
+        DeclareProjectLanguage(root: root, language: input.lang!),
+      for (final entry in retiredGitignoreEntriesIn(root))
+        RetireGitignoreEntry(root: root, entry: entry),
+    ];
   }
 
   @override
-  Future<ProjectAdoptOutput> execute() async {
-    final root = input.resolvedPath;
-    final missing = missingCanonFiles(root);
-    final retired = retiredGitignoreEntriesIn(root);
-    final declaring = projectLanguage(root) != input.lang;
+  ProjectAdoptOutput describe(Execution execution) => ProjectAdoptOutput(
+    created: [
+      for (final o in execution.outcomes)
+        if (o.verb == 'create') o.target,
+    ],
+    declared: execution.outcomes.any((o) => o.verb == 'declare'),
+    retired: [
+      for (final o in execution.outcomes)
+        if (o.verb == 'retire') o.target,
+    ],
+  );
+}
 
-    // Nothing to change means nothing to plan. Writing an empty plan file
-    // would leave an artifact saying "no artifact was needed".
-    if (missing.isEmpty && retired.isEmpty && !declaring) {
-      return ProjectAdoptOutput(
-        message: 'Nothing to adopt — every canonical file is already present.',
-        created: const [],
-        applied: false,
-      );
-    }
+// ─── Steps ──────────────────────────────────────────────────────────────────
 
-    // The one rendering, used by both modes. Rule 6 of ADR 0007: what `--apply`
-    // shows and what `--plan` writes are the same computation, rendered the
-    // same way. Two renderings would drift, and drift between the plan and the
-    // change is the whole failure this convention exists to prevent.
-    //
-    // The retirement is named here rather than done quietly on apply: it is the
-    // one thing `adopt` removes, so it is the one thing a reader most needs the
-    // plan to have told them about.
-    final body = [
-      if (missing.isNotEmpty) ...[
-        '${missing.length} file(s) would be created in $root:',
-        '',
-        ...missing.map((f) => '  create   ${f.path}'),
-      ],
-      if (declaring) ...[
-        if (missing.isNotEmpty) '',
-        '  declare  $projectConfigPath (language: ${input.lang})',
-      ],
-      if (retired.isNotEmpty) ...[
-        if (missing.isNotEmpty || declaring) '',
-        'Obsolete MACSS entries would be retired from $root/.gitignore:',
-        '',
-        ...retired.map((e) => '  retire   $e'),
-        '',
-        'The workspace now carries its own .gitignore. While the project root '
-            'excludes it, git does not descend into it, so that rule cannot '
-            'take effect and the project configuration cannot be versioned.',
-      ],
-      '',
-      'Nothing else is touched: adopt creates what the canon requires, never '
-          'overwrites, and removes only entries MACSS itself wrote. '
-          'Run `macss project check` for what needs your judgement.',
-    ].join('\n');
+/// Removes one `.gitignore` entry MACSS wrote and no longer manages.
+///
+/// The licence is the same one `skill deploy` uses to prune its own namespace:
+/// an entry under the MACSS header is machine-written output, not a user edit.
+/// Nothing outside that header is touched.
+class RetireGitignoreEntry implements Step {
+  RetireGitignoreEntry({required this.root, required this.entry});
 
-    final decision = await ChangeGate(
-      flags: input.flags,
-      approver: approver,
-      now: now,
-    ).decide(
-      command: 'project adopt',
-      workingDirectory: input.workingDirectory,
-      body: body,
-    );
+  final String root;
+  final String entry;
 
-    if (!decision.proceed) {
-      return ProjectAdoptOutput(
-        message: decision.message!,
-        created: const [],
-        applied: false,
-        planPath: decision.planPath,
-        declined: decision.blocked,
-      );
-    }
+  @override
+  Preview preview() => Preview(
+    verb: 'retire',
+    target: entry,
+    detail: 'from $root/.gitignore — the workspace carries its own now, and '
+        'git does not descend into an excluded directory',
+  );
 
-    final created = <String>[];
-    for (final file in missing) {
-      final target = File(p.join(root, p.joinAll(file.path.split('/'))));
-      target.parent.createSync(recursive: true);
-      target.writeAsStringSync(assets.loadString(file.template));
-      created.add(file.path);
-    }
-
-    if (declaring) writeProjectConfig(root, language: input.lang!);
-    final retirement = retired.isEmpty ? null : removeGitignoreEntries(root);
-
-    final lines = [
-      ...created.map((path) => '  created  $path'),
-      if (declaring)
-        '  declared $projectConfigPath (language: ${input.lang})',
-      if (retirement != null) ...retired.map((e) => '  retired  $e'),
-      '',
-      'Adopted. Run `macss project check` to see what still needs your '
-          'judgement.',
-    ];
-    return ProjectAdoptOutput(
-      message: lines.join('\n'),
-      created: created,
-      applied: true,
-    );
+  @override
+  Future<Outcome> perform(StepContext context) async {
+    removeGitignoreEntries(root);
+    return Outcome(verb: 'retire', target: entry);
   }
 }
