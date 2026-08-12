@@ -8,6 +8,29 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **`macss verification new`** — the record is opened before the walk starts,
+  listing every criterion of the contract and judging none of them. Written
+  afterwards a record is a reconstruction: what survives is what somebody
+  remembers, which is the part that went smoothly.
+
+  It reads the contract from the **platform**, not from disk. A verifier may
+  hold no copy at all — `docs/requisitions/` is not versioned, so a local
+  `specification.md` can be absent, stale, or edited since the body froze — and
+  what is authoritative is the frozen issue body.
+
+  It is the first scaffold in this CLI whose content depends on another
+  document: the skeleton comes from a template in the project's language, and
+  the criteria are generated from the contract by the same `acIds` the
+  specification gate uses, so the two cannot disagree about what a criterion is
+  called.
+
+  It refuses rather than guessing in three cases: an issue body with no
+  `macss:specification` marker, because the contract cannot be told apart from
+  the request it follows; a contract that declares no criterion, which is a
+  defect of the contract and not of the walk; and a requisition with no issue.
+  And it never re-opens a record that exists — a walk already begun is exactly
+  what re-scaffolding would throw away.
+
 - **`macss delivery publish`** — the pull request appears as the consequence of
   publishing the delivery, the way the issue appears from publishing the
   requisition. There is no `macss pr` module for the same reason there is no
