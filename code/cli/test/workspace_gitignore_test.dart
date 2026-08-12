@@ -1,9 +1,12 @@
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
+import 'package:modular_cli_sdk/modular_cli_sdk.dart';
 import 'package:test/test.dart';
 
 import 'package:macss_cli/src/workspace_dir.dart';
+import 'package:macss_cli/src/plan_file.dart';
+import 'package:macss_cli/src/project_config.dart';
 import 'package:macss_cli/modules/specification/workspace.dart';
 
 /// `.macss/` ignores itself, and the questions are put to **git**.
@@ -130,19 +133,30 @@ void main() {
     // The defect that produced this requirement: `--plan` in a project that had
     // never opened a requisition created `.macss/` with nothing ignoring it.
     test('writing a plan file leaves the workspace ignored', () {
+      writeProjectConfig(repo.path, language: 'en');
       PlanFile.write(
         workingDirectory: repo.path,
-        command: 'project adopt',
-        body: 'would create CHANGELOG.md',
+        plan: PlanDocument(
+          route: 'project adopt',
+          previews: [Preview(verb: 'create', target: 'CHANGELOG.md')],
+        ),
         now: DateTime(2026, 8, 5, 12, 0, 0),
       );
 
       expect(File(p.join(repo.path, '.macss', '.gitignore')).existsSync(),
           isTrue);
+
+      // The plan itself must not reach git. `.gitignore` and `config.yaml` may:
+      // the workspace ignores everything and names those two as exceptions,
+      // because they are decisions a human made rather than machine output.
       final macssLines =
           statusLines().where((l) => l.contains('.macss')).toList();
+      expect(macssLines, isNot(contains(contains('plans'))));
       for (final line in macssLines) {
-        expect(line, contains('.macss/.gitignore'));
+        expect(
+          line,
+          anyOf(contains('.macss/.gitignore'), contains('.macss/config.yaml')),
+        );
       }
     });
 

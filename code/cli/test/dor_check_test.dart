@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:modular_cli_sdk/modular_cli_sdk.dart';
 import 'package:path/path.dart' as p;
+import 'package:modular_cli_sdk/testing.dart';
 import 'package:test/test.dart';
 
 import 'package:macss_cli/assets.dart';
@@ -43,25 +44,20 @@ void main() {
   Future<void> openRequisition() {
     // The project declares its language once; every document derives from it.
     writeProjectConfig(tempDir.path, language: 'es');
-    return RequisitionNewCommand(
-      RequisitionNewInput(
-        slug: 'demo',
-        flags: const ChangeFlags(apply: true, autoapprove: true),
-      ),
+    return applyCommand(RequisitionNewCommand(
+      RequisitionNewInput(slug: 'demo'),
       resolver: resolver,
       workingDirectory: tempDir.path,
       now: clock,
-    ).execute();
+    ));
   }
 
-  Future<void> addContract() => SpecificationNewCommand(
-        SpecificationNewInput(
-          flags: const ChangeFlags(apply: true, autoapprove: true),
-        ),
+  Future<void> addContract() => applyCommand(SpecificationNewCommand(
+        SpecificationNewInput(),
         resolver: resolver,
         workingDirectory: tempDir.path,
         now: clock,
-      ).execute();
+      ));
 
   void fillForm() {
     final form = file('$folder/requisition.md');
