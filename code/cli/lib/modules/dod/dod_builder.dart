@@ -9,7 +9,7 @@ import '../../assets.dart';
 import 'commands/check.dart';
 
 void buildDodModule(ModuleBuilder m, {required Assets assets}) {
-  m.command<DodCheckInput, DodCheckOutput>(
+  m.query<DodCheckInput, DodCheckOutput>(
     'check',
     (req) => DodCheckCommand(
       DodCheckInput.fromCliRequest(req),

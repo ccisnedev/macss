@@ -44,7 +44,7 @@ class TuiOutput extends Output {
 
 // ─── Command ────────────────────────────────────────────────────────────────
 
-class TuiCommand implements Command<TuiInput, TuiOutput> {
+class TuiCommand implements Query<TuiInput, TuiOutput> {
   @override
   final TuiInput input;
   final Future<VersionCheckResult> Function({required String currentVersion})?

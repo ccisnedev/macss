@@ -13,7 +13,7 @@ import '../../assets.dart';
 import 'commands/check.dart';
 
 void buildDorModule(ModuleBuilder m, {required Assets assets}) {
-  m.command<DorCheckInput, DorCheckOutput>(
+  m.query<DorCheckInput, DorCheckOutput>(
     'check',
     (req) => DorCheckCommand(
       DorCheckInput.fromCliRequest(req),

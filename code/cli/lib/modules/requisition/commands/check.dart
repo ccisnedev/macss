@@ -69,7 +69,7 @@ class RequisitionCheckOutput extends Output {
 // ─── Command ────────────────────────────────────────────────────────────────
 
 class RequisitionCheckCommand
-    implements Command<RequisitionCheckInput, RequisitionCheckOutput> {
+    implements Query<RequisitionCheckInput, RequisitionCheckOutput> {
   @override
   final RequisitionCheckInput input;
 

@@ -42,7 +42,7 @@ class SkillListOutput extends Output {
 
 // ─── Command ────────────────────────────────────────────────────────────────
 
-class SkillListCommand implements Command<SkillListInput, SkillListOutput> {
+class SkillListCommand implements Query<SkillListInput, SkillListOutput> {
   @override
   final SkillListInput input;
 

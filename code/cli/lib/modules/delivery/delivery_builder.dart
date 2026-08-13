@@ -23,17 +23,17 @@ void buildDeliveryModule(ModuleBuilder m, {required Assets assets}) {
 
   m.command<DeliveryNewInput, DeliveryNewOutput>(
     'new',
-    (req) => DeliveryNewCommand(
+    (req) => deliveryNewCommand(
       DeliveryNewInput.fromCliRequest(req),
       resolver: resolver,
       workingDirectory: Directory.current.path,
     ),
     description: 'Open the delivery: what was built, against which contract — '
         '--plan or --apply',
-    params: DeliveryNewInput.params,
+    params: deliveryNewParams,
   );
 
-  m.command<DeliveryCheckInput, DeliveryCheckOutput>(
+  m.query<DeliveryCheckInput, DeliveryCheckOutput>(
     'check',
     (req) => DeliveryCheckCommand(
       DeliveryCheckInput.fromCliRequest(req),

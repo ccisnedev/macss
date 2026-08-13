@@ -92,7 +92,7 @@ class DodCheckOutput extends Output {
 
 // ─── Command ────────────────────────────────────────────────────────────────
 
-class DodCheckCommand implements Command<DodCheckInput, DodCheckOutput> {
+class DodCheckCommand implements Query<DodCheckInput, DodCheckOutput> {
   @override
   final DodCheckInput input;
 

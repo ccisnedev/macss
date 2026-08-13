@@ -7,12 +7,13 @@ library;
 
 import 'dart:io';
 
+import 'package:modular_cli_sdk/modular_cli_sdk.dart';
+import 'package:modular_cli_sdk/testing.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
 import 'package:macss_cli/modules/requisition/commands/prune.dart';
 import 'package:macss_cli/modules/specification/workspace.dart';
-import 'package:macss_cli/src/plan_apply.dart';
 
 void main() {
   late Directory root;
@@ -38,16 +39,16 @@ void main() {
     }
   }
 
-  Future<RequisitionPruneOutput> prune({bool apply = true}) =>
-      RequisitionPruneCommand(
-        RequisitionPruneInput(
-          flags: apply
-              ? const ChangeFlags(apply: true, autoapprove: true)
-              : const ChangeFlags(plan: true),
-        ),
-        workingDirectory: root.path,
-        now: () => DateTime(2026, 8, 12),
-      ).execute();
+  RequisitionPruneCommand pruner() => RequisitionPruneCommand(
+    RequisitionPruneInput(),
+    workingDirectory: root.path,
+  );
+
+  Future<RequisitionPruneOutput> prune() async =>
+      await applyCommand(pruner());
+
+  /// What it says it would remove. Nothing is removed.
+  Future<List<Preview>> plan() => previewCommand(pruner());
 
   group('what goes', () {
     test('a requirement that is done, and one that was discarded', () async {
@@ -111,7 +112,8 @@ void main() {
       final out = await prune();
 
       expect(folder('20260801-broken').existsSync(), isTrue);
-      expect(out.message, contains('unreadable'));
+      expect(out.unreadable, contains('20260801-broken'));
+      expect(out.toText(), contains('unreadable'));
     });
 
     test('a record whose state is a word nobody defined', () async {
@@ -124,34 +126,23 @@ void main() {
   });
 
   group('the convention', () {
-    test('--plan names every folder that would go, and removes none', () async {
+    test('names every folder that would go, and removes none', () async {
       make('20260801-finished', state: 'done');
       make('20260802-live', state: 'ready');
 
-      final out = await prune(apply: false);
+      final previews = await plan();
 
       expect(folder('20260801-finished').existsSync(), isTrue);
-      final plan = File(out.planPath!).readAsStringSync();
-      expect(plan, contains('20260801-finished'));
-      expect(plan, isNot(contains('20260802-live')));
+      final targets = previews.map((p) => p.target).join('\n');
+      expect(targets, contains('20260801-finished'));
+      expect(targets, isNot(contains('20260802-live')));
     });
 
-    test('with neither flag it refuses', () {
-      final cmd = RequisitionPruneCommand(
-        RequisitionPruneInput(flags: const ChangeFlags()),
-        workingDirectory: root.path,
-      );
-
-      expect(cmd.validate(), contains('Choose --plan or --apply'));
-    });
-
-    test('nothing to remove says so and writes no plan', () async {
+    test('nothing to remove is no steps at all', () async {
       make('20260801-live', state: 'ready');
 
-      final out = await prune(apply: false);
-
-      expect(out.removed, isEmpty);
-      expect(out.planPath, isNull);
+      expect(await plan(), isEmpty);
+      expect((await prune()).removed, isEmpty);
     });
   });
 

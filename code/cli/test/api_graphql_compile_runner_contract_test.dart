@@ -2,9 +2,10 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
-import 'package:macss_cli/src/plan_apply.dart';
 
 import 'package:macss_cli/modules/api/graphql/commands/compile.dart';
+
+import 'support/graphql_run.dart';
 import 'package:macss_cli/src/api/graphql/compile_config.dart';
 import 'package:macss_cli/src/api/graphql/compile_config_resolver.dart';
 import 'package:macss_cli/src/api/graphql/compile_runner.dart';
@@ -43,38 +44,36 @@ void main() {
         ),
       );
 
-      final output = await GraphqlCompileCommand(
+      final output = await runOf(GraphqlCompileCommand(
         GraphqlCompileInput(
           sourceRoot: sourceRoot.path,
           metadataFile: metadataFile.path,
           outputDirectory: p.join(tempDir.path, 'artifacts', 'graphql'),
           engine: 'sqlserver',
           workingDirectory: tempDir.path,
-          flags: const ChangeFlags(apply: true, autoapprove: true),
         ),
         configResolver: GraphqlCompileConfigResolver(environment: const {}),
         runner: fakeRunner,
-      ).execute();
+      ));
 
       expect(output.exitCode, 0);
-      expect(output.toText(), contains('runner ok'));
+      expect(output.text, contains('runner ok'));
       expect(fakeRunner.calls, 1);
       expect(fakeRunner.lastConfig?.sourceRoot, sourceRoot.path);
     });
 
     test('validation errors do not invoke the runner', () async {
-      final output = await GraphqlCompileCommand(
+      final output = await runOf(GraphqlCompileCommand(
         GraphqlCompileInput(
           sourceRoot: sourceRoot.path,
           metadataFile: metadataFile.path,
           outputDirectory: p.join(tempDir.path, 'artifacts', 'graphql'),
           engine: 'postgres',
           workingDirectory: tempDir.path,
-          flags: const ChangeFlags(apply: true, autoapprove: true),
         ),
         configResolver: GraphqlCompileConfigResolver(environment: const {}),
         runner: fakeRunner,
-      ).execute();
+      ));
 
       expect(output.exitCode, 2);
       expect(fakeRunner.calls, 0);
@@ -85,41 +84,39 @@ void main() {
         'compile emitted blocking diagnostics',
       );
 
-      final output = await GraphqlCompileCommand(
+      final output = await runOf(GraphqlCompileCommand(
         GraphqlCompileInput(
           sourceRoot: sourceRoot.path,
           metadataFile: metadataFile.path,
           outputDirectory: p.join(tempDir.path, 'artifacts', 'graphql'),
           engine: 'sqlserver',
           workingDirectory: tempDir.path,
-          flags: const ChangeFlags(apply: true, autoapprove: true),
         ),
         configResolver: GraphqlCompileConfigResolver(environment: const {}),
         runner: fakeRunner,
-      ).execute();
+      ));
 
       expect(output.exitCode, 4);
-      expect(output.toText(), contains('blocking diagnostics'));
+      expect(output.text, contains('blocking diagnostics'));
     });
 
     test('unexpected runner failures map to exit code 5', () async {
       fakeRunner.error = StateError('boom');
 
-      final output = await GraphqlCompileCommand(
+      final output = await runOf(GraphqlCompileCommand(
         GraphqlCompileInput(
           sourceRoot: sourceRoot.path,
           metadataFile: metadataFile.path,
           outputDirectory: p.join(tempDir.path, 'artifacts', 'graphql'),
           engine: 'sqlserver',
           workingDirectory: tempDir.path,
-          flags: const ChangeFlags(apply: true, autoapprove: true),
         ),
         configResolver: GraphqlCompileConfigResolver(environment: const {}),
         runner: fakeRunner,
-      ).execute();
+      ));
 
       expect(output.exitCode, 5);
-      expect(output.toText(), contains('Unexpected GraphQL compile failure'));
+      expect(output.text, contains('Unexpected GraphQL compile failure'));
     });
   });
 }

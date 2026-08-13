@@ -6,14 +6,20 @@ import 'package:test/test.dart';
 
 import 'package:macss_cli/modules/requisition/commands/activate.dart';
 import 'package:macss_cli/modules/specification/workspace.dart';
-import 'package:macss_cli/src/plan_apply.dart';
+
+import 'package:modular_cli_sdk/testing.dart';
 
 /// Selecting a requisition is the operation that used to be a hand edit.
 ///
 /// Two properties are being bought. It must never pick for you when what you
 /// gave is ambiguous — the requisition says *"refuses and shows the candidates
 /// rather than guessing"*. And it must obey the same convention as everything
-/// else that writes: a command exempt from it is the first crack in it.
+/// else that writes.
+///
+/// What is **not** tested here any more: that `--plan` and `--apply` are
+/// declared, that exactly one is required, and that neither is a default. The
+/// SDK applies those to every command and has its own tests for them; asserting
+/// them once per command tested the SDK from thirteen places at once.
 void main() {
   late Directory root;
 
@@ -26,17 +32,9 @@ void main() {
       Directory(p.join(root.path, 'docs', 'requisitions', folder))
           .createSync(recursive: true);
 
-  RequisitionActivateCommand command(
-    String? slug, {
-    bool plan = false,
-    bool apply = false,
-    bool autoapprove = true,
-  }) =>
+  RequisitionActivateCommand command(String? slug) =>
       RequisitionActivateCommand(
-        RequisitionActivateInput(
-          slug: slug,
-          flags: ChangeFlags(plan: plan, apply: apply, autoapprove: autoapprove),
-        ),
+        RequisitionActivateInput(slug: slug),
         workingDirectory: root.path,
         now: () => DateTime(2026, 8, 6),
       );
@@ -55,7 +53,7 @@ void main() {
       makeRequisition('20260804-alpha');
       makeRequisition('20260805-beta');
 
-      final out = await command('beta', apply: true).execute();
+      final out = await applyCommand(command('beta'));
 
       expect(out.exitCode, ExitCode.ok);
       expect(resolveRequisitionDir(root.path), endsWith('20260805-beta'));
@@ -65,7 +63,7 @@ void main() {
     test('announces which requisition is now active', () async {
       makeRequisition('20260805-beta');
 
-      final out = await command('beta', apply: true).execute();
+      final out = await applyCommand(command('beta'));
 
       expect(out.toText(), contains('beta'));
     });
@@ -73,7 +71,7 @@ void main() {
     test('a name matching nothing refuses, and shows what does exist', () {
       makeRequisition('20260804-alpha');
 
-      final error = command('nothing-like-it', apply: true).validate();
+      final error = command('nothing-like-it').validate();
 
       expect(error, isNotNull);
       expect(error, contains('alpha'));
@@ -85,40 +83,55 @@ void main() {
       makeRequisition('20260804-demo');
       makeRequisition('20260806-demo');
 
-      final error = command('demo', apply: true).validate();
+      final error = command('demo').validate();
 
       expect(error, contains('20260804-demo'));
       expect(error, contains('20260806-demo'));
       expect(pointerSlug(), isNull, reason: 'nothing is selected on a refusal');
     });
-  });
-
-  group('it writes, so it says which of plan or apply it is doing', () {
-    test('neither flag is a usage error, and the pointer is untouched', () {
-      makeRequisition('20260805-beta');
-
-      final error = command('beta').validate();
-
-      expect(error, contains('--plan'));
-      expect(error, contains('--apply'));
-      expect(pointerSlug(), isNull);
-    });
-
-    test('--plan names what would become active and changes nothing', () async {
-      makeRequisition('20260804-alpha');
-      makeRequisition('20260805-beta');
-      await command('alpha', apply: true).execute();
-
-      final out = await command('beta', plan: true).execute();
-
-      expect(out.toText(), contains('beta'));
-      expect(pointerSlug(), 'alpha', reason: 'a plan changes nothing');
-    });
 
     test('a slug is required: there is nothing to derive it from', () {
       makeRequisition('20260805-beta');
 
-      expect(command(null, apply: true).validate(), isNotNull);
+      expect(command(null).validate(), isNotNull);
+    });
+  });
+
+  group('what it would do', () {
+    test('names the requisition that would become active', () async {
+      makeRequisition('20260805-beta');
+
+      final previews = await previewCommand(command('beta'));
+
+      expect(previews.single.verb, 'activate');
+      expect(previews.single.target, contains('20260805-beta'));
+    });
+
+    test('asking changes nothing', () async {
+      makeRequisition('20260804-alpha');
+      makeRequisition('20260805-beta');
+      await applyCommand(command('alpha'));
+
+      await previewCommand(command('beta'));
+
+      expect(pointerSlug(), 'alpha', reason: 'a preview changes nothing');
+    });
+
+    test('is one step: the pointer, and nothing else', () async {
+      makeRequisition('20260805-beta');
+
+      expect(await previewCommand(command('beta')), hasLength(1));
+    });
+  });
+
+  group('what it did', () {
+    test('is reported faithfully — it did what it said it would', () async {
+      makeRequisition('20260805-beta');
+
+      final execution = await runCommand(command('beta'));
+
+      expect(execution.isFaithful, isTrue);
+      expect(execution.isComplete, isTrue);
     });
   });
 }

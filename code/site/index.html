@@ -116,7 +116,9 @@
 
     <section id="cli">
       <h2>CLI</h2>
-      <p>The <code>macss</code> CLI scaffolds the standard project structure from templates.</p>
+      <p>The <code>macss</code> CLI carries the delivery cycle: it opens the requisition, adds the contract, publishes both to a GitHub issue, runs the stage gates, and takes the delivery and its evidence to a pull request.</p>
+
+      <p style="margin-top:1rem;">Routes are one of two kinds. A <strong>query</strong> reads and answers — <code>check</code>, <code>list</code>, <code>doctor</code>. A <strong>command</strong> changes something, and says what it would change before it does: every one takes <code>--plan</code> or <code>--apply</code>, and neither is the default.</p>
 
       <div class="hero-install" id="install">
         <div class="os-tabs" role="tablist" aria-label="Operating system">
@@ -144,20 +146,28 @@
 
       <div class="commands">
         <div class="cmd-row">
-          <code>macss create &lt;path&gt;</code>
+          <code>macss project create --path &lt;dir&gt; --lang &lt;en|es&gt; --apply</code>
           <p>Scaffold a new project with <code>code/{db,api,app,infra}</code> and documentation templates.</p>
         </div>
         <div class="cmd-row">
-          <code>macss doctor</code>
-          <p>Verify installation integrity.</p>
+          <code>macss requisition new &lt;slug&gt; --apply</code>
+          <p>Open a requisition: the Product Owner's form, its issue metadata, and the active pointer.</p>
         </div>
         <div class="cmd-row">
-          <code>macss upgrade</code>
-          <p>Download and apply the latest release.</p>
+          <code>macss requisition publish --plan</code>
+          <p>Show what would reach GitHub — the exact <code>gh</code> line included — and change nothing.</p>
         </div>
         <div class="cmd-row">
-          <code>macss version</code>
-          <p>Print the installed version.</p>
+          <code>macss dor check</code>
+          <p>Definition of Ready: the request, the contract, and a published issue.</p>
+        </div>
+        <div class="cmd-row">
+          <code>macss delivery publish --apply</code>
+          <p>Push the branch and open the pull request from the delivery.</p>
+        </div>
+        <div class="cmd-row">
+          <code>macss help</code>
+          <p>Every route this CLI accepts, listing what reads apart from what changes.</p>
         </div>
       </div>
     </section>
@@ -176,7 +186,7 @@
         </div>
         <div class="eco-row">
           <div class="eco-name"><span class="eco-name-dim">macss CLI</span></div>
-          <div class="eco-desc">Project scaffolding. Creates the standard four-layer structure from templates.</div>
+          <div class="eco-desc">The delivery cycle, end to end. Scaffolds the four-layer structure, carries requisition to pull request, and runs the stage gates.</div>
           <div class="eco-badges">
             <a class="eco-badge" href="https://github.com/ccisnedev/macss">GitHub</a>
           </div>

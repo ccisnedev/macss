@@ -215,6 +215,47 @@ surfaces.
 That structure keeps subsystem growth compatible with the same CLI identity,
 including CI/CD usage for GraphQL artifact workflows.
 
+## What the CLI is built on
+
+| Package | What it provides |
+| --- | --- |
+| [`modular_cli_sdk`](https://pub.dev/packages/modular_cli_sdk) | The framework. Route registration, the `Query` and `Command` contracts, the declared parameter contract that renders help *and* enforces parsing, output formatting for `--json` and text, and the `--plan` / `--apply` convention |
+| [`preview_executor`](https://pub.dev/packages/preview_executor) | The engine underneath that convention. Runs a command's steps in order and checks what each one did against what it said it would. Arrives transitively through the SDK — nothing here names it, because production code must not be able to run steps itself |
+| [`cli_router`](https://pub.dev/packages/cli_router) | Routing: GNU-style flags, mounted modules, middleware. Below the SDK |
+| [`modular_api`](https://pub.dev/packages/modular_api) + `modular_api_sqlserver` | The subject of `api graphql compile` — the CLI compiles artifacts *for* them |
+| `path`, `yaml` | Path handling, and reading `state.yaml` and `.macss/config.yaml` |
+
+### Queries and commands
+
+Since 0.10.0 a route is one of two kinds, and the difference is structural
+rather than an annotation:
+
+- a **query** reads and answers — `check`, `list`, `doctor`, `version`. It has
+  no preview because it has nothing to preview, and `--plan` and `--apply` are
+  rejected on one without any command author writing a line
+- a **command** changes something, as an ordered list of steps. Each step says
+  what it would do through one method and does it through another, and the
+  executor compares the two once the run is over. `--plan`, `--apply` and
+  `--autoapprove` are declared and applied by the framework for every one
+
+The two share no method, so neither can be mistaken for the other by accident.
+`macss help` lists them apart, and `macss help --json` carries the `kind` of
+every route — which is how an agent tells a reader from a writer without
+running either.
+
+### What belongs to this repository rather than to the framework
+
+- **`src/plan_file.dart`** — where a plan is filed. The SDK deliberately does
+  not decide this: it hands the plan to a sink, and this one writes under
+  `.macss/plans/`, only inside a MACSS project
+- **`src/steps.dart`** — `WriteFile` and `EnsureWorkspaceGitignored`, which half
+  the commands need
+- **`src/scaffold_document.dart`** — adding one localized document to an open
+  requisition, shared by `specification new` and `delivery new`
+- **the gates** — `requisition_gate`, `specification_gate`, `delivery_gate`,
+  `verification_gate`. These are the method rather than the framework: what a
+  document must contain before it is worth publishing
+
 ## Next Design Slice
 
 The next strong design stage is hardening and completing the `api` module

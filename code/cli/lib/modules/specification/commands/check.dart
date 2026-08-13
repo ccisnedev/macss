@@ -67,7 +67,7 @@ class SpecificationCheckOutput extends Output {
 // ─── Command ────────────────────────────────────────────────────────────────
 
 class SpecificationCheckCommand
-    implements Command<SpecificationCheckInput, SpecificationCheckOutput> {
+    implements Query<SpecificationCheckInput, SpecificationCheckOutput> {
   @override
   final SpecificationCheckInput input;
 

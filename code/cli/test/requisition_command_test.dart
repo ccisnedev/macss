@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:modular_cli_sdk/modular_cli_sdk.dart';
+import 'package:modular_cli_sdk/testing.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
@@ -12,7 +13,6 @@ import 'package:macss_cli/modules/requisition/requisition_record.dart';
 import 'package:macss_cli/modules/requisition/commands/publish.dart';
 import 'package:macss_cli/modules/requisition/publisher.dart';
 import 'package:macss_cli/modules/requisition/requisition_builder.dart';
-import 'package:macss_cli/src/plan_apply.dart';
 import 'package:macss_cli/src/project_config.dart';
 import 'package:macss_cli/templates/template_resolver.dart';
 
@@ -42,23 +42,18 @@ void main() {
   void declareLanguage(String lang) =>
       writeProjectConfig(tempDir.path, language: lang);
 
-  RequisitionNewCommand newCommand({
-    String? lang = 'es',
-    ChangeFlags flags = const ChangeFlags(apply: true, autoapprove: true),
-    Approver? approver,
-  }) {
+  RequisitionNewCommand newCommand({String? lang = 'es'}) {
     if (lang != null) declareLanguage(lang);
     return RequisitionNewCommand(
-      RequisitionNewInput(slug: 'demo', flags: flags),
+      RequisitionNewInput(slug: 'demo'),
       resolver: resolver,
       workingDirectory: tempDir.path,
       now: clock,
-      approver: approver,
     );
   }
 
-  Future<RequisitionNewOutput> open({String lang = 'es'}) =>
-      newCommand(lang: lang).execute();
+  Future<RequisitionNewOutput> open({String lang = 'es'}) async =>
+      await applyCommand(newCommand(lang: lang));
 
   File file(String relative) =>
       File(p.join(tempDir.path, p.joinAll(relative.split('/'))));
@@ -126,7 +121,7 @@ void main() {
 
       final out = await open();
 
-      expect(out.message, contains('kept'));
+      expect(out.did.map((s) => s.verb), contains('keep'));
       expect(file('$folder/requisition.md').readAsStringSync(),
           'EDITED BY THE PO');
     });
@@ -161,35 +156,34 @@ void main() {
     test('validate rejects an empty slug', () {
       declareLanguage('en');
       final cmd = RequisitionNewCommand(
-        RequisitionNewInput(
-          slug: '',
-          flags: const ChangeFlags(apply: true, autoapprove: true),
-        ),
+        RequisitionNewInput(slug: ''),
         resolver: resolver,
         workingDirectory: tempDir.path,
       );
       expect(cmd.validate(), contains('<slug> is required'));
     });
 
-    test('a bare invocation opens nothing', () async {
-      final cmd = newCommand(flags: const ChangeFlags());
-
-      expect(cmd.validate(), contains('Choose --plan or --apply'));
-      expect(Directory(p.join(tempDir.path, 'docs')).existsSync(), isFalse);
-    });
-
-    test('--plan names every file it would open, and opens none', () async {
-      final out = await newCommand(flags: const ChangeFlags(plan: true))
-          .execute();
+    test('names every file it would open, and opens none', () async {
+      final previews = await previewCommand(newCommand());
 
       expect(file('$folder/requisition.md').existsSync(), isFalse);
-      expect(file('$folder/${RequisitionRecord.fileName}').existsSync(), isFalse);
-      expect(out.planPath, isNotNull);
+      expect(
+        file('$folder/${RequisitionRecord.fileName}').existsSync(),
+        isFalse,
+      );
 
-      final plan = File(out.planPath!).readAsStringSync();
-      expect(plan, contains('requisition.md'));
-      expect(plan, contains(RequisitionRecord.fileName));
-      expect(plan, contains('active requisition'));
+      final targets = previews.map((p) => p.target).join('\n');
+      expect(targets, contains('requisition.md'));
+      expect(targets, contains(RequisitionRecord.fileName));
+      expect(previews.map((p) => p.verb), contains('activate'));
+    });
+
+    test('git-ignores the workspace before it writes into it', () async {
+      // Not an ordering detail: a project must never have a committed .macss/,
+      // and the plan is where that order is visible.
+      final previews = await previewCommand(newCommand());
+
+      expect(previews.first.target, '.gitignore');
     });
   });
 
@@ -240,20 +234,15 @@ void main() {
   });
 
   group('macss requisition export-template', () {
-    Future<ExportTemplateOutput> export({
-      String lang = 'es',
-      ChangeFlags flags = const ChangeFlags(apply: true, autoapprove: true),
-    }) =>
+    ExportTemplateCommand exporter({String lang = 'es'}) =>
         ExportTemplateCommand(
-          ExportTemplateInput(
-            resolvedPath: tempDir.path,
-            lang: lang,
-            flags: flags,
-          ),
+          ExportTemplateInput(resolvedPath: tempDir.path, lang: lang),
           resolver: resolver,
           artifact: 'requisition',
-          now: clock,
-        ).execute();
+        );
+
+    Future<ExportTemplateOutput> export({String lang = 'es'}) async =>
+        await applyCommand(exporter(lang: lang));
 
     test('writes the blank form where asked, project or not', () async {
       // tempDir is not a MACSS project: no `.macss/`, nothing to derive the
@@ -276,23 +265,53 @@ void main() {
       expect(file('.macss').existsSync(), isFalse);
     });
 
-    test('--plan names the form it would write, and writes none', () async {
-      final out = await export(flags: const ChangeFlags(plan: true));
+    test('names the form it would write, and writes none', () async {
+      final previews = await previewCommand(exporter());
 
+      expect(previews.single.verb, 'create');
+      expect(previews.single.target, endsWith('requisition.md'));
       expect(file('requisition.md').existsSync(), isFalse);
-      expect(out.planPath, isNotNull);
-      expect(File(out.planPath!).readAsStringSync(), contains('requisition'));
+    });
+
+    // The defect the plan sink's rule corrects. This command exists to be run
+    // where no project does, so filing a plan would answer a request for a
+    // blank form by creating a workspace nobody asked for.
+    test('asking what it would do creates no workspace either', () async {
+      await previewCommand(exporter());
+
+      expect(file('.macss').existsSync(), isFalse);
+    });
+
+    test('carries the template it resolved, not a promise to resolve it later',
+        () async {
+      // The contents are settled when the step is built. Deriving them again
+      // inside perform is how a preview comes to describe a different change
+      // from the one that happens.
+      final previews = await previewCommand(exporter());
+
+      expect(previews.single.detail, isNotNull);
     });
 
     test('refuses to overwrite an existing file', () async {
       await export();
       File(p.join(tempDir.path, 'requisition.md')).writeAsStringSync('MINE');
 
-      final out = await export();
-
-      expect(out.exitCode, ExitCode.conflict);
-      expect(File(p.join(tempDir.path, 'requisition.md')).readAsStringSync(),
-          'MINE');
+      // Thrown rather than reported, so it stays a conflict and not a
+      // validation failure — and so it happens before anything is planned.
+      await expectLater(
+        previewCommand(exporter()),
+        throwsA(
+          isA<CommandException>().having(
+            (e) => e.exitCode,
+            'exitCode',
+            ExitCode.conflict,
+          ),
+        ),
+      );
+      expect(
+        File(p.join(tempDir.path, 'requisition.md')).readAsStringSync(),
+        'MINE',
+      );
     });
   });
 
@@ -310,44 +329,25 @@ void main() {
     setUp(() => calls = []);
 
     RequisitionPublishCommand publishCommand({
-      bool plan = false,
-      bool apply = false,
-      bool autoapprove = true,
       ProcessRunner? run,
       String? repo,
-      Approver? approver,
-    }) =>
-        RequisitionPublishCommand(
-          RequisitionPublishInput(
-            flags: ChangeFlags(
-                plan: plan, apply: apply, autoapprove: autoapprove),
-            repo: repo,
-          ),
-          workingDirectory: tempDir.path,
-          runProcess: run ?? runner(),
-          approver: approver,
-          now: () => DateTime(2026, 8, 2, 9, 30, 15),
-        );
+    }) => RequisitionPublishCommand(
+      RequisitionPublishInput(repo: repo),
+      workingDirectory: tempDir.path,
+      runProcess: run ?? runner(),
+    );
 
-    /// Defaults to `--apply --autoapprove`: most of these tests are about what
-    /// reaches `gh`, not about the approval, and an unattended default keeps
-    /// them from turning into approval tests by accident.
+    /// Performs the steps, as `--apply --autoapprove` does. Most of these tests
+    /// are about what reaches `gh`, not about the approval — and the approval
+    /// is the SDK's, tested there.
     Future<RequisitionPublishOutput> publish({
-      bool plan = false,
-      bool apply = false,
-      bool autoapprove = true,
       ProcessRunner? run,
       String? repo,
-      Approver? approver,
-    }) =>
-        publishCommand(
-          plan: plan,
-          apply: apply,
-          autoapprove: autoapprove,
-          run: run,
-          repo: repo,
-          approver: approver,
-        ).execute();
+    }) async => await applyCommand(publishCommand(run: run, repo: repo));
+
+    /// What it says it would do. Nothing reaches `gh`.
+    Future<List<Preview>> plan({ProcessRunner? run, String? repo}) =>
+        previewCommand(publishCommand(run: run, repo: repo));
 
     Future<void> fillForm() async {
       final form = file('$folder/requisition.md');
@@ -359,84 +359,57 @@ void main() {
     test('refuses to publish an unanswered form', () async {
       await open();
 
-      final out = await publish(apply: true);
-
-      expect(out.ok, isFalse);
-      expect(out.message, contains('REQ_NO_VALUE'));
+      await expectLater(
+        publish(),
+        throwsA(
+          isA<CommandException>().having(
+            (e) => e.message,
+            'message',
+            contains('REQ_NO_VALUE'),
+          ),
+        ),
+      );
       expect(calls, isEmpty, reason: 'gh must not be reached');
     });
 
-    test('--plan reaches no gh and writes the plan file', () async {
+    test('says what it would do, and reaches no gh', () async {
       await open();
       await fillForm();
 
-      final out = await publish(plan: true);
+      final previews = await plan();
 
-      expect(out.message, contains('would create'));
-      expect(out.message, contains('inferred by gh'));
-      expect(calls, isEmpty);
-
-      expect(out.planPath, isNotNull);
-      final written = File(out.planPath!).readAsStringSync();
+      expect(previews.first.verb, 'create');
+      expect(previews.first.detail, contains('inferred by gh'));
       // The exact gh line is what actually reaches GitHub. A plan that hid it
       // would ask for approval of something the reader cannot see.
-      expect(written, contains('gh issue create'));
-      expect(written, contains('macss requisition publish'));
-    });
-
-    test('a bare publish is a usage error and reaches no gh', () async {
-      await open();
-      await fillForm();
-
-      final error = publishCommand(autoapprove: false).validate();
-
-      expect(error, contains('Choose --plan or --apply'));
+      expect(previews.first.detail, contains('gh issue create'));
       expect(calls, isEmpty);
     });
 
-    test('--apply asks before anything reaches gh', () async {
+    // The value that motivates the whole arrangement: the issue's number does
+    // not exist until the issue does, so the plan says so rather than omitting
+    // it and reading as complete.
+    test('declares the number it cannot know yet', () async {
       await open();
       await fillForm();
-      var shown = '';
 
-      await publish(
-        apply: true,
-        autoapprove: false,
-        approver: (plan) async {
-          shown = plan;
-          return true;
-        },
-      );
+      final previews = await plan();
 
-      expect(shown, contains('gh issue create'));
-      expect(calls.single, containsAllInOrder(['gh', 'issue', 'create']));
+      expect(previews.first.pending, contains('issue'));
+      expect(previews.last.verb, 'record');
+      expect(previews.last.pending, contains('issue'));
     });
 
-    test('a refusal reaches no gh and fails', () async {
+    test('creates the issue and records its number', () async {
       await open();
       await fillForm();
 
       final out = await publish(
-        apply: true,
-        autoapprove: false,
-        approver: (_) async => false,
-      );
-
-      expect(out.ok, isFalse);
-      expect(calls, isEmpty, reason: 'nothing may reach GitHub after a refusal');
-    });
-
-    test('--apply creates the issue and records its number', () async {
-      await open();
-      await fillForm();
-
-      final out = await publish(
-        apply: true,
         run: runner(stdout: 'https://github.com/o/r/issues/42'),
       );
 
-      expect(out.ok, isTrue, reason: out.message);
       expect(out.issue, 42);
+      expect(out.recorded, isTrue);
       expect(calls.single, containsAllInOrder(['gh', 'issue', 'create']));
       expect(calls.single, isNot(contains('--repo')));
 
@@ -447,17 +420,43 @@ void main() {
           reason: 'the number and the state it justifies are written together');
     });
 
+    // The number is read from the step that produced it, not asked of GitHub a
+    // second time — a second question could answer differently.
+    test('the recording step reads the number from the publishing one',
+        () async {
+      await open();
+      await fillForm();
+
+      final execution = await runCommand(
+        publishCommand(run: runner(stdout: 'https://github.com/o/r/issues/42')),
+      );
+
+      expect(execution.isFaithful, isTrue);
+      expect(execution.outcomes.last.values['issue'], 42);
+      expect(calls, hasLength(1), reason: 'gh is asked once, not twice');
+    });
+
     test('a second publish edits the issue it already created', () async {
       await open();
       await fillForm();
-      await publish(
-          apply: true, run: runner(stdout: 'https://github.com/o/r/issues/42'));
+      await publish(run: runner(stdout: 'https://github.com/o/r/issues/42'));
       calls.clear();
 
-      final out = await publish(apply: true);
+      final out = await publish();
 
-      expect(out.message, contains('updated'));
+      expect(out.updated, isTrue);
       expect(calls.single, containsAllInOrder(['gh', 'issue', 'edit', '42']));
+    });
+
+    test('an issue that already has a number has nothing to record', () async {
+      await open();
+      await fillForm();
+      await publish(run: runner(stdout: 'https://github.com/o/r/issues/42'));
+
+      final previews = await plan();
+
+      expect(previews, hasLength(1));
+      expect(previews.single.verb, 'update');
     });
 
     // `gh issue create` takes --label; `gh issue edit` rejects it and takes
@@ -473,8 +472,7 @@ void main() {
         state: RequisitionState.opened,
       ).write(p.dirname(file('$folder/x').path));
 
-      await publish(
-          apply: true, run: runner(stdout: 'https://github.com/o/r/issues/42'));
+      await publish(run: runner(stdout: 'https://github.com/o/r/issues/42'));
 
       expect(calls.single, containsAllInOrder(['issue', 'create']));
       expect(calls.single, containsAllInOrder(['--label', 'bug']));
@@ -490,9 +488,9 @@ void main() {
         issue: 42,
       ).write(p.dirname(file('$folder/x').path));
 
-      final out = await publish(apply: true);
+      final out = await publish();
 
-      expect(out.ok, isTrue, reason: out.message);
+      expect(out.updated, isTrue);
       expect(calls.single, containsAllInOrder(['issue', 'edit', '42']));
       expect(calls.single, containsAllInOrder(['--add-label', 'bug']));
       expect(calls.single, containsAllInOrder(['--add-label', 'app']));
@@ -503,21 +501,21 @@ void main() {
     test('the body grows when the specification appears', () async {
       await open();
       await fillForm();
-      final before = await publish(plan: true);
+      final before = (await plan()).first.detail!;
 
       file('$folder/specification.md').writeAsStringSync('# Contrato\n\nTexto.');
-      final after = await publish(plan: true);
+      final after = (await plan()).first.detail!;
 
-      expect(before.message, contains('requisition.md'));
-      expect(before.message, isNot(contains('specification.md')));
-      expect(after.message, contains('requisition.md + specification.md'));
+      expect(before, contains('requisition.md'));
+      expect(before, isNot(contains('specification.md')));
+      expect(after, contains('requisition.md + specification.md'));
     });
 
     test('--repo overrides what gh would infer', () async {
       await open();
       await fillForm();
 
-      await publish(apply: true, repo: 'owner/other');
+      await publish(repo: 'owner/other');
 
       expect(calls.single, containsAllInOrder(['--repo', 'owner/other']));
     });
@@ -528,21 +526,32 @@ void main() {
       file('$folder/specification.md')
           .writeAsStringSync('x' * (githubBodyLimit + 1));
 
-      final out = await publish(apply: true);
-
-      expect(out.ok, isFalse);
-      expect(out.message, contains('$githubBodyLimit'));
+      await expectLater(
+        publish(),
+        throwsA(
+          isA<CommandException>().having(
+            (e) => e.message,
+            'message',
+            contains('$githubBodyLimit'),
+          ),
+        ),
+      );
       expect(calls, isEmpty, reason: 'no point asking gh to reject it');
     });
 
-    test('a gh failure is reported, not swallowed', () async {
+    test('a gh failure stops the run and is reported, not swallowed', () async {
       await open();
       await fillForm();
 
-      final out = await publish(apply: true, run: runner(exitCode: 1));
+      final execution = await runCommand(
+        publishCommand(run: runner(exitCode: 1)),
+      );
 
-      expect(out.ok, isFalse);
-      expect(out.message, contains('failed'));
+      // The step threw, so the run is incomplete — and the recording step that
+      // follows it never runs, which is the point: there is no number to record.
+      expect(execution.isComplete, isFalse);
+      expect(execution.failure!.message, contains('failed'));
+      expect(execution.outcomes, isEmpty);
     });
   });
 

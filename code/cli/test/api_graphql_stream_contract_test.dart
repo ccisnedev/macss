@@ -8,9 +8,9 @@ void main() {
   group('api graphql stream contract', () {
     test('text mode writes command text to stdout', () async {
       final cli = ModularCli()
-        ..command<_StreamInput, _StreamOutput>(
+        ..query<_StreamInput, _StreamOutput>(
           'probe',
-          (req) => _StreamProbeCommand(_StreamInput.fromCliRequest(req)),
+          (req) => _StreamProbeQuery(_StreamInput.fromCliRequest(req)),
         );
 
       final stdout = MemorySink();
@@ -28,9 +28,9 @@ void main() {
 
     test('command exceptions are written to stderr', () async {
       final cli = ModularCli()
-        ..command<_StreamInput, _StreamOutput>(
+        ..query<_StreamInput, _StreamOutput>(
           'probe',
-          (req) => _ExceptionProbeCommand(_StreamInput.fromCliRequest(req)),
+          (req) => _ExceptionProbeQuery(_StreamInput.fromCliRequest(req)),
         );
 
       final stdout = MemorySink();
@@ -49,9 +49,9 @@ void main() {
     test('json mode ignores toText and writes structured output to stdout',
         () async {
       final cli = ModularCli()
-        ..command<_StreamInput, _StreamOutput>(
+        ..query<_StreamInput, _StreamOutput>(
           'probe',
-          (req) => _StreamProbeCommand(_StreamInput.fromCliRequest(req)),
+          (req) => _StreamProbeQuery(_StreamInput.fromCliRequest(req)),
         );
 
       final stdout = MemorySink();
@@ -94,11 +94,11 @@ class _StreamOutput extends Output {
   String? toText() => message;
 }
 
-class _StreamProbeCommand implements Command<_StreamInput, _StreamOutput> {
+class _StreamProbeQuery implements Query<_StreamInput, _StreamOutput> {
   @override
   final _StreamInput input;
 
-  _StreamProbeCommand(this.input);
+  _StreamProbeQuery(this.input);
 
   @override
   String? validate() => null;
@@ -108,11 +108,11 @@ class _StreamProbeCommand implements Command<_StreamInput, _StreamOutput> {
       _StreamOutput(message: 'human text');
 }
 
-class _ExceptionProbeCommand implements Command<_StreamInput, _StreamOutput> {
+class _ExceptionProbeQuery implements Query<_StreamInput, _StreamOutput> {
   @override
   final _StreamInput input;
 
-  _ExceptionProbeCommand(this.input);
+  _ExceptionProbeQuery(this.input);
 
   @override
   String? validate() => null;

@@ -89,7 +89,7 @@ class DeliveryCheckOutput extends Output {
 // ─── Command ────────────────────────────────────────────────────────────────
 
 class DeliveryCheckCommand
-    implements Command<DeliveryCheckInput, DeliveryCheckOutput> {
+    implements Query<DeliveryCheckInput, DeliveryCheckOutput> {
   @override
   final DeliveryCheckInput input;
 

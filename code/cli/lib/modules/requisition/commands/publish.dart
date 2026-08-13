@@ -16,30 +16,24 @@ import 'package:cli_router/cli_router.dart';
 import 'package:modular_cli_sdk/modular_cli_sdk.dart';
 import 'package:path/path.dart' as p;
 
-import '../../../src/plan_apply.dart';
 import '../../specification/slug.dart';
 import '../../specification/workspace.dart';
 import '../requisition_record.dart';
 import '../publisher.dart';
 import '../requisition_gate.dart';
+import '../steps.dart';
 
 // ─── Input ──────────────────────────────────────────────────────────────────
 
 class RequisitionPublishInput extends Input {
   final String? slug;
-  final ChangeFlags flags;
   final String? repo;
 
-  RequisitionPublishInput({
-    this.slug,
-    this.flags = const ChangeFlags(),
-    this.repo,
-  });
+  RequisitionPublishInput({this.slug, this.repo});
 
   factory RequisitionPublishInput.fromCliRequest(CliRequest req) =>
       RequisitionPublishInput(
         slug: optionalSlug(req.flagString('slug')),
-        flags: ChangeFlags.fromCliRequest(req),
         repo: req.flagString('repo'),
       );
 
@@ -53,50 +47,88 @@ class RequisitionPublishInput extends Input {
       description:
           'Target repository; by default gh infers it from this directory',
     ),
-    ...ChangeFlags.params,
   ];
 
   @override
   List<CliParam> get schemaFields => params;
 
   @override
-  Map<String, dynamic> toJson() => {
-        'slug': slug,
-        'repo': repo,
-        'plan': flags.plan,
-        'apply': flags.apply,
-        'autoapprove': flags.autoapprove,
-      };
+  Map<String, dynamic> toJson() => {'slug': slug, 'repo': repo};
+}
+
+// ─── Steps ──────────────────────────────────────────────────────────────────
+
+/// Writes the issue number into the requisition's record.
+///
+/// It reads the number from [source] rather than from GitHub: asking twice
+/// could answer differently, and this step is not the one that knows how to ask.
+class RecordIssueNumber implements Step {
+  RecordIssueNumber({
+    required this.source,
+    required this.record,
+    required this.dir,
+  });
+
+  final Step source;
+  final RequisitionRecord record;
+  final String dir;
+
+  @override
+  Preview preview() => Preview(
+    verb: 'record',
+    target: '${p.basename(dir)}/${RequisitionRecord.fileName}',
+    pending: const ['issue'],
+  );
+
+  @override
+  Future<Outcome> perform(StepContext context) async {
+    final number = context.outcomeOf(source).values['issue'] as int?;
+    if (number != null) record.published(number).write(dir);
+
+    return Outcome(
+      verb: 'record',
+      target: '${p.basename(dir)}/${RequisitionRecord.fileName}',
+      values: {'issue': number},
+    );
+  }
 }
 
 // ─── Output ─────────────────────────────────────────────────────────────────
 
 class RequisitionPublishOutput extends Output {
-  final String message;
-  final bool ok;
-  final int? issue;
-  final String? planPath;
-
   RequisitionPublishOutput({
-    required this.message,
-    this.ok = true,
+    required this.updated,
     this.issue,
-    this.planPath,
+    this.url,
+    this.recorded = false,
   });
+
+  /// Whether an existing issue was updated rather than a new one created.
+  final bool updated;
+
+  final int? issue;
+  final String? url;
+
+  /// Whether the number was written into the record — only ever on a create.
+  final bool recorded;
 
   @override
   Map<String, dynamic> toJson() => {
-        'ok': ok,
-        'message': message,
-        if (issue != null) 'issue': issue,
-        if (planPath != null) 'planPath': planPath,
-      };
+    'updated': updated,
+    if (issue != null) 'issue': issue,
+    if (url != null) 'url': url,
+    'recorded': recorded,
+  };
 
   @override
-  int get exitCode => ok ? ExitCode.ok : ExitCode.genericError;
+  int get exitCode => ExitCode.ok;
 
   @override
-  String? toText() => message;
+  String? toText() => [
+    'Issue ${updated ? 'updated' : 'created'}: $url',
+    if (recorded && issue != null)
+      '  recorded issue: $issue in ${RequisitionRecord.fileName}',
+  ].join('\n');
 }
 
 // ─── Command ────────────────────────────────────────────────────────────────
@@ -109,26 +141,17 @@ class RequisitionPublishCommand
   final String workingDirectory;
   final IssuePublisher publisher;
 
-  /// Whether the Product Owner's form is answered at all.
+  /// Whether the Product Owner's form is answered at all. A different gate on
+  /// a different question from `--plan` / `--apply`, which is why the two were
+  /// never one — and the other now belongs to the SDK.
   final RequisitionGate gate;
-
-  /// Whether this run plans or applies. A different gate on a different
-  /// question, which is why the two are not one.
-  final ChangeGate changeGate;
 
   RequisitionPublishCommand(
     this.input, {
     required this.workingDirectory,
     required ProcessRunner runProcess,
     this.gate = const RequisitionGate(),
-    Approver? approver,
-    DateTime Function()? now,
-  })  : publisher = IssuePublisher(runProcess: runProcess),
-        changeGate = ChangeGate(
-          flags: input.flags,
-          approver: approver,
-          now: now,
-        );
+  }) : publisher = IssuePublisher(runProcess: runProcess);
 
   String? get _dir => resolveRequisitionDir(workingDirectory, input.slug);
 
@@ -146,22 +169,32 @@ class RequisitionPublishCommand
     if (RequisitionRecord.read(dir) == null) {
       return 'No ${RequisitionRecord.fileName} in ${p.basename(dir)}.';
     }
-    return input.flags.validate();
+    return null;
   }
 
+  /// Whether the record already carried an issue when the steps were built.
+  bool _wasPublished = false;
+
+  /// One step to publish, and a second to record the number — but only when
+  /// there is a number to record.
+  ///
+  /// The two checks that come first are not steps: they decide whether there is
+  /// anything worth publishing at all, and a plan built from a requisition that
+  /// cannot be published would describe work that will never happen.
   @override
-  Future<RequisitionPublishOutput> execute() async {
+  Future<List<Step>> steps() async {
     final dir = _dir!;
-    final meta = RequisitionRecord.read(dir)!;
+    final record = RequisitionRecord.read(dir)!;
+    _wasPublished = record.isPublished;
 
     // Publishing an unanswered form has no purpose. The methodology check comes
-    // first; the platform limit is a separate concern, checked below.
+    // first; the platform limit is a separate concern, checked after it.
     final form = File(p.join(dir, 'requisition.md'));
     if (form.existsSync()) {
       final result = gate.evaluate(form.readAsStringSync());
       if (!result.passed) {
-        return RequisitionPublishOutput(
-          ok: false,
+        throw CommandException(
+          code: 'REQUISITION_INCOMPLETE',
           message: [
             'The requisition is not complete, so there is nothing worth '
                 'publishing yet:',
@@ -173,63 +206,40 @@ class RequisitionPublishCommand
 
     final body = assembleBody(dir);
     if (body.exceedsLimit) {
-      return RequisitionPublishOutput(
-        ok: false,
-        message: 'The assembled body is ${body.length} characters; GitHub '
+      throw CommandException(
+        code: 'BODY_TOO_LONG',
+        message:
+            'The assembled body is ${body.length} characters; GitHub '
             'accepts $githubBodyLimit. Shorten ${body.parts.join(' + ')}, or '
             'split the requisition into smaller ones.',
       );
     }
 
-    final verb = meta.isPublished ? 'update' : 'create';
-
-    // One rendering, handed either to the plan file or to the approver. The
-    // exact `gh` line is part of it: what reaches GitHub is the thing being
-    // approved, and a reviewer who cannot see the command cannot judge it.
-    final planBody = [
-      'would $verb the issue for "${p.basename(dir)}"',
-      '',
-      '  title:  ${meta.title}',
-      '  labels: ${meta.labels.isEmpty ? '(none)' : meta.labels.join(', ')}',
-      '  body:   ${body.lines} lines from ${body.parts.join(' + ')}',
-      if (input.repo == null) '  repo:   inferred by gh from this directory',
-      '',
-      'Would run:',
-      '  gh ${publisher.plannedArgs(meta, repo: input.repo).join(' ')} '
-          '--body-file <body>',
-    ].join('\n');
-
-    final decision = await changeGate.decide(
-      command: 'requisition publish',
-      workingDirectory: workingDirectory,
-      body: planBody,
+    final publish = PublishIssue(
+      publisher: publisher,
+      record: record,
+      body: body,
+      dir: dir,
+      repo: input.repo,
     );
 
-    if (!decision.proceed) {
-      return RequisitionPublishOutput(
-        message: decision.message!,
-        ok: !decision.blocked,
-        planPath: decision.planPath,
-      );
-    }
+    return [
+      publish,
+      // An issue that already has a number has nothing to record: the record is
+      // where the number came from.
+      if (!record.isPublished)
+        RecordIssueNumber(source: publish, record: record, dir: dir),
+    ];
+  }
 
-    final result =
-        await publisher.publish(meta, body, repo: input.repo);
-    if (!result.ok) {
-      return RequisitionPublishOutput(ok: false, message: result.error!);
-    }
-
-    if (result.number != null && !meta.isPublished) {
-      meta.published(result.number!).write(dir);
-    }
-
+  @override
+  RequisitionPublishOutput describe(Execution execution) {
+    final published = execution.outcomes.firstOrNull;
     return RequisitionPublishOutput(
-      issue: result.number,
-      message: [
-        'Issue ${meta.isPublished ? 'updated' : 'created'}: ${result.url}',
-        if (!meta.isPublished && result.number != null)
-          '  recorded issue: ${result.number} in ${RequisitionRecord.fileName}',
-      ].join('\n'),
+      updated: _wasPublished,
+      issue: published?.values['issue'] as int?,
+      url: published?.values['url'] as String?,
+      recorded: execution.outcomes.any((o) => o.verb == 'record'),
     );
   }
 }

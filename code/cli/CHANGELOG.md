@@ -5,6 +5,94 @@ All notable changes to this project will be documented in this file.
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.10.0]
+
+The CLI moves to `modular_cli_sdk` 0.4.1, where a route is either a **query**
+that reads and answers, or a **command** that changes something through steps
+which say what they would do before anything runs — and are held to it.
+
+**The command surface is unchanged.** Every invocation that worked before works
+now. What changed is how the commands are built, and four things a user can see,
+listed under *Changed*.
+
+### Added
+
+- **A plan names every step separately, and says what it cannot know yet.**
+  `requisition publish` announces the issue it would create *and* declares that
+  the number and URL are `known once this runs`; the step that writes the number
+  into `state.yaml` reads it from the step that produced it rather than asking
+  `gh` a second time. The same holds for the pull request in `delivery publish`
+  and `verification publish`
+
+- **Orderings that mattered are visible before they happen.**
+  `delivery publish` is push → open → record: the push is first because
+  `gh pr create` resolves the head on the remote and a branch it has never seen
+  is not there to resolve; the record is last because a number written before
+  `gh` returned would claim something the platform never received. Both were
+  comments above consecutive statements. `uninstall` unsets PATH before
+  scheduling the deletion, for the same kind of reason
+
+- **Every step's report is checked against its own claim.** A step that
+  announced `create` and did `keep` is named on stderr whatever the command
+  chose to say — the broken promise is the framework's, and a reader must not
+  have to take the command's word for it
+
+### Changed
+
+- **`--autoapprove` on its own is diagnosed as itself.** It used to fall through
+  to "Choose --plan or --apply", which answers "choose one" to somebody who had
+  chosen something — just not something that acts alone
+
+- **A refused precondition reaches stderr as an error**, where it used to reach
+  stdout as a result: an incomplete requisition, a body over GitHub's limit, a
+  form that already exists, a delivery that fails its gate. Exit codes are
+  unchanged
+
+- **A plan file is written only inside a MACSS project.** Five commands are
+  built to run where none exists — `requisition export-template`,
+  `skill deploy`, `skill clean`, `upgrade`, `uninstall` — and `export-template`
+  says so in its own contract: `--lang` is required there because *"this runs
+  where no project need exist"*. Filing a plan would have answered that by
+  creating `.macss/` in a directory whose owner asked for a blank form and
+  nothing else. Outside a project, `--plan` prints the plan and files nothing
+
+- **`--plan` on a document that already exists says `keep`.**
+  `specification new`, `delivery new` and `verification new` used to
+  short-circuit ahead of the convention, so asking what they would do to a
+  requisition that already had the document said nothing at all
+
+### Removed
+
+- **`src/plan_apply.dart`.** `ChangeFlags`, `ChangeMode`, `Approver`,
+  `ConsoleApprover`, `NoApproverAvailable`, `ChangeGate` and `ChangeDecision`
+  moved into the SDK, which declares and applies the convention for every
+  command. They were duplicated the moment it shipped them: 114 of the 190
+  errors on the version bump were four names existing in two places. What
+  survives is `src/plan_file.dart`, the one decision the SDK deliberately does
+  not take — whether a plan is kept on disk, and where
+
+- **The three ways this CLI previewed a change.** `skill deploy` threaded a
+  `dryRun` boolean into `deploySkills`, which then ran the same traversal twice;
+  `skill clean` wrote the preview loop and the removal loop out separately,
+  character for character; `requisition new` asked `existsSync()` for the
+  preview and asked again forty lines later for the work. All three worked, and
+  nothing held any of them to anything
+
+- **`message`, `planPath` and `blocked` from every command's `Output`.** They
+  described the gate rather than the work, and modelling "nothing happened" in
+  each command's DTO is how they got there
+
+### Notes
+
+- **`specification new` and `delivery new` are one command now.** Same input,
+  same validation, same step, same idempotence — what differed was four
+  strings. `verification new` is deliberately separate: it reads the frozen
+  contract from the platform before the plan is built, refuses a requisition
+  with no published issue, and its answer carries the criteria it listed
+- 490 tests pass. The count is below the previous 502 because assertions about
+  `--plan` and `--apply` were **deleted rather than rewritten**: the SDK owns
+  that rule and tests it in one place instead of thirteen
+
 ## [0.9.0]
 
 ### Added

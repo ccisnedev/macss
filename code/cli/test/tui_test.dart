@@ -201,16 +201,17 @@ void main() {
       // quickstart actually scaffolds, rather than only that it parses.
       var asked = false;
       final code =
-          await (ModularCli()..module(
+          await (ModularCli(
+                // The approval belongs to the CLI now, not to a module: the SDK
+                // takes it for every command, so standing in for the human is
+                // done once here rather than per builder.
+                approver: (_) async {
+                  asked = true;
+                  return true;
+                },
+              )..module(
                 'project',
-                (m) => buildProjectModule(
-                  m,
-                  assets: assets,
-                  approver: (_) async {
-                    asked = true;
-                    return true;
-                  },
-                ),
+                (m) => buildProjectModule(m, assets: assets),
               ))
               .run(args, stdout: MemorySink().sink, stderr: MemorySink().sink);
 

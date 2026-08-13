@@ -38,6 +38,23 @@ const macssRetiredGitignoreEntries = <String>[
 
 const _header = '# MACSS — local workspace (git-ignored)';
 
+/// Which of [entries] a project's root `.gitignore` does not carry yet.
+///
+/// The counterpart of [retiredGitignoreEntriesIn], and asked for the same
+/// reason: a step has to be able to say what it would add without adding it.
+/// [ensureGitignoreEntries] answers from here too, so the two are one rule
+/// consulted twice rather than two free to disagree.
+List<String> missingGitignoreEntriesIn(
+  String root, {
+  List<String> entries = macssGitignoreEntries,
+}) {
+  final gitignore = File('$root/.gitignore');
+  if (!gitignore.existsSync()) return List.of(entries);
+
+  final content = gitignore.readAsStringSync();
+  return entries.where((e) => !content.contains(e)).toList();
+}
+
 /// Ensures [entries] exist in `<root>/.gitignore` under the MACSS header.
 /// Idempotent — only missing entries are appended. Returns a one-line status
 /// when the file changed, otherwise `null`.
@@ -53,7 +70,7 @@ String? ensureGitignoreEntries(
   }
 
   var content = gitignore.readAsStringSync();
-  final missing = entries.where((e) => !content.contains(e)).toList();
+  final missing = missingGitignoreEntriesIn(root, entries: entries);
   if (missing.isEmpty) return null;
 
   if (!content.endsWith('\n')) content = '$content\n';

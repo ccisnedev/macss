@@ -100,7 +100,7 @@ class ProjectCheckOutput extends Output {
 // ─── Command ────────────────────────────────────────────────────────────────
 
 class ProjectCheckCommand
-    implements Command<ProjectCheckInput, ProjectCheckOutput> {
+    implements Query<ProjectCheckInput, ProjectCheckOutput> {
   @override
   final ProjectCheckInput input;
 

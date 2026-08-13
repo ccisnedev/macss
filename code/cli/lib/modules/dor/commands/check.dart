@@ -85,7 +85,7 @@ class DorCheckOutput extends Output {
 
 // ─── Command ────────────────────────────────────────────────────────────────
 
-class DorCheckCommand implements Command<DorCheckInput, DorCheckOutput> {
+class DorCheckCommand implements Query<DorCheckInput, DorCheckOutput> {
   @override
   final DorCheckInput input;
 
