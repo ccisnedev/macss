@@ -15,10 +15,10 @@ import 'package:modular_cli_sdk/modular_cli_sdk.dart';
 import 'package:path/path.dart' as p;
 
 import '../../../assets.dart';
-import '../../../src/plan_apply.dart';
 import '../../../src/vocabulary.dart';
 import '../../requisition/requisition_record.dart';
 import '../../requisition/publisher.dart';
+import '../../requisition/steps.dart';
 import '../slug.dart';
 import '../specification_gate.dart';
 import '../workspace.dart';
@@ -27,19 +27,13 @@ import '../workspace.dart';
 
 class SpecificationPublishInput extends Input {
   final String? slug;
-  final ChangeFlags flags;
   final String? repo;
 
-  SpecificationPublishInput({
-    this.slug,
-    this.flags = const ChangeFlags(),
-    this.repo,
-  });
+  SpecificationPublishInput({this.slug, this.repo});
 
   factory SpecificationPublishInput.fromCliRequest(CliRequest req) =>
       SpecificationPublishInput(
         slug: optionalSlug(req.flagString('slug')),
-        flags: ChangeFlags.fromCliRequest(req),
         repo: req.flagString('repo'),
       );
 
@@ -49,44 +43,34 @@ class SpecificationPublishInput extends Input {
     CliParam.string('repo',
         description:
             'Target repository; by default gh infers it from this directory'),
-    ...ChangeFlags.params,
   ];
 
   @override
   List<CliParam> get schemaFields => params;
 
   @override
-  Map<String, dynamic> toJson() => {
-        'slug': slug,
-        'repo': repo,
-        'plan': flags.plan,
-        'apply': flags.apply,
-        'autoapprove': flags.autoapprove,
-      };
+  Map<String, dynamic> toJson() => {'slug': slug, 'repo': repo};
 }
 
 // ─── Output ─────────────────────────────────────────────────────────────────
 
 class SpecificationPublishOutput extends Output {
-  final String message;
-  final bool ok;
-  final String? planPath;
+  SpecificationPublishOutput({this.issue, this.url});
 
-  SpecificationPublishOutput({
-    required this.message,
-    this.ok = true,
-    this.planPath,
-  });
+  final int? issue;
+  final String? url;
 
   @override
-  Map<String, dynamic> toJson() =>
-      {'ok': ok, 'message': message, if (planPath != null) 'planPath': planPath};
+  Map<String, dynamic> toJson() => {
+    if (issue != null) 'issue': issue,
+    if (url != null) 'url': url,
+  };
 
   @override
-  int get exitCode => ok ? ExitCode.ok : ExitCode.genericError;
+  int get exitCode => ExitCode.ok;
 
   @override
-  String? toText() => message;
+  String? toText() => 'Issue $issue updated: $url';
 }
 
 // ─── Command ────────────────────────────────────────────────────────────────
@@ -103,23 +87,13 @@ class SpecificationPublishCommand
   /// Whether the contract is worth publishing.
   final SpecificationGate gate;
 
-  /// Whether this run plans or applies.
-  final ChangeGate changeGate;
-
   SpecificationPublishCommand(
     this.input, {
     required this.workingDirectory,
     required ProcessRunner runProcess,
     required Assets assets,
     SpecificationGate? gate,
-    Approver? approver,
-    DateTime Function()? now,
   })  : publisher = IssuePublisher(runProcess: runProcess),
-        changeGate = ChangeGate(
-          flags: input.flags,
-          approver: approver,
-          now: now,
-        ),
         gate = gate ??
             SpecificationGate(vocabulary: Vocabularies.fromAssets(assets));
 
@@ -145,20 +119,27 @@ class SpecificationPublishCommand
           '`macss requisition publish --apply` first, so there is an issue to '
           'add the contract to.';
     }
-    return input.flags.validate();
+    return null;
   }
 
+  /// Two steps: the issue, then the state it earns.
+  ///
+  /// The order is the guarantee. The contract is on the issue, so the
+  /// requirement is specified — and a state written before `gh` returned would
+  /// claim something the platform never received. That used to be a comment
+  /// above two consecutive lines; it is now the order of the list, and the plan
+  /// shows it.
   @override
-  Future<SpecificationPublishOutput> execute() async {
+  Future<List<Step>> steps() async {
     final dir = _dir!;
-    final meta = RequisitionRecord.read(dir)!;
+    final record = RequisitionRecord.read(dir)!;
 
     final result = gate.evaluate(
       File(p.join(dir, 'specification.md')).readAsStringSync(),
     );
     if (!result.passed) {
-      return SpecificationPublishOutput(
-        ok: false,
+      throw CommandException(
+        code: 'SPECIFICATION_NOT_READY',
         message: [
           'The contract is not ready, so there is nothing worth publishing yet:',
           ...result.violations.map((v) => '  - ${v.code}: ${v.message}'),
@@ -168,47 +149,36 @@ class SpecificationPublishCommand
 
     final body = assembleBody(dir);
     if (body.exceedsLimit) {
-      return SpecificationPublishOutput(
-        ok: false,
+      throw CommandException(
+        code: 'BODY_TOO_LONG',
         message: 'The assembled body is ${body.length} characters; GitHub '
             'accepts $githubBodyLimit. Shorten ${body.parts.join(' + ')}, or '
             'split the requisition into smaller ones.',
       );
     }
 
-    final decision = await changeGate.decide(
-      command: 'specification publish',
-      workingDirectory: workingDirectory,
-      body: [
-        'would update issue ${meta.issue}',
-        '',
-        '  body:   ${body.lines} lines from ${body.parts.join(' + ')}',
-        '',
-        'Would run:',
-        '  gh ${publisher.plannedArgs(meta, repo: input.repo).join(' ')} '
-            '--body-file <body>',
-      ].join('\n'),
-    );
+    return [
+      PublishIssue(
+        publisher: publisher,
+        record: record,
+        body: body,
+        dir: dir,
+        repo: input.repo,
+      ),
+      RecordRequisitionState(
+        record: record,
+        dir: dir,
+        state: RequisitionState.specified,
+      ),
+    ];
+  }
 
-    if (!decision.proceed) {
-      return SpecificationPublishOutput(
-        message: decision.message!,
-        ok: !decision.blocked,
-        planPath: decision.planPath,
-      );
-    }
-
-    final published = await publisher.publish(meta, body, repo: input.repo);
-    if (!published.ok) {
-      return SpecificationPublishOutput(ok: false, message: published.error!);
-    }
-
-    // The contract is on the issue, so the requirement is specified. Recorded
-    // only after `gh` returned: a state written before the call would claim
-    // something the platform never received.
-    meta.at(RequisitionState.specified).write(dir);
-
+  @override
+  SpecificationPublishOutput describe(Execution execution) {
+    final published = execution.outcomes.firstOrNull;
     return SpecificationPublishOutput(
-        message: 'Issue ${meta.issue} updated: ${published.url}');
+      issue: published?.values['issue'] as int?,
+      url: published?.values['url'] as String?,
+    );
   }
 }

@@ -6,9 +6,9 @@ void main() {
   group('CLI scaffold', () {
     test('responds to a registered command with exit code 0', () async {
       final cli = ModularCli();
-      cli.command<PingInput, PingOutput>(
+      cli.query<PingInput, PingOutput>(
         'ping',
-        (req) => PingCommand(PingInput.fromCliRequest(req)),
+        (req) => PingQuery(PingInput.fromCliRequest(req)),
         description: 'Ping test',
       );
 
@@ -44,10 +44,10 @@ class PingOutput extends Output {
   int get exitCode => ExitCode.ok;
 }
 
-class PingCommand implements Command<PingInput, PingOutput> {
+class PingQuery implements Query<PingInput, PingOutput> {
   @override
   final PingInput input;
-  PingCommand(this.input);
+  PingQuery(this.input);
 
   @override
   String? validate() => null;

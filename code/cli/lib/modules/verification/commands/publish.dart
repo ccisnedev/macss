@@ -18,10 +18,11 @@ import 'package:modular_cli_sdk/modular_cli_sdk.dart';
 import 'package:path/path.dart' as p;
 
 import '../../../assets.dart';
-import '../../../src/plan_apply.dart';
 import '../../../src/vocabulary.dart';
 import '../../delivery/commands/check.dart' show GitRunner;
 import '../../delivery/pull_request_publisher.dart';
+import '../../delivery/steps.dart';
+import '../../requisition/steps.dart';
 import '../../requisition/publisher.dart';
 import '../../requisition/requisition_record.dart';
 import '../../specification/slug.dart';
@@ -35,15 +36,13 @@ import '../verification_gate.dart';
 class VerificationPublishInput extends Input {
   final String? slug;
   final String? repo;
-  final ChangeFlags flags;
 
-  VerificationPublishInput({this.slug, this.repo, required this.flags});
+  VerificationPublishInput({this.slug, this.repo});
 
   factory VerificationPublishInput.fromCliRequest(CliRequest req) =>
       VerificationPublishInput(
         slug: optionalSlug(req.flagString('slug')),
         repo: req.flagString('repo'),
-        flags: ChangeFlags.fromCliRequest(req),
       );
 
   static final List<CliParam> params = [
@@ -51,44 +50,39 @@ class VerificationPublishInput extends Input {
         description: 'Requisition to publish; defaults to the active one'),
     CliParam.string('repo',
         description: 'owner/name; defaults to what gh infers here'),
-    ...ChangeFlags.params,
   ];
 
   @override
   List<CliParam> get schemaFields => params;
 
   @override
-  Map<String, dynamic> toJson() => {
-        'slug': slug,
-        'repo': repo,
-        'plan': flags.plan,
-        'apply': flags.apply,
-        'autoapprove': flags.autoapprove,
-      };
+  Map<String, dynamic> toJson() => {'slug': slug, 'repo': repo};
 }
 
 // ─── Output ─────────────────────────────────────────────────────────────────
 
 class VerificationPublishOutput extends Output {
-  final String message;
-  final bool ok;
-  final String? planPath;
+  VerificationPublishOutput({this.pr, this.url, this.recordedState});
 
-  VerificationPublishOutput({
-    required this.message,
-    this.ok = true,
-    this.planPath,
-  });
+  final int? pr;
+  final String? url;
+  final String? recordedState;
 
   @override
-  Map<String, dynamic> toJson() =>
-      {'message': message, 'ok': ok, 'planPath': planPath};
+  Map<String, dynamic> toJson() => {
+    if (pr != null) 'pr': pr,
+    if (url != null) 'url': url,
+    if (recordedState != null) 'state': recordedState,
+  };
 
   @override
-  int get exitCode => ok ? ExitCode.ok : ExitCode.genericError;
+  int get exitCode => ExitCode.ok;
 
   @override
-  String? toText() => message;
+  String? toText() => [
+    'Evidence added to pull request #$pr: $url',
+    if (recordedState != null) '  recorded state: $recordedState',
+  ].join('\n');
 }
 
 // ─── Command ────────────────────────────────────────────────────────────────
@@ -103,7 +97,6 @@ class VerificationPublishCommand
   final PullRequestPublisher publisher;
   final SpecificationGate specificationGate;
   final VerificationGate verificationGate;
-  final ChangeGate changeGate;
   final GitRunner runGit;
 
   VerificationPublishCommand(
@@ -112,15 +105,11 @@ class VerificationPublishCommand
     required this.runProcess,
     required Assets assets,
     GitRunner? runGit,
-    Approver? approver,
-    DateTime Function()? now,
     this.verificationGate = const VerificationGate(),
     SpecificationGate? specificationGate,
   })  : publisher = PullRequestPublisher(runProcess: runProcess),
         specificationGate = specificationGate ??
             SpecificationGate(vocabulary: Vocabularies.fromAssets(assets)),
-        changeGate =
-            ChangeGate(flags: input.flags, approver: approver, now: now),
         runGit = runGit ??
             ((args) => Process.runSync('git', args,
                 workingDirectory: workingDirectory));
@@ -147,11 +136,18 @@ class VerificationPublishCommand
     if (!File(p.join(dir, 'verification.md')).existsSync()) {
       return 'No verification.md — run `macss verification new --apply` first.';
     }
-    return input.flags.validate();
+    return null;
   }
 
+  /// Three steps: push, publish, record.
+  ///
+  /// The push is a safety net rather than a requirement — verification produces
+  /// no code, so nothing to push is the ordinary case. It is a step all the
+  /// same, because the plan has to say that a push may happen before one does,
+  /// and because a push that fails is worth reporting even where it is allowed
+  /// to.
   @override
-  Future<VerificationPublishOutput> execute() async {
+  Future<List<Step>> steps() async {
     final dir = _dir!;
     final record = RequisitionRecord.read(dir)!;
 
@@ -164,7 +160,10 @@ class VerificationPublishCommand
       gate: specificationGate,
     );
     if (!contract.ok) {
-      return VerificationPublishOutput(ok: false, message: contract.failure!);
+      throw CommandException(
+        code: 'NO_FROZEN_CONTRACT',
+        message: contract.failure!,
+      );
     }
 
     final result = verificationGate.evaluate(
@@ -172,8 +171,8 @@ class VerificationPublishCommand
       criteria: contract.ids,
     );
     if (!result.passed) {
-      return VerificationPublishOutput(
-        ok: false,
+      throw CommandException(
+        code: 'VERIFICATION_INCOMPLETE',
         message: [
           'The record is not complete, so there is nothing worth publishing '
               'yet:',
@@ -188,61 +187,44 @@ class VerificationPublishCommand
       body.parts,
     );
     if (annotated.exceedsLimit) {
-      return VerificationPublishOutput(
-        ok: false,
+      throw CommandException(
+        code: 'BODY_TOO_LONG',
         message: 'The assembled body is ${annotated.length} characters; GitHub '
             'accepts $githubBodyLimit. Shorten ${body.parts.join(' + ')}.',
       );
     }
 
-    final decision = await changeGate.decide(
-      command: 'verification publish',
-      workingDirectory: workingDirectory,
-      body: [
-        'would add the evidence to pull request #${record.pr}',
-        '',
-        '  body:     ${annotated.lines} lines from ${body.parts.join(' + ')}',
-        '  criteria: ${contract.ids.length}, all judged',
-        '  state:    ${record.state.name} → ${RequisitionState.verified.name}',
-        '',
-        'Would run:',
-        '  git push',
-        '  gh ${publisher.plannedArgs(record, base: record.base ?? '', head: record.head ?? '', repo: input.repo).join(' ')} '
-            '--body-file <body>',
-      ].join('\n'),
-    );
+    return [
+      PushBranch(runGit: runGit, branch: null, required: false),
+      PublishPullRequest(
+        publisher: publisher,
+        record: record,
+        body: annotated,
+        base: record.base ?? '',
+        head: record.head ?? '',
+        dir: dir,
+        repo: input.repo,
+      ),
+      RecordRequisitionState(
+        record: record,
+        dir: dir,
+        state: RequisitionState.verified,
+      ),
+    ];
+  }
 
-    if (!decision.proceed) {
-      return VerificationPublishOutput(
-        message: decision.message!,
-        ok: !decision.blocked,
-        planPath: decision.planPath,
-      );
-    }
-
-    // A safety net, not a requirement: verification produces no code, so
-    // nothing to push is the ordinary case and is not a failure. What this
-    // covers is the walk that turned up a fix.
-    runGit(['push']);
-
-    final published = await publisher.publish(
-      record,
-      annotated,
-      base: record.base ?? '',
-      head: record.head ?? '',
-      repo: input.repo,
-    );
-    if (!published.ok) {
-      return VerificationPublishOutput(ok: false, message: published.error!);
-    }
-
-    record.at(RequisitionState.verified).write(dir);
-
+  @override
+  VerificationPublishOutput describe(Execution execution) {
+    final published = execution.outcomes
+        .where((o) => o.values.containsKey('pr'))
+        .firstOrNull;
+    final recorded = execution.outcomes
+        .where((o) => o.verb == 'record')
+        .firstOrNull;
     return VerificationPublishOutput(
-      message: [
-        'Evidence added to pull request #${record.pr}: ${published.url}',
-        '  recorded state: ${RequisitionState.verified.name}',
-      ].join('\n'),
+      pr: published?.values['pr'] as int?,
+      url: published?.values['url'] as String?,
+      recordedState: recorded?.values['state'] as String?,
     );
   }
 }

@@ -23,7 +23,7 @@ void buildSkillModule(ModuleBuilder m, {required Assets assets}) {
     params: SkillDeployInput.params,
   );
 
-  m.command<SkillListInput, SkillListOutput>(
+  m.query<SkillListInput, SkillListOutput>(
     'list',
     (req) => SkillListCommand(SkillListInput.fromCliRequest(req), assets: assets),
     description: 'List the lifecycle skills this CLI ships',

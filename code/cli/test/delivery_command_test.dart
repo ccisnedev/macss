@@ -3,6 +3,8 @@ library;
 
 import 'dart:io';
 
+import 'package:macss_cli/src/scaffold_document.dart';
+import 'package:modular_cli_sdk/testing.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
@@ -12,7 +14,6 @@ import 'package:macss_cli/modules/delivery/commands/new.dart';
 import 'package:macss_cli/modules/requisition/requisition_record.dart';
 import 'package:macss_cli/modules/specification/workspace.dart';
 import 'package:macss_cli/src/checks.dart';
-import 'package:macss_cli/src/plan_apply.dart';
 import 'package:macss_cli/src/project_config.dart';
 import 'package:macss_cli/templates/template_resolver.dart';
 
@@ -44,14 +45,14 @@ void main() {
     if (root.existsSync()) root.deleteSync(recursive: true);
   });
 
-  Future<DeliveryNewOutput> open() => DeliveryNewCommand(
-        DeliveryNewInput(
-          flags: const ChangeFlags(apply: true, autoapprove: true),
-        ),
+  ScaffoldDocumentCommand opener() => deliveryNewCommand(
+        DeliveryNewInput(),
         resolver: TemplateResolver(assets),
         workingDirectory: root.path,
         now: () => DateTime(2026, 8, 12),
-      ).execute();
+      );
+
+  Future<DeliveryNewOutput> open() async => await applyCommand(opener());
 
   /// A repository whose HEAD is a branch of its own, unless told otherwise.
   DeliveryCheckCommand check({String head = 'feat/x', String? base = 'origin/main'}) =>
@@ -88,19 +89,18 @@ void main() {
 
       final out = await open();
 
-      expect(out.message, contains('kept'));
+      expect(out.kept, isTrue);
       expect(file('$folder/delivery.md').readAsStringSync(),
           'WRITTEN BY THE AGENT');
     });
 
-    test('with neither flag it refuses and writes nothing', () async {
-      final cmd = DeliveryNewCommand(
-        DeliveryNewInput(flags: const ChangeFlags()),
-        resolver: TemplateResolver(assets),
-        workingDirectory: root.path,
-      );
+    // That exactly one of --plan and --apply is required is the SDK's rule,
+    // applied to every command and tested there.
+    test('says what it would write, and writes nothing', () async {
+      final previews = await previewCommand(opener());
 
-      expect(cmd.validate(), contains('Choose --plan or --apply'));
+      expect(previews.single.verb, 'create');
+      expect(previews.single.target, endsWith('delivery.md'));
       expect(file('$folder/delivery.md').existsSync(), isFalse);
     });
   });

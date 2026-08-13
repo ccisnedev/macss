@@ -9,8 +9,8 @@ import 'package:macss_cli/modules/skill/commands/deploy.dart';
 import 'package:macss_cli/modules/skill/commands/list.dart';
 import 'package:macss_cli/modules/skill/host.dart';
 import 'package:macss_cli/modules/skill/skill_builder.dart';
-import 'package:macss_cli/src/plan_apply.dart';
 import 'package:modular_cli_sdk/modular_cli_sdk.dart';
+import 'package:modular_cli_sdk/testing.dart';
 
 import 'support/memory_sink.dart';
 
@@ -57,33 +57,29 @@ void main() {
             'SKILL.md'),
       );
 
-  SkillDeployCommand deployCmd({
-    String? host,
-    ChangeFlags flags = const ChangeFlags(apply: true, autoapprove: true),
-    Approver? approver,
-  }) =>
-      SkillDeployCommand(
-        SkillDeployInput(host: host, flags: flags),
-        assets: assets,
-        environment: env,
-        approver: approver,
-        workingDirectory: tempRoot.path,
-        now: () => DateTime(2026, 8, 4, 9, 30, 15),
-      );
+  SkillDeployCommand deployCmd({String? host}) => SkillDeployCommand(
+    SkillDeployInput(host: host),
+    assets: assets,
+    environment: env,
+  );
 
-  SkillCleanCommand cleanCmd({
-    String? host,
-    ChangeFlags flags = const ChangeFlags(apply: true, autoapprove: true),
-    Approver? approver,
-  }) =>
-      SkillCleanCommand(
-        SkillCleanInput(host: host, flags: flags),
-        assets: assets,
-        environment: env,
-        approver: approver,
-        workingDirectory: tempRoot.path,
-        now: () => DateTime(2026, 8, 4, 9, 30, 15),
-      );
+  SkillCleanCommand cleanCmd({String? host}) => SkillCleanCommand(
+    SkillCleanInput(host: host),
+    assets: assets,
+    environment: env,
+  );
+
+  Future<SkillDeployOutput> deploy({String? host}) async =>
+      await applyCommand(deployCmd(host: host));
+
+  Future<SkillCleanOutput> clean({String? host}) async =>
+      await applyCommand(cleanCmd(host: host));
+
+  /// Every verb the run reported, against the skill it acted on.
+  Map<String, String> verbsOf(SkillDeployOutput out) => {
+    for (final entry in out.byHost.values)
+      for (final s in entry) s.skill: s.verb,
+  };
 
   group('macss skill deploy', () {
     test('deploys to every installed assistant when no --host is given',
@@ -91,7 +87,7 @@ void main() {
       installHost('claude');
       installHost('opencode');
 
-      final out = await deployCmd().execute();
+      final out = await deploy();
 
       expect(out.exitCode, ExitCode.ok);
       expect(out.hosts, ['claude', 'opencode']);
@@ -106,7 +102,7 @@ void main() {
     test('skips an assistant that is not installed', () async {
       installHost('claude');
 
-      final out = await deployCmd().execute();
+      final out = await deploy();
 
       expect(out.hosts, ['claude']);
       expect(skillIn('opencode', 'macss-analyze').existsSync(), isFalse);
@@ -114,61 +110,94 @@ void main() {
 
     test('--host deploys even when the assistant looks uninstalled', () async {
       // Priming a fresh setup before the assistant has ever run.
-      final out = await deployCmd(host: 'claude').execute();
+      final out = await deploy(host: 'claude');
 
       expect(out.exitCode, ExitCode.ok);
       expect(out.hosts, ['claude']);
       expect(skillIn('claude', 'macss-analyze').existsSync(), isTrue);
     });
 
+    // Not a validation failure — the invocation was well formed and there is
+    // nothing here to deploy to. Thrown, so it keeps the exit code it always
+    // had rather than becoming a 7.
     test('reports clearly when no assistant is found', () async {
-      final out = await deployCmd().execute();
-
-      expect(out.exitCode, ExitCode.notFound);
-      expect(out.message, contains('No supported assistant'));
-      expect(out.message, contains('--host'));
+      await expectLater(
+        deploy(),
+        throwsA(
+          isA<CommandException>()
+              .having((e) => e.exitCode, 'exitCode', ExitCode.notFound)
+              .having((e) => e.message, 'message', contains('--host')),
+        ),
+      );
     });
 
     test('is idempotent — an unchanged skill reports exists', () async {
       installHost('claude');
-      await deployCmd().execute();
+      await deploy();
 
-      final out = await deployCmd().execute();
+      final out = await deploy();
 
-      expect(out.message, contains('exists   macss-analyze'));
-      expect(out.message, isNot(contains('created')));
+      expect(verbsOf(out)['macss-analyze'], 'exists');
+      expect(verbsOf(out).values, isNot(contains('create')));
     });
 
     test('refreshes a stale skill rather than leaving it behind', () async {
       installHost('claude');
-      await deployCmd().execute();
+      await deploy();
       skillIn('claude', 'macss-analyze').writeAsStringSync('# Old version');
 
-      final out = await deployCmd().execute();
+      final out = await deploy();
 
-      expect(out.message, contains('updated  macss-analyze'));
+      expect(verbsOf(out)['macss-analyze'], 'update');
       expect(
         skillIn('claude', 'macss-analyze').readAsStringSync(),
         '# Analyze skill',
       );
     });
 
-    test('fails cleanly when no home directory resolves', () async {
-      final out = await SkillDeployCommand(
-        SkillDeployInput(host: 'claude'),
-        assets: assets,
-        environment: const {},
-      ).execute();
+    // The step says it would refresh before it does, so a stale skill is named
+    // in the plan rather than discovered afterwards. This is what the dryRun
+    // boolean could never be held to.
+    test('says which skills it would refresh, and refreshes none', () async {
+      installHost('claude');
+      await deploy();
+      skillIn('claude', 'macss-analyze').writeAsStringSync('# Old version');
 
-      expect(out.exitCode, ExitCode.genericError);
-      expect(out.message, contains('home directory'));
+      final previews = await previewCommand(deployCmd());
+
+      expect(
+        previews.firstWhere((p) => p.target.contains('macss-analyze')).verb,
+        'update',
+      );
+      expect(
+        skillIn('claude', 'macss-analyze').readAsStringSync(),
+        '# Old version',
+        reason: 'asking changes nothing',
+      );
+    });
+
+    test('fails cleanly when no home directory resolves', () async {
+      await expectLater(
+        applyCommand(
+          SkillDeployCommand(
+            SkillDeployInput(host: 'claude'),
+            assets: assets,
+            environment: const {},
+          ),
+        ),
+        throwsA(
+          isA<CommandException>()
+              .having((e) => e.exitCode, 'exitCode', ExitCode.genericError)
+              .having((e) => e.message, 'message', contains('home directory')),
+        ),
+      );
     });
 
     test('retires a namespaced skill that is no longer shipped', () async {
       // Deployment that can only add leaves frozen copies nothing will update
       // again — exactly what stranded the iq-* skills when the lifecycle moved.
       installHost('claude');
-      await deployCmd().execute();
+      await deploy();
       final dropped = File(
         p.join(hostPaths('claude', environment: env)!.skillsDirectory,
             'macss-retired', 'SKILL.md'),
@@ -176,10 +205,10 @@ void main() {
       dropped.createSync(recursive: true);
       dropped.writeAsStringSync('# from an older release');
 
-      final out = await deployCmd().execute();
+      final out = await deploy();
 
       expect(dropped.parent.existsSync(), isFalse);
-      expect(out.message, contains('removed  macss-retired'));
+      expect(verbsOf(out)['macss-retired'], 'remove');
     });
 
     test('never retires a skill outside the MACSS namespace', () async {
@@ -191,7 +220,7 @@ void main() {
       foreign.createSync(recursive: true);
       foreign.writeAsStringSync("# another tool's");
 
-      await deployCmd().execute();
+      await deploy();
 
       expect(foreign.existsSync(), isTrue);
     });
@@ -214,19 +243,19 @@ void main() {
   group('macss skill clean', () {
     test('removes what was deployed and reports what was absent', () async {
       installHost('claude');
-      await deployCmd().execute();
+      await deploy();
       skillIn('claude', 'macss-analyze').parent.deleteSync(recursive: true);
 
-      final out = await cleanCmd().execute();
+      final out = await clean();
 
       expect(out.removed, ['macss-specification']);
-      expect(out.message, contains('absent   macss-analyze'));
+      expect(out.absent, ['macss-analyze']);
       expect(skillIn('claude', 'macss-specification').existsSync(), isFalse);
     });
 
     test('leaves foreign skills in the directory alone', () async {
       installHost('claude');
-      await deployCmd().execute();
+      await deploy();
       final foreign = File(
         p.join(hostPaths('claude', environment: env)!.skillsDirectory,
             'someone-else', 'SKILL.md'),
@@ -234,7 +263,7 @@ void main() {
       foreign.createSync(recursive: true);
       foreign.writeAsStringSync('# Not ours');
 
-      await cleanCmd().execute();
+      await clean();
 
       expect(foreign.existsSync(), isTrue);
     });

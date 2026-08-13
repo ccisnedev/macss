@@ -8,6 +8,8 @@ library;
 
 import 'dart:io';
 
+import 'package:modular_cli_sdk/modular_cli_sdk.dart';
+import 'package:modular_cli_sdk/testing.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
@@ -16,7 +18,6 @@ import 'package:macss_cli/modules/requisition/publisher.dart';
 import 'package:macss_cli/modules/requisition/requisition_record.dart';
 import 'package:macss_cli/modules/specification/workspace.dart';
 import 'package:macss_cli/modules/verification/commands/new.dart';
-import 'package:macss_cli/src/plan_apply.dart';
 import 'package:macss_cli/src/project_config.dart';
 import 'package:macss_cli/templates/template_resolver.dart';
 
@@ -47,10 +48,8 @@ void main() {
     if (root.existsSync()) root.deleteSync(recursive: true);
   });
 
-  Future<VerificationNewOutput> open({String? body}) => VerificationNewCommand(
-        VerificationNewInput(
-          flags: const ChangeFlags(apply: true, autoapprove: true),
-        ),
+  VerificationNewCommand opener({String? body}) => VerificationNewCommand(
+        VerificationNewInput(),
         resolver: TemplateResolver(Assets(root: Directory.current.path)),
         workingDirectory: root.path,
         now: () => DateTime(2026, 8, 12),
@@ -58,7 +57,10 @@ void main() {
           calls.add([exe, ...args]);
           return ProcessResult(0, 0, body ?? _publishedBody, '');
         },
-      ).execute();
+      );
+
+  Future<VerificationNewOutput> open({String? body}) async =>
+      await applyCommand(opener(body: body));
 
   String record() => file('$folder/verification.md').readAsStringSync();
 
@@ -104,10 +106,11 @@ void main() {
     /// froze at its Definition of Ready, and re-publishing to add a marker is
     /// the edit the freeze forbids.
     test('a contract published before the marker', () async {
-      final out = await open(body: '# Requisition\n\n## 1. Need and value\n\nx');
-
-      expect(out.ok, isFalse);
-      expect(out.message, contains('marker'));
+      await expectLater(
+        open(body: '# Requisition\n\n## 1. Need and value\n\nx'),
+        throwsA(isA<CommandException>()
+            .having((e) => e.message, 'message', contains('marker'))),
+      );
       expect(file('$folder/verification.md').existsSync(), isFalse);
     });
 
@@ -116,9 +119,7 @@ void main() {
           .write(dir());
 
       final cmd = VerificationNewCommand(
-        VerificationNewInput(
-          flags: const ChangeFlags(apply: true, autoapprove: true),
-        ),
+        VerificationNewInput(),
         resolver: TemplateResolver(Assets(root: Directory.current.path)),
         workingDirectory: root.path,
         runProcess: (_, _) async => ProcessResult(0, 0, '', ''),
@@ -128,11 +129,13 @@ void main() {
     });
 
     test('a contract that declares no criterion', () async {
-      final out = await open(
-          body: '$specificationMarker\n\n# Specification\n\n## 2. User Stories');
-
-      expect(out.ok, isFalse);
-      expect(out.message, contains('no acceptance criterion'));
+      await expectLater(
+        open(
+          body: '$specificationMarker\n\n# Specification\n\n## 2. User Stories',
+        ),
+        throwsA(isA<CommandException>().having(
+            (e) => e.message, 'message', contains('no acceptance criterion'))),
+      );
     });
   });
 
@@ -142,7 +145,7 @@ void main() {
 
     final out = await open();
 
-    expect(out.message, contains('kept'));
+    expect(out.kept, isTrue);
     expect(record(), 'HALF WALKED');
   });
 }

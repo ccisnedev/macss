@@ -9,7 +9,6 @@ library;
 import 'package:modular_cli_sdk/modular_cli_sdk.dart';
 
 import '../../assets.dart';
-import '../../src/plan_apply.dart';
 import 'commands/adopt.dart';
 import 'commands/check.dart';
 import 'commands/create.dart';
@@ -28,7 +27,6 @@ import 'commands/create.dart';
 void buildProjectModule(
   ModuleBuilder m, {
   required Assets assets,
-  Approver? approver,
   String? workingDirectory,
 }) {
   m.command<CreateInput, CreateOutput>(
@@ -36,13 +34,12 @@ void buildProjectModule(
     (req) => CreateCommand(
       CreateInput.fromCliRequest(req, workingDirectory: workingDirectory),
       assets: assets,
-      approver: approver,
     ),
     description: 'Scaffold a new MACSS project',
     params: CreateInput.params,
   );
 
-  m.command<ProjectCheckInput, ProjectCheckOutput>(
+  m.query<ProjectCheckInput, ProjectCheckOutput>(
     'check',
     (req) => ProjectCheckCommand(ProjectCheckInput.fromCliRequest(req)),
     description:
@@ -55,7 +52,6 @@ void buildProjectModule(
     (req) => ProjectAdoptCommand(
       ProjectAdoptInput.fromCliRequest(req, workingDirectory: workingDirectory),
       assets: assets,
-      approver: approver,
     ),
     description:
         'Create what an existing project is missing to follow the canon — --plan or --apply',

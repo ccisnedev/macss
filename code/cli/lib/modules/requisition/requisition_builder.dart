@@ -54,7 +54,7 @@ void buildRequisitionModule(ModuleBuilder m, {required Assets assets}) {
     params: RequisitionPublishInput.params,
   );
 
-  m.command<RequisitionListInput, RequisitionListOutput>(
+  m.query<RequisitionListInput, RequisitionListOutput>(
     'list',
     (req) => RequisitionListCommand(
       RequisitionListInput.fromCliRequest(req),
@@ -86,7 +86,7 @@ void buildRequisitionModule(ModuleBuilder m, {required Assets assets}) {
     params: RequisitionPruneInput.params,
   );
 
-  m.command<RequisitionCheckInput, RequisitionCheckOutput>(
+  m.query<RequisitionCheckInput, RequisitionCheckOutput>(
     'check',
     (req) => RequisitionCheckCommand(
       RequisitionCheckInput.fromCliRequest(req),

@@ -20,14 +20,14 @@ void buildSpecificationModule(ModuleBuilder m, {required Assets assets}) {
 
   m.command<SpecificationNewInput, SpecificationNewOutput>(
     'new',
-    (req) => SpecificationNewCommand(
+    (req) => specificationNewCommand(
       SpecificationNewInput.fromCliRequest(req),
       resolver: resolver,
       workingDirectory: Directory.current.path,
     ),
     description:
         'Write the contract template into the active requisition',
-    params: SpecificationNewInput.params,
+    params: specificationNewParams,
   );
 
   // No specification export-template. Of the four documents, the requisition
@@ -47,7 +47,7 @@ void buildSpecificationModule(ModuleBuilder m, {required Assets assets}) {
     params: SpecificationPublishInput.params,
   );
 
-  m.command<SpecificationCheckInput, SpecificationCheckOutput>(
+  m.query<SpecificationCheckInput, SpecificationCheckOutput>(
     'check',
     (req) => SpecificationCheckCommand(
       SpecificationCheckInput.fromCliRequest(req),

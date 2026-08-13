@@ -8,9 +8,9 @@ void main() {
   group('api graphql command contract', () {
     test('validate() maps to validationFailed and writes to stderr', () async {
       final cli = ModularCli()
-        ..command<_ProbeInput, _ProbeOutput>(
+        ..query<_ProbeInput, _ProbeOutput>(
           'probe',
-          (req) => _InvalidProbeCommand(_ProbeInput.fromCliRequest(req)),
+          (req) => _InvalidProbeQuery(_ProbeInput.fromCliRequest(req)),
         );
 
       final stdout = MemorySink();
@@ -29,9 +29,9 @@ void main() {
     test('custom output exit code is preserved and toText goes to stdout',
         () async {
       final cli = ModularCli()
-        ..command<_ProbeInput, _ProbeOutput>(
+        ..query<_ProbeInput, _ProbeOutput>(
           'probe',
-          (req) => _CustomExitProbeCommand(_ProbeInput.fromCliRequest(req)),
+          (req) => _CustomExitProbeQuery(_ProbeInput.fromCliRequest(req)),
         );
 
       final stdout = MemorySink();
@@ -51,9 +51,9 @@ void main() {
       // Since modular_cli_sdk 0.3.3 the framework answers `--help` itself,
       // rendering the command's declared contract before the command body runs.
       final cli = ModularCli()
-        ..command<_ProbeInput, _ProbeOutput>(
+        ..query<_ProbeInput, _ProbeOutput>(
           'probe',
-          (req) => _HelpFlagProbeCommand(
+          (req) => _HelpFlagProbeQuery(
             _ProbeInput.fromCliRequest(req),
             helpRequested: req.flagBool('help'),
           ),
@@ -101,11 +101,11 @@ class _ProbeOutput extends Output {
   String? toText() => message;
 }
 
-class _InvalidProbeCommand implements Command<_ProbeInput, _ProbeOutput> {
+class _InvalidProbeQuery implements Query<_ProbeInput, _ProbeOutput> {
   @override
   final _ProbeInput input;
 
-  _InvalidProbeCommand(this.input);
+  _InvalidProbeQuery(this.input);
 
   @override
   String? validate() => 'probe input is invalid';
@@ -115,11 +115,11 @@ class _InvalidProbeCommand implements Command<_ProbeInput, _ProbeOutput> {
       _ProbeOutput(message: 'should not execute');
 }
 
-class _CustomExitProbeCommand implements Command<_ProbeInput, _ProbeOutput> {
+class _CustomExitProbeQuery implements Query<_ProbeInput, _ProbeOutput> {
   @override
   final _ProbeInput input;
 
-  _CustomExitProbeCommand(this.input);
+  _CustomExitProbeQuery(this.input);
 
   @override
   String? validate() => null;
@@ -129,12 +129,12 @@ class _CustomExitProbeCommand implements Command<_ProbeInput, _ProbeOutput> {
       _ProbeOutput(message: 'probe ok', code: 5);
 }
 
-class _HelpFlagProbeCommand implements Command<_ProbeInput, _ProbeOutput> {
+class _HelpFlagProbeQuery implements Query<_ProbeInput, _ProbeOutput> {
   @override
   final _ProbeInput input;
   final bool helpRequested;
 
-  _HelpFlagProbeCommand(this.input, {required this.helpRequested});
+  _HelpFlagProbeQuery(this.input, {required this.helpRequested});
 
   @override
   String? validate() => null;

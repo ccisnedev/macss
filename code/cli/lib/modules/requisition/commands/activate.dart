@@ -21,9 +21,9 @@ import 'package:cli_router/cli_router.dart';
 import 'package:modular_cli_sdk/modular_cli_sdk.dart';
 import 'package:path/path.dart' as p;
 
-import '../../../src/plan_apply.dart';
 import '../../specification/slug.dart';
 import '../../specification/workspace.dart';
+import '../steps.dart';
 
 // ─── Input ──────────────────────────────────────────────────────────────────
 
@@ -33,55 +33,44 @@ class RequisitionActivateInput extends Input {
   /// caller (ADR 0009).
   final String? slug;
 
-  final ChangeFlags flags;
-
-  RequisitionActivateInput({this.slug, this.flags = const ChangeFlags()});
+  RequisitionActivateInput({this.slug});
 
   factory RequisitionActivateInput.fromCliRequest(CliRequest req) =>
-      RequisitionActivateInput(
-        slug: optionalSlug(req.param('slug')),
-        flags: ChangeFlags.fromCliRequest(req),
-      );
+      RequisitionActivateInput(slug: optionalSlug(req.param('slug')));
 
+  /// `--plan`, `--apply` and `--autoapprove` are not here: the SDK declares
+  /// them on every command, and a second declaration is a second place for the
+  /// convention to be got wrong.
   static final List<CliParam> params = [
-    CliParam.positional('slug',
-        description: 'The requisition to make active, as `list` shows it'),
-    ...ChangeFlags.params,
+    CliParam.positional(
+      'slug',
+      description: 'The requisition to make active, as `list` shows it',
+    ),
   ];
 
   @override
   List<CliParam> get schemaFields => params;
 
   @override
-  Map<String, dynamic> toJson() => {
-        'slug': slug,
-        'plan': flags.plan,
-        'apply': flags.apply,
-        'autoapprove': flags.autoapprove,
-      };
+  Map<String, dynamic> toJson() => {'slug': slug};
 }
 
 // ─── Output ─────────────────────────────────────────────────────────────────
 
 class RequisitionActivateOutput extends Output {
-  final String message;
-  final String? planPath;
-  final bool blocked;
+  RequisitionActivateOutput({required this.slug, required this.relDir});
 
-  RequisitionActivateOutput({
-    required this.message,
-    this.planPath,
-    this.blocked = false,
-  });
+  final String slug;
+  final String relDir;
 
   @override
-  Map<String, dynamic> toJson() => {'message': message, 'planPath': planPath};
+  Map<String, dynamic> toJson() => {'slug': slug, 'dir': relDir};
 
   @override
-  int get exitCode => blocked ? ExitCode.genericError : ExitCode.ok;
+  int get exitCode => ExitCode.ok;
 
   @override
-  String? toText() => message;
+  String? toText() => 'Active requisition: $slug ($relDir)';
 }
 
 // ─── Command ────────────────────────────────────────────────────────────────
@@ -130,50 +119,27 @@ class RequisitionActivateCommand
       ].join('\n');
     }
 
-    return input.flags.validate();
+    return null;
   }
 
+  /// One step. Selecting is a single write, and a plan that listed it as
+  /// several would be describing the implementation rather than the change.
   @override
-  Future<RequisitionActivateOutput> execute() async {
-    final dir = _dir!;
-    final folder = p.basename(dir);
-    final relDir = requisitionRelDir(folder);
-
-    final decision = await ChangeGate(
-      flags: input.flags,
-      approver: approver,
-      now: now,
-    ).decide(
-      command: 'requisition activate',
+  Future<List<Step>> steps() async => [
+    RecordActiveRequisition(
       workingDirectory: workingDirectory,
-      body: [
-        'would make "${input.slug}" the active requisition:',
-        '',
-        '  activate  $relDir',
-        '',
-        'Commands that take no --slug act on the active requisition.',
-      ].join('\n'),
-    );
-
-    if (!decision.proceed) {
-      return RequisitionActivateOutput(
-        message: decision.message!,
-        planPath: decision.planPath,
-        blocked: decision.blocked,
-      );
-    }
-
-    // The same writer `requisition new` uses, so the pointer keeps its keys and
-    // its format.
-    writeActiveRequisition(
-      workingDirectory,
       slug: input.slug!,
-      relDir: relDir,
+      relDir: requisitionRelDir(p.basename(_dir!)),
       isoDate: _iso(now()),
-    );
+    ),
+  ];
 
+  @override
+  RequisitionActivateOutput describe(Execution execution) {
+    final outcome = execution.outcomes.single;
     return RequisitionActivateOutput(
-      message: 'Active requisition: ${input.slug} ($relDir)',
+      slug: outcome.values['slug'] as String,
+      relDir: outcome.target,
     );
   }
 

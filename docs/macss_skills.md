@@ -215,8 +215,46 @@ Tagline para contexto de presentación:
 
 ---
 
+## Skills de artefacto — `macss-commit` y `macss-pr`
+
+Las skills existentes sirven **fases** (`analyze`, `plan`, `execute`). Estas dos
+sirven **artefactos** producidos dentro de fases ya definidas, y no añaden
+etapas al ciclo.
+
+| Skill | Dónde se usa | Qué produce |
+|---|---|---|
+| `macss-commit` | implementation → execute | un commit que es una unidad lógica completa |
+| `macss-pr` | delivery, y se retoca en verification | el título y el cuerpo de la PR |
+
+**Por qué son skill y no comando.** Un comando sabe crear un commit; no sabe si
+lo que está staged es una idea o son tres. Es la misma clase de juicio que hizo
+que `implementation` se sirviera con skills desde el principio.
+
+`macss-commit` lee lo que hay staged y responde una pregunta que el autor está
+mal situado para responder sobre su propio trabajo: *¿esto es un solo cambio?*
+Separa el refactor del cambio de comportamiento con el que viajó, se niega a
+juntar un `fix` con un `feat`, y redacta el mensaje una vez la forma es
+correcta. La disciplina no es estética: un commit que mezcla propósitos no se
+puede revertir con precisión, y el refactor se esconde dentro del diff, donde la
+review no lo va a cuestionar.
+
+`macss-pr` importa por una razón que solo aparece cuando el release está
+automatizado: con squash, **el título de la PR es el único mensaje que llega a
+la rama principal**, y por tanto la única entrada del cálculo de versión.
+Equivocarlo no produce un historial desprolijo — produce la versión equivocada,
+o ningún release. La skill además avisa cuando la PR toca más de un componente
+desplegable, porque eso sube la versión de todos los que toca.
+
+Ambas son consecuencia de decisiones que viven en el handbook de la
+organización que las consume ---Conventional Commits, SemVer, release-please,
+squash obligatorio---. Las skills cargan la disciplina; no la inventan.
+
+---
+
 ## Pendientes de diseño
 
+- [ ] Diseñar `macss-commit`: detección de mezcla refactor/comportamiento, propuesta de troceo, redacción del mensaje
+- [ ] Diseñar `macss-pr`: derivación de tipo y ámbito, aviso de PR multicomponente, cuerpo con la evidencia de verification
 - [ ] Decidir nombre definitivo de la skill instructiva (`macss-guide` vs `macss-cookbook`)
 - [ ] Decidir Opción A / B / C para la parte dinámica de la skill normativa
 - [ ] Definir formato de `macss.yaml` si se elige Opción B o C

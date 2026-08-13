@@ -8,13 +8,14 @@ library;
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
+import 'package:modular_cli_sdk/modular_cli_sdk.dart';
+import 'package:modular_cli_sdk/testing.dart';
 import 'package:test/test.dart';
 
 import 'package:macss_cli/assets.dart';
 import 'package:macss_cli/modules/delivery/commands/publish.dart';
 import 'package:macss_cli/modules/requisition/requisition_record.dart';
 import 'package:macss_cli/modules/specification/workspace.dart';
-import 'package:macss_cli/src/plan_apply.dart';
 
 void main() {
   late Directory root;
@@ -50,51 +51,63 @@ void main() {
     if (root.existsSync()) root.deleteSync(recursive: true);
   });
 
-  Future<DeliveryPublishOutput> publish({
-    bool apply = true,
+  DeliveryPublishCommand publisher({
     String stdout = 'https://github.com/o/r/pull/57',
     String head = 'feat/x',
-  }) =>
-      DeliveryPublishCommand(
-        DeliveryPublishInput(
-          flags: apply
-              ? const ChangeFlags(apply: true, autoapprove: true)
-              : const ChangeFlags(plan: true),
-        ),
-        workingDirectory: root.path,
-        assets: Assets(root: Directory.current.path),
-        runProcess: (exe, args) async {
-          calls.add([exe, ...args]);
-          final at = args.indexOf('--body-file');
-          if (at >= 0) sentBody = File(args[at + 1]).readAsStringSync();
-          return ProcessResult(0, 0, stdout, '');
-        },
-        runGit: (args) {
-          calls.add(['git', ...args]);
-          if (args.last == 'HEAD') return ProcessResult(0, 0, '$head\n', '');
-          if (args.last == 'origin/HEAD') {
-            return ProcessResult(0, 0, 'origin/main\n', '');
-          }
-          return ProcessResult(0, 0, '', '');
-        },
-      ).execute();
+  }) => DeliveryPublishCommand(
+    DeliveryPublishInput(),
+    workingDirectory: root.path,
+    assets: Assets(root: Directory.current.path),
+    runProcess: (exe, args) async {
+      calls.add([exe, ...args]);
+      final at = args.indexOf('--body-file');
+      if (at >= 0) sentBody = File(args[at + 1]).readAsStringSync();
+      return ProcessResult(0, 0, stdout, '');
+    },
+    runGit: (args) {
+      calls.add(['git', ...args]);
+      if (args.last == 'HEAD') return ProcessResult(0, 0, '$head\n', '');
+      if (args.last == 'origin/HEAD') {
+        return ProcessResult(0, 0, 'origin/main\n', '');
+      }
+      return ProcessResult(0, 0, '', '');
+    },
+  );
+
+  Future<DeliveryPublishOutput> publish({
+    String stdout = 'https://github.com/o/r/pull/57',
+    String head = 'feat/x',
+  }) async => await applyCommand(publisher(stdout: stdout, head: head));
+
+  /// What it says it would do. Nothing is pushed and nothing reaches gh.
+  Future<List<Preview>> plan({String head = 'feat/x'}) =>
+      previewCommand(publisher(head: head));
 
   List<String> gh() => calls.firstWhere((c) => c.first == 'gh');
   bool pushed() => calls.any((c) => c.first == 'git' && c.contains('push'));
 
-  group('--plan', () {
+  group('what it would do', () {
     test('names the push and the pull request, and does neither', () async {
-      final out = await publish(apply: false);
+      final previews = await plan();
 
-      expect(out.planPath, isNotNull);
-      final plan = File(out.planPath!).readAsStringSync();
-      expect(plan, contains('push'));
-      expect(plan, contains('feat/x'));
-      expect(plan, contains('main'));
+      // The push is a step of its own, and first: `gh pr create` resolves the
+      // head on the remote, and a branch it has never seen is not there.
+      expect(previews.first.verb, 'push');
+      expect(previews.first.target, contains('feat/x'));
+      expect(previews.map((p) => p.verb), contains('open'));
+      expect(previews[1].detail!, contains('main'));
 
-      expect(pushed(), isFalse, reason: 'a plan pushes nothing');
+      expect(pushed(), isFalse, reason: 'asking pushes nothing');
       expect(calls.any((c) => c.first == 'gh'), isFalse);
       expect(RequisitionRecord.read(dir())!.state, RequisitionState.ready);
+    });
+
+    test('declares the pull request number it cannot know yet', () async {
+      final previews = await plan();
+
+      expect(previews[1].pending, contains('pr'));
+      expect(previews.last.verb, 'record');
+      expect(previews.last.pending, contains('pr'));
     });
   });
 
@@ -145,10 +158,9 @@ void main() {
     test('a delivery that does not pass its gate is not published', () async {
       file('$folder/delivery.md').writeAsStringSync('# Delivery\n\nnothing.\n');
 
-      final out = await publish();
-
-      expect(out.ok, isFalse);
-      expect(pushed(), isFalse, reason: 'nothing leaves the machine on a red gate');
+      await expectLater(publish(), throwsA(isA<CommandException>()));
+      expect(pushed(), isFalse,
+          reason: 'nothing leaves the machine on a red gate');
     });
   });
 
@@ -163,7 +175,7 @@ void main() {
 
       final out = await publish();
 
-      expect(out.ok, isTrue, reason: out.toText());
+      expect(out.updated, isTrue, reason: out.toText());
       expect(gh(), containsAllInOrder(['pr', 'edit', '57']));
       expect(gh(), containsAllInOrder(['--add-label', 'enhancement']));
       expect(gh(), isNot(contains('--label')));
