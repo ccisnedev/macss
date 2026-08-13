@@ -5,6 +5,55 @@ All notable changes to this project will be documented in this file.
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.10.1]
+
+### Fixed
+
+- **`macss upgrade` says what it is doing again.** 0.10.0 replaced the
+  installation in silence: the rewrite that turned the command into steps
+  dropped six `stderr` lines and nothing noticed, because nothing asserted
+  them. Downloading several megabytes with no output reads as a hang.
+
+  The plan already says what *will* happen — it did before this fix too. What
+  was missing is the other thing, that it *is* happening, and no plan can
+  stand in for it. Three lines now, on stderr so `--json` stays
+  machine-readable:
+
+  ```
+  Downloading macss-windows-x64.zip (0.10.0 → 0.11.0)...
+  Extracting into C:\Users\...\macss...
+  Verifying installation...
+  ```
+
+  The three the old command printed *before* the download — current version,
+  checking, latest available — are not back. The plan states all of it, with
+  the asset and the URL, before anything is approved.
+
+### Changed
+
+- **`ReplaceInstallation` takes the binary it is replacing, and how to fetch
+  the archive.** Both were reaching for globals: `Platform.resolvedExecutable`
+  and a live `HttpClient`.
+
+  The first mattered more than it looked. On Windows the step renames the
+  running executable aside before overwriting it — and
+  `Platform.resolvedExecutable` is `macss.exe` only when a compiled `macss.exe`
+  is what runs. Under `dart test` it is the Dart VM, so a test that reached the
+  default renamed the SDK's own `dart.exe` to `dart.exe.bak` and took the
+  toolchain down with it. That happened, on the machine this was written on.
+
+  The same trap is documented in `modular_cli_sdk`'s README, which is why
+  `example/beside_executable.dart` exists there: under `dart run` a CLI that
+  resolves paths against its own executable resolves them inside the Dart SDK.
+  There the symptom is reading in the wrong place. Here it was writing.
+
+  Fetching is now a `Downloader` function rather than an `HttpClient`, so the
+  step knows nothing about HTTP and a test can stand in for the network without
+  faking an interface it never uses.
+
+- Six tests pin the commentary and the Windows rename, so neither can be lost
+  the way the first one was
+
 ## [0.10.0]
 
 The CLI moves to `modular_cli_sdk` 0.4.1, where a route is either a **query**

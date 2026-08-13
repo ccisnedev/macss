@@ -37,30 +37,75 @@ class UpgradeInput extends Input {
 
 // ─── Steps ──────────────────────────────────────────────────────────────────
 
+/// Fetches [url] into the file at [destination].
+///
+/// A function rather than an `HttpClient`, so the step that replaces the
+/// installation does not have to know how bytes arrive — and so a test can
+/// stand in for the network without faking thirty members of an interface it
+/// never uses.
+typedef Downloader = Future<void> Function(String url, String destination);
+
+/// Downloads over HTTP, which is how it happens outside a test.
+Future<void> downloadOverHttp(String url, String destination) async {
+  final client = HttpClient();
+  try {
+    final request = await client.getUrl(Uri.parse(url));
+    request.headers.set('User-Agent', 'macss-cli/$macssVersion');
+    final response = await request.close();
+    await response.pipe(File(destination).openWrite());
+  } finally {
+    client.close();
+  }
+}
+
 /// Downloads a release and extracts it over the installation.
 ///
 /// Everything this needs — which version, which asset, which URL — was settled
 /// when the step was built, from **one** call to the releases API. Asking again
 /// at perform time could answer differently: a release published in between
 /// would be downloaded without ever having been approved.
+///
+/// **It says what it is doing while it does it.** The plan states what *will*
+/// happen; this states that it *is* happening, which is a different thing and
+/// the only one that helps during a download of several megabytes. It goes to
+/// [progress] — stderr by default — so `--json` stays machine-readable.
 class ReplaceInstallation implements Step {
   ReplaceInstallation({
     required this.platformOps,
-    required this.client,
     required this.installDir,
     required this.from,
     required this.to,
     required this.asset,
     required this.downloadUrl,
-  });
+    Downloader? download,
+    IOSink? progress,
+    String? runningExecutable,
+  }) : download = download ?? downloadOverHttp,
+       progress = progress ?? stderr,
+       runningExecutable = runningExecutable ?? Platform.resolvedExecutable;
 
   final PlatformOps platformOps;
-  final HttpClient client;
+  final Downloader download;
   final String installDir;
   final String from;
   final String to;
   final String asset;
   final String downloadUrl;
+
+  /// Where the running commentary goes. Injected so a test can read it — which
+  /// is the whole reason this is here: the commentary was lost once already,
+  /// in a refactor, because nothing asserted it.
+  final IOSink progress;
+
+  /// The binary this step is replacing, which on Windows has to be moved aside
+  /// before it can be overwritten.
+  ///
+  /// **Injected, and that is not optional.** `Platform.resolvedExecutable` is
+  /// `macss.exe` only when a compiled `macss.exe` is what is running. Under
+  /// `dart test` and `dart run` it is the Dart VM — so a test that reached the
+  /// default would rename the Dart SDK's own `dart.exe` and take the toolchain
+  /// down with it. That is not hypothetical; it is how this seam came to exist.
+  final String runningExecutable;
 
   @override
   Preview preview() => Preview(
@@ -73,32 +118,32 @@ class ReplaceInstallation implements Step {
   Future<Outcome> perform(StepContext context) async {
     final tempDir = Directory.systemTemp.createTempSync('macss_upgrade_');
     try {
+      progress.writeln('Downloading $asset ($from → $to)...');
       final zipFile = File(p.join(tempDir.path, asset));
-      final request = await client.getUrl(Uri.parse(downloadUrl));
-      request.headers.set('User-Agent', 'macss-cli/$macssVersion');
-      final response = await request.close();
-      await response.pipe(zipFile.openWrite());
+      await download(downloadUrl, zipFile.path);
 
       if (Platform.isWindows) {
         // The running executable cannot be overwritten in place, so it is moved
         // aside first and cleaned up on the way out — or on the next upgrade,
         // if the file is still locked.
-        final bak = File('${Platform.resolvedExecutable}.bak');
+        final bak = File('$runningExecutable.bak');
         if (bak.existsSync()) bak.deleteSync();
-        File(Platform.resolvedExecutable).renameSync(bak.path);
+        File(runningExecutable).renameSync(bak.path);
       }
 
+      progress.writeln('Extracting into $installDir...');
       await platformOps.expandArchive(zipFile.path, installDir);
 
       if (Platform.isWindows) {
         try {
-          final bak = File('${Platform.resolvedExecutable}.bak');
+          final bak = File('$runningExecutable.bak');
           if (bak.existsSync()) bak.deleteSync();
         } on FileSystemException {
           // Still locked — cleaned up on the next upgrade.
         }
       }
 
+      progress.writeln('Verifying installation...');
       await platformOps.runPostInstall(installDir);
     } finally {
       tempDir.deleteSync(recursive: true);
@@ -153,10 +198,25 @@ class UpgradeCommand implements Command<UpgradeInput, UpgradeOutput> {
   final UpgradeInput input;
 
   final PlatformOps platformOps;
+
+  /// Answers the releases API. Overridden by the tests that exercise what the
+  /// lookup returns.
   final HttpClient? httpClientOverride;
 
-  UpgradeCommand(this.input, {PlatformOps? platformOps, this.httpClientOverride})
-    : platformOps = platformOps ?? PlatformOps.current();
+  /// How the release archive is fetched. A seam for the tests, and the reason
+  /// the step itself knows nothing about HTTP.
+  final Downloader? download;
+
+  /// Where the step's running commentary goes. A seam for the tests.
+  final IOSink? progress;
+
+  UpgradeCommand(
+    this.input, {
+    PlatformOps? platformOps,
+    this.httpClientOverride,
+    this.download,
+    this.progress,
+  }) : platformOps = platformOps ?? PlatformOps.current();
 
   @override
   String? validate() => null;
@@ -228,12 +288,13 @@ class UpgradeCommand implements Command<UpgradeInput, UpgradeOutput> {
     return [
       ReplaceInstallation(
         platformOps: platformOps,
-        client: client,
+        download: download,
         installDir: input.installDir,
         from: macssVersion,
         to: _latest,
         asset: expectedAsset,
         downloadUrl: asset['browser_download_url'] as String,
+        progress: progress,
       ),
     ];
   }
