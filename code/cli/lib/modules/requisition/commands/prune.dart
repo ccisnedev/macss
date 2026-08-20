@@ -150,7 +150,15 @@ class RequisitionPruneOutput extends Output {
 // ─── Command ────────────────────────────────────────────────────────────────
 
 class RequisitionPruneCommand
-    implements Command<RequisitionPruneInput, RequisitionPruneOutput> {
+    implements
+        Command<RequisitionPruneInput, RequisitionPruneOutput>,
+        ExplainsNothingToDo {
+  /// An empty prune is the common case — most runs find nothing finished — so
+  /// it is worth saying what was looked for rather than that nothing happened.
+  @override
+  String? get nothingToDo =>
+      'Nothing to remove: no requisition is done or discarded.';
+
   @override
   final RequisitionPruneInput input;
 

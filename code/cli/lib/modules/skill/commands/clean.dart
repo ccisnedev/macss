@@ -74,7 +74,13 @@ class SkillCleanOutput extends Output {
 
 // ─── Command ────────────────────────────────────────────────────────────────
 
-class SkillCleanCommand implements Command<SkillCleanInput, SkillCleanOutput> {
+class SkillCleanCommand
+    implements Command<SkillCleanInput, SkillCleanOutput>, ExplainsNothingToDo {
+  /// Nothing installed means nothing to clean, and the caller is better served
+  /// by being told which situation they are in than by `nothing would change`.
+  @override
+  String? get nothingToDo => 'No supported assistant found in your home directory.';
+
   SkillCleanCommand(this.input, {required this.assets, this.environment});
 
   @override

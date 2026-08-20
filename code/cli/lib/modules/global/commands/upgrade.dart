@@ -193,7 +193,8 @@ class UpgradeOutput extends Output {
 
 // ─── Command ────────────────────────────────────────────────────────────────
 
-class UpgradeCommand implements Command<UpgradeInput, UpgradeOutput> {
+class UpgradeCommand
+    implements Command<UpgradeInput, UpgradeOutput>, ExplainsNothingToDo {
   @override
   final UpgradeInput input;
 
@@ -223,6 +224,12 @@ class UpgradeCommand implements Command<UpgradeInput, UpgradeOutput> {
 
   String _latest = macssVersion;
   String? _reason;
+
+  /// Two different nothings: already current, and a latest release that is a
+  /// prerelease and was skipped on purpose. The second explains a decision the
+  /// tool took on the caller's behalf, and `nothing would change` would bury it.
+  @override
+  String? get nothingToDo => _reason;
 
   /// One step, and everything it needs read before the plan is built.
   ///
