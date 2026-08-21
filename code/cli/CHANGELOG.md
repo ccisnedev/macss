@@ -5,6 +5,46 @@ All notable changes to this project will be documented in this file.
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.10.2]
+
+### Changed
+
+- **A command that has nothing to do now says why, not just that.** Four
+  messages here were being computed and thrown away, because a plan that comes
+  out empty never reaches `describe`. The caller was told `nothing would
+  change` — a fact, with the actionable half removed.
+
+  | Command | Now says |
+  |---|---|
+  | `upgrade`, already current | `Already on the latest version` |
+  | `upgrade`, latest is a prerelease | `Latest release is a prerelease — skipping.` |
+  | `skill clean`, nothing installed | `No supported assistant found in your home directory.` |
+  | `requisition prune`, nothing finished | `Nothing to remove: no requisition is done or discarded.` |
+
+  `upgrade` is the clearest case, because it has **two different nothings**.
+  The second explains a decision the tool took on your behalf, and collapsing
+  it into `nothing would change` hid that a choice had been made at all.
+  `requisition prune` is the one most often read: finding nothing finished is
+  the ordinary outcome of a prune.
+
+  The reason now reaches `--plan` as well, where an empty plan had always been
+  mute — that path never called `describe`, so this was never a regression,
+  just a silence with no way to fill it.
+
+- **`modular_cli_sdk` 0.5.0**, which is where the mechanism
+  (`ExplainsNothingToDo`) comes from. It also stops `--apply` from asking for
+  approval over a plan that changes nothing — which, with no terminal to
+  answer, used to fail an invocation that had nothing to do.
+
+### Fixed
+
+- **A merge that does not raise the version no longer marks `main` red.** The
+  release workflow's version check *said* "skipping release" and then exited
+  `1`, so every ordinary merge — a refactor, a doc fix, a dependency bump —
+  finished with a failed run. A red mark that appears when nothing is wrong is
+  how a red mark stops meaning anything. It now sets `should_release=false` and
+  the release jobs are skipped, which is what `inquiry`'s workflow already did.
+
 ## [0.10.1]
 
 ### Fixed
