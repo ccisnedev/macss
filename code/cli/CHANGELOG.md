@@ -36,6 +36,20 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
   approval over a plan that changes nothing — which, with no terminal to
   answer, used to fail an invocation that had nothing to do.
 
+- **The canon no longer requires a root `CHANGELOG.md`.** Two flagship
+  projects carried one for months and neither ever had an entry in it. What
+  `create` stamped was a header promising that all notable changes are
+  documented, above none — in the first place a visitor looks, on repositories
+  that keep a careful changelog one directory down.
+
+  Delivery history belongs to the thing delivered: a package's changelog ships
+  with the package. Removed from `canon.dart`, the template and the book. A
+  project that ships several independently versioned artifacts may want a file
+  saying which versions compose a release; that is its judgement, not a rule.
+
+  `adopt` removes nothing, so a project that keeps its own is untouched, and
+  `check` no longer mentions it either way.
+
 ### Fixed
 
 - **A merge that does not raise the version no longer marks `main` red.** The
