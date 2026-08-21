@@ -73,8 +73,10 @@ void main() {
           .createSync(recursive: true);
 
   group('the canon is one definition', () {
-    // The defect this module exists to prevent: the book required a root
-    // CHANGELOG.md that `create` never stamped, and nothing detected it.
+    // The defect this module exists to prevent: the book once required a root
+    // CHANGELOG.md that `create` never stamped, and nothing detected it. That
+    // file is no longer canon — but one definition, checked, is why removing it
+    // took one edit here rather than a hunt through book, template and code.
     test('a freshly created project conforms — exit 0', () async {
       await scaffold();
 
@@ -85,10 +87,24 @@ void main() {
       expect(out.exitCode, ExitCode.ok);
     });
 
-    test('CHANGELOG.md is part of the canon and is stamped', () async {
+    // Removed from the canon: no project ever filled one, so what got stamped
+    // was a header promising that changes are documented, above nothing.
+    test('no root CHANGELOG.md is stamped, and none is required', () async {
       await scaffold();
-      expect(File(p.join(dest, 'CHANGELOG.md')).existsSync(), isTrue);
-      expect(canonFiles.map((f) => f.path), contains('CHANGELOG.md'));
+      expect(File(p.join(dest, 'CHANGELOG.md')).existsSync(), isFalse);
+      expect(canonFiles.map((f) => f.path), isNot(contains('CHANGELOG.md')));
+    });
+
+    // A project that already keeps one is left alone: `check` must not report
+    // a file it no longer has an opinion about, and `adopt` removes nothing.
+    test('a project that keeps its own root CHANGELOG still conforms', () async {
+      await scaffold();
+      File(p.join(dest, 'CHANGELOG.md')).writeAsStringSync('# Changelog\n');
+
+      final out = await check();
+
+      expect(out.missing, 0, reason: out.toText());
+      expect(out.exitCode, ExitCode.ok);
     });
   });
 
@@ -190,8 +206,8 @@ void main() {
 
       final previews = await plan();
 
-      expect(previews.map((p) => p.target), contains('CHANGELOG.md'));
-      expect(File(p.join(dest, 'CHANGELOG.md')).existsSync(), isFalse);
+      expect(previews.map((p) => p.target), contains('README.md'));
+      expect(File(p.join(dest, 'README.md')).existsSync(), isFalse);
     });
 
     test('names the retirement before doing it', () async {
@@ -427,7 +443,7 @@ void main() {
       );
 
       expect(code, ExitCode.ok);
-      expect(File(p.join(dest, 'CHANGELOG.md')).existsSync(), isTrue);
+      expect(File(p.join(dest, 'README.md')).existsSync(), isTrue);
     });
   });
 }

@@ -50,7 +50,14 @@ const canonDocs = <CanonFile>[
 /// Root files.
 const canonRootFiles = <CanonFile>[
   CanonFile('README.md', 'templates/project-base/README.md'),
-  CanonFile('CHANGELOG.md', 'templates/project-base/CHANGELOG.md'),
+  // No root CHANGELOG. It was canon for a while and no project ever filled
+  // one — not across 25 releases of inquiry nor 10 of macss — because in a
+  // project whose deliverable is one package, the package's own changelog is
+  // the delivery history, and a second one at the root only restates it and
+  // drifts. What was stamped was a header promising "all notable changes are
+  // documented in this file" above nothing, in the first place a reader looks.
+  // A project that ships several versioned artifacts may want such a file;
+  // that is its judgement to make, not a rule to stamp.
   CanonFile('.gitignore', 'templates/project-base/.gitignore'),
   CanonFile('.gitattributes', 'templates/project-base/.gitattributes'),
 ];
