@@ -162,7 +162,11 @@ class CreateCommand implements Command<CreateInput, CreateOutput> {
 
     return [
       EnsureDirectory(root),
-      for (final file in canonFiles)
+      // `createFiles`, not `canonFiles`: a new project opens on the common
+      // shape (infra/db/api/app) as well as on the canon. `check` does not ask
+      // for that shape and `adopt` does not add it, so a project that has no
+      // API deletes the directory (ADR 0011).
+      for (final file in createFiles)
         WriteFile(
           path: p.join(root, p.joinAll(file.path.split('/'))),
           contents: assets.loadString(file.template),

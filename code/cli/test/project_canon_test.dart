@@ -24,10 +24,11 @@ void main() {
     tempRoot = Directory.systemTemp.createTempSync('macss_canon_test_');
     dest = p.join(tempRoot.path, 'proj');
 
-    // A fixture that mirrors the shipped asset tree: one file per canon entry,
-    // so `create` and `adopt` can stamp every one of them.
+    // A fixture that mirrors the shipped asset tree: one file per entry
+    // `create` writes — the canon plus the starting shape — so `create` and
+    // `adopt` can stamp every one of them.
     final assetsDir = Directory(p.join(tempRoot.path, '_assets'));
-    for (final file in canonFiles) {
+    for (final file in createFiles) {
       final f = File(p.join(assetsDir.path, 'assets', p.joinAll(file.template.split('/'))));
       f.createSync(recursive: true);
       f.writeAsStringSync('# ${file.path}\n');
@@ -108,6 +109,94 @@ void main() {
     });
   });
 
+  // `create` writes more than `check` requires, which is the reverse of the
+  // defect this module was built to prevent. The original — the canon demanding
+  // what `create` never produced — breaks a project the moment it is born. This
+  // direction is an offer that can be declined, and these tests are what stop
+  // the next reader from "fixing" the asymmetry by folding the layers back into
+  // `canonFiles`.
+  group('code/ is free (ADR 0011)', () {
+    test('create opens a project on the common shape', () async {
+      await scaffold();
+
+      for (final layer in const ['infra', 'db', 'api', 'app']) {
+        expect(
+          File(p.join(dest, 'code', layer, 'README.md')).existsSync(),
+          isTrue,
+          reason: 'create stamps the recommended starting shape',
+        );
+      }
+    });
+
+    test('deleting every starter layer still conforms', () async {
+      await scaffold();
+      Directory(p.join(dest, 'code')).deleteSync(recursive: true);
+      Directory(p.join(dest, 'code')).createSync();
+
+      final out = await check();
+
+      expect(out.missing, 0, reason: out.toText());
+      expect(out.exitCode, ExitCode.ok, reason: out.toText());
+    });
+
+    test('a project whose code/ is a cli and a site conforms, silently',
+        () async {
+      // inquiry's shape: no api, no db, and directories the old canon called
+      // strays. Neither is a finding any more.
+      await scaffold();
+      Directory(p.join(dest, 'code')).deleteSync(recursive: true);
+      mkdirs('code/cli');
+      mkdirs('code/site');
+      mkdirs('code/vscode');
+
+      final out = await check();
+
+      expect(out.missing, 0, reason: out.toText());
+      expect(out.deviations, 0, reason: out.toText());
+      expect(out.toText(), isNot(contains('not a canonical layer')));
+    });
+
+    test('adopt does not put the layers back', () async {
+      // The reason this matters: a project that deliberately removed api/db/app
+      // would get them again on the next adopt.
+      await scaffold();
+      Directory(p.join(dest, 'code')).deleteSync(recursive: true);
+      mkdirs('code/cli');
+
+      await adopt();
+
+      expect(Directory(p.join(dest, 'code', 'api')).existsSync(), isFalse);
+      expect(Directory(p.join(dest, 'code', 'db')).existsSync(), isFalse);
+      expect(Directory(p.join(dest, 'code', 'app')).existsSync(), isFalse);
+      expect(Directory(p.join(dest, 'code', 'infra')).existsSync(), isFalse);
+    });
+
+    // The rule that survives, and only for a project that chose the pattern.
+    test('an api module with no db module is still worth a look', () async {
+      await scaffold();
+      mkdirs('code/api/modules/sales');
+
+      final out = await check();
+
+      expect(out.deviations, 1);
+      expect(out.exitCode, ExitCode.ok);
+      expect(out.toText(), contains('db/modules/sales'));
+    });
+
+    // Nested docs used to be checked only under the four known names, so a
+    // site's docs went unreported. With no list of names, the rule reaches
+    // whatever is there.
+    test('docs nested inside a non-layer directory is reported too', () async {
+      await scaffold();
+      mkdirs('code/site/docs');
+
+      final out = await check();
+
+      expect(out.deviations, 1);
+      expect(out.toText(), contains('code/site/docs'));
+    });
+  });
+
   group('macss project check', () {
     test('reports every canonical file missing from an empty directory',
         () async {
@@ -159,23 +248,10 @@ void main() {
       expect(out.toText(), contains('code/app/modules/reporting'));
     });
 
-    test('a stray directory under code/ warns without failing', () async {
-      await scaffold();
-      mkdirs('code/legacy');
-
-      final out = await check();
-
-      expect(out.deviations, 1);
-      expect(out.exitCode, ExitCode.ok);
-      expect(out.toText(), contains('not a canonical layer'));
-    });
-
-    test('code/cli is a canonical optional surface, not a stray', () async {
-      await scaffold();
-      mkdirs('code/cli');
-
-      expect((await check()).deviations, 0);
-    });
+    // `a stray directory under code/ warns` and `code/cli is not a stray` both
+    // went with the rule they described. There are no strays under `code/` any
+    // more, and so no list of approved names for one to be measured against —
+    // see the `code/ is free` group above.
 
     test('docs nested inside a layer warns', () async {
       await scaffold();

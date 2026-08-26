@@ -5,6 +5,45 @@ All notable changes to this project will be documented in this file.
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.11.0]
+
+### Changed
+
+- **`code/` is free.** The canon required `infra`, `db`, `api` and `app` inside
+  `code/`, each with a README, and reported a missing one as an **error** with
+  exit `1` — not a warning. Both projects that demonstrate the methodology
+  failed that rule: inquiry ships a CLI, a site, a book and a VS Code
+  extension, and has no API and no database.
+
+  What `docs/` requires is methodological — a project must be able to explain
+  itself. What `code/` required was architectural: one shape of solution, the
+  most common one. [ADR 0011](../../docs/adr/0011-code-is-free.md) separates
+  them. Nothing inside `code/` is required now, and nothing inside it is a
+  deviation.
+
+  `project create` still opens a new project on `infra`/`db`/`api`/`app`,
+  because it is a good default and deleting a directory costs nothing. It is an
+  offer, not a rule: `check` does not ask for it and **`adopt` does not add
+  it** — an `adopt` that did would put back the very directories a project had
+  deliberately removed.
+
+- **The `not a canonical layer` warning is gone.** It fired nine times across
+  the two flagship projects — on `site`, `book`, `vscode`, `linkedin`, `paper`,
+  `prompt` — every one a deliberate, correct choice. A warning that appears on
+  correct configurations is how a signal stops being read.
+
+  What survives is relational and was already conditional: an `api/modules/X`
+  without a `db/modules/X` is still worth a look, and a project with no `api`
+  layer is never asked about it.
+
+### Fixed
+
+- **Nested documentation is now detected wherever it is.** The boundary rule
+  walked only the four known layer names, so `code/site/docs` and
+  `code/vscode/docs` were invisible to it. With no list of names to walk, it
+  reaches whatever `code/` contains — which is how removing nine meaningless
+  warnings surfaced two real ones.
+
 ## [0.10.2]
 
 ### Changed

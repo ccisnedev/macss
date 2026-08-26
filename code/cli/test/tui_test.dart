@@ -46,7 +46,7 @@ Set<String> _bannerCommands(String banner) {
 /// command can stamp a whole project.
 Assets _quickstartAssets(Directory root) {
   final assetsRoot = Directory(p.join(root.path, '_assets'));
-  for (final file in canonFiles) {
+  for (final file in createFiles) {
     final f = File(
       p.join(assetsRoot.path, 'assets', p.joinAll(file.template.split('/'))),
     );
