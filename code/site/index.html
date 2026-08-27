@@ -90,21 +90,27 @@
 
     <section id="monorepo">
       <h2>Monorepo structure</h2>
-      <p>Every MACSS project is a single repository with a canonical layout. The AI agent — and the developer — find everything in a predictable location.</p>
+      <p>Every MACSS project is a single repository, and one line in it is rigid: <strong>code lives under <code>code/</code>, documentation under <code>docs/</code></strong>. That separation is the canon. What you put inside <code>code/</code> is your project's business.</p>
 
       <pre class="code-block">project/
-├── code/
-│   ├── db/    → SQL schemas, DDL scripts, repositories
-│   ├── api/   → use cases, endpoints, server
-│   ├── app/   → services, controllers, views
-│   └── infra/ → CI, containers, environment config
+├── code/            → the canon ends here
 ├── docs/
 │   ├── adr/          → architecture decision records
 │   ├── architecture.md
 │   └── roadmap.md
 └── README.md</pre>
 
-      <p style="margin-top:1rem;">Within <code>code/</code>, business logic is organized as <strong>modules</strong> — vertical slices that group related use cases from the same domain:</p>
+      <p style="margin-top:1rem;"><code>macss project create</code> opens a project on four layers, because most software has them:</p>
+
+      <pre class="code-block">code/
+├── db/    → SQL schemas, DDL scripts, repositories
+├── api/   → use cases, endpoints, server
+├── app/   → services, controllers, views
+└── infra/ → CI, containers, environment config</pre>
+
+      <p style="margin-top:1rem;">They are an offer, not a requirement. <code>macss project check</code> does not ask for them, and it does not object to what it finds instead — a CLI, a documentation site, a book, a VS Code extension. <a href="https://github.com/ccisnedev/macss/blob/main/docs/adr/0011-code-is-free.md">ADR 0011</a> says why: both projects meant to demonstrate the methodology broke the old rule in the same direction, and when that happens the rule is what is wrong.</p>
+
+      <p style="margin-top:1rem;">Inside <code>code/</code>, business logic is organized as <strong>modules</strong> — vertical slices that group related use cases from the same domain:</p>
 
       <pre class="code-block">code/api/modules/
 ├── clients/   → create, list, get, update, delete
@@ -147,7 +153,7 @@
       <div class="commands">
         <div class="cmd-row">
           <code>macss project create --path &lt;dir&gt; --lang &lt;en|es&gt; --apply</code>
-          <p>Scaffold a new project with <code>code/{db,api,app,infra}</code> and documentation templates.</p>
+          <p>Open a project on <code>docs/</code>, <code>code/</code> and the four starter layers. Delete the ones that do not apply.</p>
         </div>
         <div class="cmd-row">
           <code>macss requisition new &lt;slug&gt; --apply</code>
@@ -164,6 +170,14 @@
         <div class="cmd-row">
           <code>macss delivery publish --apply</code>
           <p>Push the branch and open the pull request from the delivery.</p>
+        </div>
+        <div class="cmd-row">
+          <code>macss skill deploy --host &lt;hosts&gt; --scope &lt;global|repo&gt; --all --apply</code>
+          <p>Put the MACSS lifecycle skills where your AI coding host reads them — Claude Code, Codex, Antigravity, OpenCode, Copilot. <code>list</code>, <code>remove</code>, <code>doctor</code> and <code>validate</code> come with it.</p>
+        </div>
+        <div class="cmd-row">
+          <code>macss skill doctor</code>
+          <p>What is deployed on this machine, which tool owns it, and what has changed since. Other tools deploy skills too; this says which are yours.</p>
         </div>
         <div class="cmd-row">
           <code>macss help</code>
