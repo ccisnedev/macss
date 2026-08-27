@@ -29,7 +29,22 @@ class CanonFile {
 
 /// The module anchors. Each README is the architectural signal of its layer and
 /// makes the directory survive the first commit, since git ignores empty dirs.
-const canonLayers = <CanonFile>[
+/// The shape `project create` opens a new project on — **offered, not
+/// required**.
+///
+/// `infra` / `db` / `api` / `app` is the most common way to articulate a
+/// solution and a good default, which is why a new project starts there. It is
+/// not what a MACSS project *is*: see [ADR 0011](../../../../docs/adr/0011-code-is-free.md).
+/// `check` never asks for these and `adopt` never adds them, so a project that
+/// does not need one deletes the directory and is done.
+///
+/// That leaves `create` stamping more than `check` requires. The reverse — the
+/// canon demanding what `create` never produced — is the defect this module was
+/// built to prevent, and it breaks a project the moment it is born. This
+/// direction is only an offer that can be declined, and a test pins it: a
+/// created project conforms, and so does the same project with all four
+/// directories removed.
+const starterLayers = <CanonFile>[
   CanonFile('code/infra/README.md', 'templates/project-base/code/infra/README.md'),
   CanonFile('code/db/README.md', 'templates/project-base/code/db/README.md'),
   CanonFile('code/api/README.md', 'templates/project-base/code/api/README.md'),
@@ -50,21 +65,26 @@ const canonDocs = <CanonFile>[
 /// Root files.
 const canonRootFiles = <CanonFile>[
   CanonFile('README.md', 'templates/project-base/README.md'),
-  CanonFile('CHANGELOG.md', 'templates/project-base/CHANGELOG.md'),
+  // No root CHANGELOG. It was canon for a while and no project ever filled
+  // one — not across 25 releases of inquiry nor 10 of macss — because in a
+  // project whose deliverable is one package, the package's own changelog is
+  // the delivery history, and a second one at the root only restates it and
+  // drifts. What was stamped was a header promising "all notable changes are
+  // documented in this file" above nothing, in the first place a reader looks.
+  // A project that ships several versioned artifacts may want such a file;
+  // that is its judgement to make, not a rule to stamp.
   CanonFile('.gitignore', 'templates/project-base/.gitignore'),
   CanonFile('.gitattributes', 'templates/project-base/.gitattributes'),
 ];
 
 /// Everything a canonical project carries, in stamping order.
 const canonFiles = <CanonFile>[
-  ...canonLayers,
   ...canonDocs,
   ...canonRootFiles,
 ];
 
-/// The directories `code/` is expected to contain. `cli` is an optional client
-/// surface, so its absence is never reported — only its shape, if present.
-const canonCodeDirectories = <String>['infra', 'db', 'api', 'app', 'cli'];
+/// What `project create` writes: the canon, plus the starting shape.
+const createFiles = <CanonFile>[...canonFiles, ...starterLayers];
 
 /// Client surfaces that mirror the backend's modules by name.
 const canonClientLayers = <String>['app', 'cli'];
@@ -78,8 +98,12 @@ const canonClientLayers = <String>['app', 'cli'];
 /// is a `warning`: it needs human judgement, so no command will act on it.
 List<DoctorCheck> inspectProject(String root) => [
       ...canonFiles.map((f) => _fileCheck(root, f)),
+      // No check over the *contents* of `code/`. Nothing there is required and
+      // nothing there deviates — a project articulates its own solution (ADR
+      // 0011). What survives is relational: it asks whether a pattern the
+      // project chose is internally consistent, and says nothing to a project
+      // that did not choose it.
       ..._moduleMirrorChecks(root),
-      ..._strayDirectoryChecks(root),
       ..._documentationBoundaryChecks(root),
     ];
 
@@ -145,36 +169,22 @@ List<DoctorCheck> _moduleMirrorChecks(String root) {
   return checks;
 }
 
-/// Directories under `code/` that are not part of the canon.
-List<DoctorCheck> _strayDirectoryChecks(String root) {
+/// "Documentation is never mixed with code" — checked in its one unambiguous
+/// form: a `docs/` directory nested inside a layer.
+/// Applies to **whatever** `code/` contains, not to a list of known layer
+/// names. That list is gone (ADR 0011), and its absence makes this rule
+/// stronger: `code/site/docs` was never reported while the check only walked
+/// `infra` / `db` / `api` / `app`.
+List<DoctorCheck> _documentationBoundaryChecks(String root) {
   final code = Directory(p.join(root, 'code'));
   if (!code.existsSync()) return const [];
 
-  return code
-      .listSync()
-      .whereType<Directory>()
-      .map((d) => p.basename(d.path))
-      .where((name) => !canonCodeDirectories.contains(name))
-      .map(
-        (name) => DoctorCheck(
-          name: 'code/$name',
-          status: CheckStatus.warning,
-          detail: 'not a canonical layer',
-          remediation:
-              'Deliberate? Leave it. Otherwise fold it into a layer — adopt '
-              'never removes anything',
-        ),
-      )
-      .toList();
-}
-
-/// "Documentation is never mixed with code" — checked in its one unambiguous
-/// form: a `docs/` directory nested inside a layer.
-List<DoctorCheck> _documentationBoundaryChecks(String root) {
   final offenders = <String>[];
-  for (final layer in canonCodeDirectories) {
-    final nested = Directory(p.join(root, 'code', layer, 'docs'));
-    if (nested.existsSync()) offenders.add('code/$layer/docs');
+  for (final dir in code.listSync().whereType<Directory>()) {
+    final layer = p.basename(dir.path);
+    if (Directory(p.join(dir.path, 'docs')).existsSync()) {
+      offenders.add('code/$layer/docs');
+    }
   }
 
   return offenders

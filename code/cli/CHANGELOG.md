@@ -5,6 +5,99 @@ All notable changes to this project will be documented in this file.
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.11.0]
+
+### Changed
+
+- **`code/` is free.** The canon required `infra`, `db`, `api` and `app` inside
+  `code/`, each with a README, and reported a missing one as an **error** with
+  exit `1` — not a warning. Both projects that demonstrate the methodology
+  failed that rule: inquiry ships a CLI, a site, a book and a VS Code
+  extension, and has no API and no database.
+
+  What `docs/` requires is methodological — a project must be able to explain
+  itself. What `code/` required was architectural: one shape of solution, the
+  most common one. [ADR 0011](../../docs/adr/0011-code-is-free.md) separates
+  them. Nothing inside `code/` is required now, and nothing inside it is a
+  deviation.
+
+  `project create` still opens a new project on `infra`/`db`/`api`/`app`,
+  because it is a good default and deleting a directory costs nothing. It is an
+  offer, not a rule: `check` does not ask for it and **`adopt` does not add
+  it** — an `adopt` that did would put back the very directories a project had
+  deliberately removed.
+
+- **The `not a canonical layer` warning is gone.** It fired nine times across
+  the two flagship projects — on `site`, `book`, `vscode`, `linkedin`, `paper`,
+  `prompt` — every one a deliberate, correct choice. A warning that appears on
+  correct configurations is how a signal stops being read.
+
+  What survives is relational and was already conditional: an `api/modules/X`
+  without a `db/modules/X` is still worth a look, and a project with no `api`
+  layer is never asked about it.
+
+### Fixed
+
+- **Nested documentation is now detected wherever it is.** The boundary rule
+  walked only the four known layer names, so `code/site/docs` and
+  `code/vscode/docs` were invisible to it. With no list of names to walk, it
+  reaches whatever `code/` contains — which is how removing nine meaningless
+  warnings surfaced two real ones.
+
+## [0.10.2]
+
+### Changed
+
+- **A command that has nothing to do now says why, not just that.** Four
+  messages here were being computed and thrown away, because a plan that comes
+  out empty never reaches `describe`. The caller was told `nothing would
+  change` — a fact, with the actionable half removed.
+
+  | Command | Now says |
+  |---|---|
+  | `upgrade`, already current | `Already on the latest version` |
+  | `upgrade`, latest is a prerelease | `Latest release is a prerelease — skipping.` |
+  | `skill clean`, nothing installed | `No supported assistant found in your home directory.` |
+  | `requisition prune`, nothing finished | `Nothing to remove: no requisition is done or discarded.` |
+
+  `upgrade` is the clearest case, because it has **two different nothings**.
+  The second explains a decision the tool took on your behalf, and collapsing
+  it into `nothing would change` hid that a choice had been made at all.
+  `requisition prune` is the one most often read: finding nothing finished is
+  the ordinary outcome of a prune.
+
+  The reason now reaches `--plan` as well, where an empty plan had always been
+  mute — that path never called `describe`, so this was never a regression,
+  just a silence with no way to fill it.
+
+- **`modular_cli_sdk` 0.5.0**, which is where the mechanism
+  (`ExplainsNothingToDo`) comes from. It also stops `--apply` from asking for
+  approval over a plan that changes nothing — which, with no terminal to
+  answer, used to fail an invocation that had nothing to do.
+
+- **The canon no longer requires a root `CHANGELOG.md`.** Two flagship
+  projects carried one for months and neither ever had an entry in it. What
+  `create` stamped was a header promising that all notable changes are
+  documented, above none — in the first place a visitor looks, on repositories
+  that keep a careful changelog one directory down.
+
+  Delivery history belongs to the thing delivered: a package's changelog ships
+  with the package. Removed from `canon.dart`, the template and the book. A
+  project that ships several independently versioned artifacts may want a file
+  saying which versions compose a release; that is its judgement, not a rule.
+
+  `adopt` removes nothing, so a project that keeps its own is untouched, and
+  `check` no longer mentions it either way.
+
+### Fixed
+
+- **A merge that does not raise the version no longer marks `main` red.** The
+  release workflow's version check *said* "skipping release" and then exited
+  `1`, so every ordinary merge — a refactor, a doc fix, a dependency bump —
+  finished with a failed run. A red mark that appears when nothing is wrong is
+  how a red mark stops meaning anything. It now sets `should_release=false` and
+  the release jobs are skipped, which is what `inquiry`'s workflow already did.
+
 ## [0.10.1]
 
 ### Fixed

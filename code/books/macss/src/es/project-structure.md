@@ -43,7 +43,6 @@ Esto reduce friccion y facilita trabajo coordinado de humanos y agentes AI.
 │   │   └── 0001-record-architecture-decisions.md
 │   ├── architecture.md      ← architecture overview
 │   └── roadmap.md           ← delivery roadmap
-├── CHANGELOG.md             ← versioned change history
 ├── .gitignore
 └── README.md
 ```
@@ -81,8 +80,13 @@ Cross-cutting decisions and rationale belong here.
 Every significant design choice should have an ADR so future contributors
 — human or AI — can understand not only what the system does but why.
 
-**`CHANGELOG.md`** records delivery history at the project level.
-It is the readable history of the system's evolution.
+There is deliberately **no root `CHANGELOG.md`**. Delivery history belongs to
+the thing delivered: a package's changelog ships with the package and is read
+where the package is installed. A second one at the project root restates it
+and drifts, and the stamped version — a header promising that all notable
+changes are documented, above nothing — was worse than absent. A project that
+ships several independently versioned artifacts may want a file that says which
+versions compose a release; that is its own judgement, not a rule.
 
 ## Materialized by `macss project create`
 
@@ -97,7 +101,7 @@ Running this command gives you a clean project workspace with:
 
 - the standard `code/` layer skeleton,
 - the `docs/` hierarchy with the ADR starting point,
-- a baseline `README.md`, `CHANGELOG.md`, and `.gitignore`,
+- a baseline `README.md` and `.gitignore`,
 - and all the structural conventions required by the architecture.
 
 The structure is not locked. Teams can add layers, rename modules, or extend
