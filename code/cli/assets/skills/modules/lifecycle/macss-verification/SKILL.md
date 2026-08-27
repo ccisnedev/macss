@@ -1,6 +1,10 @@
 ---
 name: macss-verification
 description: Conduct a verification — take the responsible human through every acceptance criterion, one at a time, with evidence they can reproduce, and classify what failed so they can decide where the work goes.
+license: MIT
+metadata:
+  version: "1.0.0"
+  skillwire-origin: macss
 ---
 
 ## Goal

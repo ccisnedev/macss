@@ -1,6 +1,10 @@
 ---
 name: macss-analyze
 description: Run the analyze phase of a MACSS implementation cycle — build shared understanding of the problem and produce a diagnosis grounded in evidence.
+license: MIT
+metadata:
+  version: "1.0.0"
+  skillwire-origin: macss
 ---
 
 ## Goal

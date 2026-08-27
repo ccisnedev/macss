@@ -1,6 +1,10 @@
 ---
 name: macss-specification
 description: Take a request from arrival to Definition of Ready — establish its sources, agree the list of stories, then build the acceptance criteria one at a time with the person who will be bound by them.
+license: MIT
+metadata:
+  version: "1.0.0"
+  skillwire-origin: macss
 ---
 
 ## Goal

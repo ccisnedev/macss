@@ -77,25 +77,25 @@ void main() {
     });
 
     test('listDirectory returns immediate child dirs, sorted', () {
-      final skills = p.join(tempDir.path, 'assets', 'skills');
+      final skills = p.join(tempDir.path, 'assets', 'skills', 'modules', 'lifecycle');
       for (final name in ['macss-plan', 'macss-analyze', 'macss-execute']) {
         Directory(p.join(skills, name)).createSync(recursive: true);
       }
 
       final assets = Assets(root: tempDir.path);
       expect(
-        assets.listDirectory('skills'),
+        assets.listDirectory('skills/modules/lifecycle'),
         ['macss-analyze', 'macss-execute', 'macss-plan'],
       );
     });
 
     test('listDirectory ignores files', () {
-      final skills = p.join(tempDir.path, 'assets', 'skills');
+      final skills = p.join(tempDir.path, 'assets', 'skills', 'modules', 'lifecycle');
       Directory(p.join(skills, 'macss-plan')).createSync(recursive: true);
       File(p.join(skills, 'README.md')).writeAsStringSync('x');
 
       final assets = Assets(root: tempDir.path);
-      expect(assets.listDirectory('skills'), ['macss-plan']);
+      expect(assets.listDirectory('skills/modules/lifecycle'), ['macss-plan']);
     });
 
     test('listDirectory throws FileSystemException for missing dir', () {

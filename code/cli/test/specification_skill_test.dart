@@ -21,6 +21,8 @@ void main() {
     Directory.current.path,
     'assets',
     'skills',
+    'modules',
+    'lifecycle',
     'macss-specification',
     'SKILL.md',
   ));
