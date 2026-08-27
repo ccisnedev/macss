@@ -1,6 +1,6 @@
 # Project Name
 
-> Created with [MACSS](https://macss.dev) — Modular Architecture for Comprehensive Software Solutions.
+> Created with [MACSS](https://macss.ccisne.dev) — Modular Architecture for Comprehensive Software Solutions.
 
 ## Structure
 
