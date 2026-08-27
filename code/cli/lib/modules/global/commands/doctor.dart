@@ -107,11 +107,11 @@ class DoctorCommand implements Query<DoctorInput, DoctorOutput> {
       'vocabulary: es': 'vocabulary/es.yaml',
       'artifact: requisition': 'artifacts/requisition.template.en.md',
       'artifact: specification': 'artifacts/specification.template.en.md',
-      'skill: macss-specification': 'skills/macss-specification/SKILL.md',
-      'skill: macss-analyze': 'skills/macss-analyze/SKILL.md',
-      'skill: macss-plan': 'skills/macss-plan/SKILL.md',
-      'skill: macss-execute': 'skills/macss-execute/SKILL.md',
-      'skill: macss-verification': 'skills/macss-verification/SKILL.md',
+      'skill: macss-specification': 'skills/modules/lifecycle/macss-specification/SKILL.md',
+      'skill: macss-analyze': 'skills/modules/lifecycle/macss-analyze/SKILL.md',
+      'skill: macss-plan': 'skills/modules/lifecycle/macss-plan/SKILL.md',
+      'skill: macss-execute': 'skills/modules/lifecycle/macss-execute/SKILL.md',
+      'skill: macss-verification': 'skills/modules/lifecycle/macss-verification/SKILL.md',
     };
 
     for (final entry in requiredAssets.entries) {

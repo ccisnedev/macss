@@ -32,11 +32,11 @@ const _allTemplates = [
   'vocabulary/es.yaml',
   'artifacts/requisition.template.en.md',
   'artifacts/specification.template.en.md',
-  'skills/macss-specification/SKILL.md',
-  'skills/macss-analyze/SKILL.md',
-  'skills/macss-plan/SKILL.md',
-  'skills/macss-execute/SKILL.md',
-  'skills/macss-verification/SKILL.md',
+  'skills/modules/lifecycle/macss-specification/SKILL.md',
+  'skills/modules/lifecycle/macss-analyze/SKILL.md',
+  'skills/modules/lifecycle/macss-plan/SKILL.md',
+  'skills/modules/lifecycle/macss-execute/SKILL.md',
+  'skills/modules/lifecycle/macss-verification/SKILL.md',
 ];
 
 void main() {
@@ -228,7 +228,7 @@ void main() {
   group('every shipped skill is a skill doctor checks', () {
     test('the real assets', () async {
       final assets = Assets(root: Directory.current.path);
-      final shipped = assets.listDirectory('skills');
+      final shipped = assets.listDirectory('skills/modules/lifecycle');
 
       final out = await makeCmd(assets).execute();
       final checked = out.checks.map((c) => c.name).toSet();

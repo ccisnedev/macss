@@ -1,6 +1,10 @@
 ---
 name: macss-plan
 description: Run the plan phase of a MACSS implementation cycle — turn the diagnosis into staged work, each stage carrying an executable verification.
+license: MIT
+metadata:
+  version: "1.0.0"
+  skillwire-origin: macss
 ---
 
 ## Goal
