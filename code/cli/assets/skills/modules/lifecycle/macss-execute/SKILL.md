@@ -1,6 +1,10 @@
 ---
 name: macss-execute
 description: Run the execute phase of a MACSS implementation cycle — implement the plan phase by phase under TDD, keeping the suite green.
+license: MIT
+metadata:
+  version: "1.0.0"
+  skillwire-origin: macss
 ---
 
 ## Goal

@@ -5,7 +5,9 @@ library;
 
 import 'dart:io' as io;
 
+import 'package:datajack/datajack.dart';
 import 'package:modular_cli_sdk/modular_cli_sdk.dart';
+import 'package:skillwire/skillwire.dart';
 import 'package:path/path.dart' as p;
 
 import 'assets.dart';
@@ -17,9 +19,16 @@ import 'modules/dor/dor_builder.dart';
 import 'modules/global/global_builder.dart';
 import 'modules/project/project_builder.dart';
 import 'modules/requisition/requisition_builder.dart';
-import 'modules/skill/skill_builder.dart';
 import 'modules/specification/specification_builder.dart';
 import 'modules/verification/verification_builder.dart';
+
+/// The name this CLI writes into every ledger row it creates, and the name the
+/// other consumers see in a `block` when they meet one of its artifacts.
+///
+/// Not the executable's name by coincidence: it is the identity that makes PRD
+/// 10.2 state 5 answerable on a machine `macss`, `inquiry` and `skillwire_cli`
+/// all deploy into.
+const macssConsumerName = 'macss';
 
 /// `--help` / `-h` are left to the SDK, which routes every help request itself
 /// (including the focused `macss <command> --help`). Only `--version` / `-v`
@@ -69,7 +78,26 @@ Future<int> runMacss(
     'verification',
     (m) => buildVerificationModule(m, assets: assets),
   );
-  cli.module('skill', (m) => buildSkillModule(m, assets: assets));
+  // R12.1 — the same `skill` module every consumer mounts, from `datajack`.
+  // `consumer` is what makes a shared machine work: every ledger row this CLI
+  // writes says `macss`, so `inquiry` and `skillwire_cli` meeting one of these
+  // artifacts report it as owned rather than overwriting it.
+  // Its own resolution, not macss's `Assets` root: `Workspace` knows the two
+  // layouts a modular_cli_sdk CLI has — beside the compiled binary, and the
+  // working copy when run from source with `dart run`.
+  final workspace = Workspace.detect();
+  cli.module(
+    'skill',
+    (m) => buildSkillModule(
+      m,
+      consumer: macssConsumerName,
+      workspace: workspace,
+      catalogue: Catalogue.read(
+        workspace.assetsRoot,
+        validator: SkillValidator(reservedNames: workspace.matrix.reservedNames),
+      ),
+    ),
+  );
   cli.module('project', (m) => buildProjectModule(m, assets: assets));
   cli.module(
     'requisition',

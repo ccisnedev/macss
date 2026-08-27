@@ -5,6 +5,89 @@ All notable changes to this project will be documented in this file.
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.12.0]
+
+### Changed — breaking
+
+- **The `skill` module is no longer macss's own.** It comes from
+  [`datajack`](https://pub.dev/packages/datajack), over the
+  [`skillwire`](https://pub.dev/packages/skillwire) package, and it is the same
+  module `inquiry` and `skillwire_cli` mount. 678 lines of deployment logic left
+  this repository; what replaces them is a mount:
+
+  ```dart
+  cli.module('skill', (m) => buildSkillModule(
+    m, consumer: 'macss', workspace: workspace, catalogue: catalogue,
+  ));
+  ```
+
+  `consumer` is what makes a shared machine work. Every ledger row this CLI
+  writes says `macss`, so another consumer meeting one of these artifacts
+  reports it as owned rather than overwriting it — and macss does the same in
+  return.
+
+- **`skill clean` is gone.** The module's contract is five routes —
+  `list`, `deploy`, `remove`, `doctor`, `validate` — and it must be identical
+  in every consumer. `clean` removed by filename prefix without consulting
+  anything; `remove` reconciles away from a desired state and touches only what
+  macss recorded as its own. They are not the same operation, so an alias would
+  have been worse than the removal.
+
+- **`--host` and `--scope` are now required, and `--host` takes a list.**
+  `macss skill deploy` used to deploy to every assistant it could detect.
+  Convenient, and a guess: the tool decided which machines to write to. There is
+  no implicit "all hosts" and no default scope any more.
+
+  ```
+  macss skill deploy --host claude,opencode --scope global --all --apply
+  ```
+
+  A comma-separated list rather than a repeated flag, because `cli_router` keeps
+  flags in a map keyed by name — a second `--host` would silently overwrite the
+  first, and losing a host without saying so is worse than the extra comma.
+
+- **Every Command requires `--plan` or `--apply`.** It always did for the rest of
+  this CLI; the skill routes now follow the same rule.
+
+- **The skills moved to `assets/skills/modules/lifecycle/`.** Modules group by
+  generality: these five are the MACSS cycle, not transversal, so they are not
+  `core`. Their frontmatter gained `license` at the top level and a `metadata`
+  map carrying `version` and `skillwire-origin`.
+
+### Added
+
+- **`skill remove`, `skill doctor`, `skill validate`.** `doctor` is the one
+  worth knowing about: it reports what is deployed, who owns it, what has
+  drifted, what is present that no consumer recorded, and where each host path
+  came from with the date it was read.
+
+- **`macss migrate-skills`**, temporary, removed in 0.13.0. It removes the
+  `macss-` prefixed skills deployed before there was a ledger, so they can be
+  deployed again and recorded.
+
+  They cannot simply be adopted. Their frontmatter predates `license` and
+  `metadata`, so their content hash differs from what this release deploys, and
+  adoption requires an identical hash. Run it once:
+
+  ```
+  macss migrate-skills --plan     # read it first
+  macss migrate-skills --apply
+  macss skill deploy --host claude,opencode --scope global --all --apply
+  ```
+
+  It removes only prefixed directories that contain a `SKILL.md` and that no
+  consumer has recorded. A skill without the prefix is not provably macss's, and
+  is left alone.
+
+### Fixed
+
+- **The same skill was reaching OpenCode twice.** The prefix era wrote to
+  `~/.config/opencode/skill` — singular — and OpenCode resolves its own tree
+  with a `{skill,skills}` brace glob, so both spellings were live. Every macss
+  skill was visible to it from two directories at once. `migrate-skills` clears
+  the singular copies and this release writes only the plural; `skill doctor`
+  reports the condition if it ever recurs.
+
 ## [0.11.0]
 
 ### Changed
