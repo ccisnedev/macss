@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # install.sh — Install MACSS CLI from GitHub Releases (Linux)
 #
-# Usage: curl -fsSL https://raw.githubusercontent.com/ccisnedev/macss/main/code/cli/scripts/install.sh | bash
-# Or locally: bash scripts/install.sh
+#   curl -fsSL https://macss.ccisne.dev/install.sh | bash
+#
+# This file is served from the site and exists nowhere else in the repository.
+# See code/cli/test/installer_layout_test.dart, which now refuses a second copy.
 
 set -euo pipefail
 
