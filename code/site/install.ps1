@@ -1,7 +1,11 @@
 # install.ps1 — Install MACSS CLI from GitHub Releases (Windows)
 #
-# Usage: iex (iwr https://raw.githubusercontent.com/ccisnedev/macss/main/code/cli/scripts/install.ps1).Content
-# Or locally: .\scripts\install.ps1
+#   irm https://macss.ccisne.dev/install.ps1 | iex
+#
+# This file is served from the site and exists nowhere else in the repository.
+# It used to exist twice, and the copies diverged: the served one wrote a `ma`
+# alias that invoked a bare `macss`, resolving through PATH. See
+# code/cli/test/installer_layout_test.dart, which now refuses a second copy.
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -36,8 +40,11 @@ New-Item -ItemType Directory -Force $installDir | Out-Null
 Expand-Archive -Path $zipPath -DestinationPath $installDir -Force
 
 # 3. Create ma.cmd alias
+#    %~dp0 is the directory of this .cmd, so `ma` always runs the macss.exe
+#    sitting next to it. Invoking a bare `macss` would resolve through PATH and
+#    could silently run a different installation.
 New-Item -ItemType Directory -Force $binDir | Out-Null
-Set-Content -Path "$binDir\ma.cmd" -Value "@echo off`r`nmacss %*"
+Set-Content -Path "$binDir\ma.cmd" -Value @('@echo off', '"%~dp0macss.exe" %*')
 
 # 4. Add to PATH
 $userPath = [System.Environment]::GetEnvironmentVariable('PATH', 'User')
