@@ -37,7 +37,6 @@ void main() {
         'skill remove',
         'skill doctor',
         'skill validate',
-        'migrate-skills',
         'project create',
         'project check',
         'project adopt',

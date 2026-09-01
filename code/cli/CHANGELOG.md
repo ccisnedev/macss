@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.13.0]
+
+### Removed — breaking
+
+- **`macss migrate-skills` is gone.** It existed for one upgrade — off the
+  `macss-` filename prefix, which proved ownership before there was a ledger —
+  and its own doc comment said it would be removed in this version.
+
+  A comment is not a mechanism. A one-time migration nobody deletes becomes a
+  permanent route that deletes directories, kept alive by nothing but the fact
+  that removing it was never anybody's task. `prefix_era_retired_test.dart` now
+  holds the retirement: the route is not offered, running it does not succeed,
+  and the source file is gone rather than merely unregistered — an unregistered
+  command still compiles and is one line from returning.
+
+  If you are upgrading from before 0.12.0 and never ran it, install 0.12.0
+  first, run `macss migrate-skills --plan`, then upgrade again.
+
+### Fixed
+
+- **The dead install URL now reaches you.** 0.12.0 stamped
+  `https://macss.dev` — a domain that does not resolve — into the README of
+  every project `macss project create` scaffolded, in the first place a reader
+  looks. The site is at `macss.ccisne.dev`. The content fix landed on `main` in
+  0.12.0's wake but was never released, so every install since has carried it.
+
+- **One installer, not two.** The release installer existed in
+  `code/cli/scripts/` and `code/site/`, and the copies had diverged. The served
+  `install.ps1` wrote a `ma` alias invoking a bare `macss`, which resolves
+  through PATH and can run a different installation than the one just unpacked.
+  The repository copy had been fixed; the fix never reached the copy people run.
+
+### Added
+
+- **`shipped_urls_test.dart`.** Every host named in a shipped asset must appear
+  in a written allowlist. It is an allowlist and not a reachability check: the
+  network makes a suite slow and flaky and goes red for an outage rather than a
+  mistake, and what went wrong was a host nobody had decided on. Verified by
+  reintroducing `macss.dev` into the README template and watching it name the
+  file.
+
 ## [0.12.0]
 
 ### Changed — breaking
