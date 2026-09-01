@@ -21,7 +21,7 @@ dependencies:
     git:
       url: https://github.com/ccisnedev/design_system
       path: code/design_system
-      ref: e7a906fa43cd89e5a75cba77e2b33c9d9addf3ec
+      ref: ed30a0c37902df29926c02e150a25208780add82
 
 dev_dependencies:
   build_runner: ^2.10.0

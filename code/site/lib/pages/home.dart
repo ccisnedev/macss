@@ -5,6 +5,7 @@ import 'package:jaspr/jaspr.dart';
 import '../sections/architecture.dart';
 import '../sections/cli.dart';
 import '../sections/ecosystem.dart';
+import '../sections/install.dart';
 import '../sections/monorepo.dart';
 import '../sections/principles.dart';
 import '../widgets/colophon.dart';
@@ -28,6 +29,7 @@ class Home extends StatelessComponent {
           ]),
         ],
       ),
+      const Install(),
       const Principles(),
       const Architecture(),
       const Monorepo(),

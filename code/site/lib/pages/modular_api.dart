@@ -44,7 +44,7 @@ curl -X POST http://localhost:8080/api/clients/create \
     ('/health', 'Liveness, with no configuration.'),
     ('/openapi.json', 'The specification, as a consequence of the code.'),
     ('/openapi.yaml', 'The same, for readers who prefer it.'),
-    ('/metrics', 'Opt-in. The only one that is not on by default.'),
+    ('/metrics', 'Opt-in.'),
   ];
 
   @override
@@ -92,14 +92,13 @@ curl -X POST http://localhost:8080/api/clients/create \
             code([.text('validate()')]),
             .text(' step and an '),
             code([.text('execute()')]),
-            .text(' step. There is no controller mixing validation, business '
-                'logic and HTTP, because the framework will not let one exist.'),
+            .text(' step. Validation, business logic and HTTP stay apart '
+                'because the framework has no layer that mixes them.'),
           ]),
           p([
-            .text('CQRS is structural rather than optional: commands travel '
-                'over REST and queries over GraphQL. The OpenAPI specification '
-                'and the GraphQL schema are generated — they are a consequence '
-                'of the use cases, not a second document to keep in step.'),
+            .text('CQRS is structural: commands travel over REST, queries '
+                'over GraphQL. The OpenAPI specification and the GraphQL schema '
+                'are generated from the use cases.'),
           ]),
           p([.text('Every server ships these, with no configuration:')]),
           Rows(
