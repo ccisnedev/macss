@@ -37,7 +37,7 @@ code/
 ├── app/   → services, controllers, views
 └── infra/ → CI, containers, environment config'''),
       p([
-        .text('They are an offer and not a requirement. '),
+        .text('They are an offer. '),
         code([.text('macss project check')]),
         .text(' never asks for them and does not object to what it finds '
             'instead — a CLI, a documentation site, a book, an editor '

@@ -60,33 +60,6 @@ class Cli extends StatelessComponent {
         code([.text('--apply')]),
         .text(', and neither is the default.'),
       ]),
-      h3([.text('Install')]),
-      const Listing(
-        caption: 'Windows · PowerShell',
-        source: 'irm https://macss.ccisne.dev/install.ps1 | iex\n',
-      ),
-      const Listing(
-        caption: 'Linux · bash',
-        source: 'curl -fsSL https://macss.ccisne.dev/install.sh | bash\n',
-      ),
-      p([
-        .text('Both install to '),
-        code([.text(r'%LOCALAPPDATA%\macss')]),
-        .text(' or '),
-        code([.text('~/.macss')]),
-        .text(', add the directory to your PATH and create the '),
-        code([.text('ma')]),
-        .text(' alias. There is no macOS build yet.'),
-      ]),
-      p(classes: 'aside', [
-        .text('Read them before you run them — '),
-        a(href: 'https://macss.ccisne.dev/install.ps1', [.text('install.ps1')]),
-        .text(', '),
-        a(href: 'https://macss.ccisne.dev/install.sh', [.text('install.sh')]),
-        .text('. Piping a script from the internet into a shell is worth that '
-            'minute, here as anywhere.'),
-      ]),
-      h3([.text('Routes')]),
       Rows(
         rows: [
           for (final (term, describes) in _routes) Row(term, [.text(describes)]),
@@ -94,9 +67,4 @@ class Cli extends StatelessComponent {
       ),
     ],
   );
-
-  @css
-  static List<StyleRule> get styles => [
-    css('.aside').styles(color: role('muted'), fontSize: Type.micro),
-  ];
 }
