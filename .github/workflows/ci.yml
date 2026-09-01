@@ -38,3 +38,55 @@ jobs:
 
       - name: dart test
         run: dart test
+
+  # ─── The site ──────────────────────────────────────────────────────────────
+  site:
+    # `code/site` is Jaspr source and `pages.yml` publishes it on merge. Without
+    # this job the first sign that it stopped compiling would be a failed
+    # deploy — after the decision to publish, rather than before it.
+    name: site
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+
+      # Pinned to the version `pages.yml` publishes with. A CI that builds with
+      # a different tool than the deploy is checking something else.
+      - run: dart pub global activate jaspr_cli 0.23.4
+
+      - name: dart pub get
+        working-directory: code/site
+        run: dart pub get
+
+      # `--fatal-infos` matters here: jaspr_lints reports its rules as infos,
+      # and `styles_ordering` is one of them.
+      - name: dart analyze
+        working-directory: code/site
+        run: dart analyze --fatal-infos
+
+      # Analysis does not run the builders, and `@css` generation is where a
+      # site breaks with no Dart being wrong.
+      - name: jaspr build
+        working-directory: code/site
+        run: dart pub global run jaspr_cli:jaspr build
+
+      - name: The artifact is what it should be
+        working-directory: code/site/build/jaspr
+        run: |
+          rm -rf packages .dart_tool .build.manifest
+          found=$(echo $(find . -type f | sed 's|^\./||' | sort))
+          echo "Built: $found"
+          for want in index.html modular-api/index.html CNAME install.ps1 install.sh; do
+            case " $found " in
+              *" $want "*) ;;
+              *) echo "::error::$want is missing from the published set"; exit 1 ;;
+            esac
+          done
+          grep -qx 'macss.ccisne.dev' CNAME || {
+            echo "::error::CNAME does not name the site's domain"
+            exit 1
+          }

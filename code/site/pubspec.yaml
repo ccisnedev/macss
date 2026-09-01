@@ -1,0 +1,33 @@
+name: macss_site
+description: The site at macss.ccisne.dev. Source, not output.
+publish_to: none
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  jaspr: ^0.23.4
+  jaspr_router: ^0.9.0
+
+  # The design-system laboratory, pinned to a commit. Not a path — a relative
+  # path needs the two repositories checked out as siblings, which a runner does
+  # not do on its own. Not a version — `publish_to: none` over there is
+  # deliberate, so a commit is what there is to name.
+  #
+  # The pin is the useful part: a change over there does not reach this site
+  # until this line moves, and moving it is a commit here, which triggers the
+  # deploy like any other.
+  design_system:
+    git:
+      url: https://github.com/ccisnedev/design_system
+      path: code/design_system
+      ref: e7a906fa43cd89e5a75cba77e2b33c9d9addf3ec
+
+dev_dependencies:
+  build_runner: ^2.10.0
+  build_web_compilers: ^4.8.0
+  jaspr_builder: ^0.23.4
+  lints: ^6.1.0
+
+jaspr:
+  mode: static

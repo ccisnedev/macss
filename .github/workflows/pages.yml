@@ -1,3 +1,5 @@
+# `code/site` used to be hand-written HTML uploaded as it stood. It is Jaspr
+# source now, so it is built here and the output is what gets published.
 name: Deploy Pages
 
 on:
@@ -7,6 +9,11 @@ on:
     paths:
       - 'code/site/**'
       - '.github/workflows/pages.yml'
+  # The page's appearance also depends on `design_system`, whose commits never
+  # touch this repository. The dependency is pinned, so a change there does not
+  # arrive on its own — bumping the ref is a commit here and triggers this
+  # workflow like any other. This is for redeploying without one.
+  workflow_dispatch:
 
 permissions:
   pages: write
@@ -25,11 +32,33 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+
+      # Pinned. A floating build tool means the published page can change
+      # without a commit that explains why.
+      - run: dart pub global activate jaspr_cli 0.23.4
+
+      - name: Build the site
+        working-directory: code/site
+        run: |
+          dart pub get
+          dart pub global run jaspr_cli:jaspr build
+
+      # `packages/` is emitted by build_web_compilers for a client entrypoint
+      # this site does not have; `.dart_tool/package_config.json` records
+      # absolute paths on the build machine. deploy-pages runs no Jekyll, so
+      # dotfiles are published as they are and do not disappear on their own.
+      - name: Drop what the artifact should not carry
+        working-directory: code/site/build/jaspr
+        run: rm -rf packages .dart_tool .build.manifest
+
       - uses: actions/configure-pages@v5
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: code/site
+          path: code/site/build/jaspr
 
       - id: deployment
         uses: actions/deploy-pages@v4
