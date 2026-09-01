@@ -1,0 +1,11 @@
+# Files and directories created by pub.
+.dart_tool/
+.packages
+
+# Conventional directory for build output.
+/build/
+
+# Local dependency overrides. The site pins the design system to a commit; an
+# override is for iterating on both at once and must never be committed, or CI
+# would build against a directory it does not have.
+pubspec_overrides.yaml

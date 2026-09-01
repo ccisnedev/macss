@@ -23,9 +23,12 @@ void main() {
   // Tests run from code/cli.
   final repoRoot = Directory(p.join('..', '..'));
 
-  /// Directories that are not source: caches, build output, and the vendored
-  /// tree the VS Code integration test downloads, which ships installers of its
-  /// own that are nobody's business here.
+  /// Directories that are not source: caches, the vendored tree the VS Code
+  /// integration test downloads (which ships installers of its own), and
+  /// `build` — the site is a Jaspr app now, and `jaspr build` copies `web/`
+  /// into its output, so the installers appear there too. That copy is output,
+  /// not a second source, and counting it would make this test fail for having
+  /// worked.
   const skipped = {
     '.git',
     '.dart_tool',
@@ -62,13 +65,14 @@ void main() {
           found,
           hasLength(1),
           reason: 'Found ${found.length} copies of $name: $found. '
-              'The release installer belongs in code/site/, which is the only '
-              'place it is served from. Development scripts are dev-install.*.',
+              'The release installer belongs in code/site/web/, which is the '
+              'only place it is served from. Development scripts are '
+              'dev-install.*.',
         );
       });
 
       test('$name is the one the site serves', () {
-        expect(findByName(name), ['code/site/$name']);
+        expect(findByName(name), ['code/site/web/$name']);
       });
     }
   });
@@ -78,7 +82,8 @@ void main() {
     // PATH happens to find first. On Windows that means %~dp0 — the directory
     // of the .cmd itself; on Linux a symlink to an absolute path.
     test('install.ps1 builds ma.cmd from its own directory', () {
-      final script = File(p.join('..', 'site', 'install.ps1')).readAsStringSync();
+      final script =
+          File(p.join('..', 'site', 'web', 'install.ps1')).readAsStringSync();
       final aliasLine = script
           .split('\n')
           // The line that *writes* the file, not the comment above it.
@@ -101,7 +106,8 @@ void main() {
     });
 
     test('install.sh links ma to an absolute path', () {
-      final script = File(p.join('..', 'site', 'install.sh')).readAsStringSync();
+      final script =
+          File(p.join('..', 'site', 'web', 'install.sh')).readAsStringSync();
       expect(script, contains(r'ln -sf "$BIN_DIR/macss" "$BIN_DIR/ma"'));
     });
   });
