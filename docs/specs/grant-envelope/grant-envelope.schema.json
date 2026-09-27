@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://macss.ccisne.dev/spec/grant-envelope/v0.1/schema.json",
+  "title": "Grant Envelope v0.1",
+  "description": "A signed, bounded, expiring and revocable grant of authority to an executor. See README.md.",
+  "type": "object",
+  "required": ["spec", "id", "executor", "grantors", "scope", "grants", "prohibitions", "validity", "escalation", "signatures"],
+  "additionalProperties": false,
+  "properties": {
+    "spec": { "const": "grant-envelope/0.1" },
+    "id": { "type": "string", "minLength": 1 },
+    "executor": { "$ref": "#/$defs/identity" },
+    "basis": {
+      "type": "object",
+      "description": "The approved change this envelope derives from (invariant I4).",
+      "required": ["ref", "digest"],
+      "additionalProperties": false,
+      "properties": {
+        "ref": { "type": "string", "description": "A plan, pull request or policy version." },
+        "digest": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "grantors": {
+      "type": "object",
+      "description": "Requester and approver MUST be distinct, and neither may be the executor (invariant I3). Distinctness is checked by the enforcement point, not by this schema.",
+      "required": ["requester", "approver"],
+      "additionalProperties": false,
+      "properties": {
+        "requester": { "$ref": "#/$defs/identity" },
+        "approver": { "$ref": "#/$defs/identity" }
+      }
+    },
+    "scope": {
+      "type": "array",
+      "description": "Explicit inventory of every resource the envelope may touch at all.",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/resource" }
+    },
+    "grants": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/grant" }
+    },
+    "prohibitions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["action"],
+        "additionalProperties": false,
+        "properties": {
+          "action": { "$ref": "#/$defs/action" },
+          "resources": { "type": "array", "items": { "$ref": "#/$defs/resource" } },
+          "reason": { "type": "string" }
+        }
+      }
+    },
+    "validity": {
+      "type": "object",
+      "required": ["not_before", "not_after", "revocable_by"],
+      "additionalProperties": false,
+      "properties": {
+        "not_before": { "type": "string", "format": "date-time" },
+        "not_after": { "type": "string", "format": "date-time" },
+        "revocable_by": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/identity" } }
+      }
+    },
+    "in_flight": {
+      "enum": ["complete", "abort"],
+      "default": "complete",
+      "description": "What happens to actions already started when validity ends (invariant I7)."
+    },
+    "escalation": {
+      "type": "object",
+      "required": ["to", "channel", "timeout"],
+      "additionalProperties": false,
+      "properties": {
+        "to": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/identity" } },
+        "channel": { "type": "string" },
+        "timeout": { "$ref": "#/$defs/duration", "description": "On timeout the outcome is refusal." }
+      }
+    },
+    "signatures": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["role", "signer", "alg", "sig"],
+        "additionalProperties": false,
+        "properties": {
+          "role": { "enum": ["requester", "approver"] },
+          "signer": { "$ref": "#/$defs/identity" },
+          "alg": { "type": "string" },
+          "keyid": { "type": "string" },
+          "sig": { "type": "string", "description": "Signature over the RFC 8785 canonical form of the envelope without this field." }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "identity": { "type": "string", "minLength": 1 },
+    "action": { "type": "string", "pattern": "^[a-z][a-z0-9._-]*$" },
+    "resource": { "type": "string", "minLength": 1, "description": "A URI or URI pattern; '*' matches one segment." },
+    "digest": { "type": "string", "pattern": "^[a-z0-9]+:[a-f0-9]+$" },
+    "duration": { "type": "string", "pattern": "^P(?!$)(\\d+D)?(T(?=\\d)(\\d+H)?(\\d+M)?(\\d+S)?)?$", "description": "ISO 8601 duration." },
+    "grant": {
+      "type": "object",
+      "required": ["action", "resources", "reversibility"],
+      "additionalProperties": false,
+      "properties": {
+        "action": { "$ref": "#/$defs/action" },
+        "resources": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/resource" } },
+        "when": { "type": "string", "description": "Named condition under which the grant applies." },
+        "bounds": { "$ref": "#/$defs/bounds" },
+        "reversibility": { "enum": ["reversible", "irreversible"] },
+        "compensation": { "type": "string" }
+      },
+      "if": { "properties": { "reversibility": { "const": "irreversible" } } },
+      "then": { "required": ["compensation"] }
+    },
+    "bounds": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "max_count": { "type": "integer", "minimum": 1 },
+        "per": { "$ref": "#/$defs/duration" },
+        "max_value": {
+          "type": "object",
+          "required": ["amount", "unit"],
+          "additionalProperties": false,
+          "properties": {
+            "amount": { "type": "number", "exclusiveMinimum": 0 },
+            "unit": { "type": "string" }
+          }
+        },
+        "windows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["days", "from", "to", "tz"],
+            "additionalProperties": false,
+            "properties": {
+              "days": { "type": "array", "items": { "enum": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] } },
+              "from": { "type": "string", "pattern": "^\\d{2}:\\d{2}$" },
+              "to": { "type": "string", "pattern": "^\\d{2}:\\d{2}$" },
+              "tz": { "type": "string" }
+            }
+          }
+        }
+      },
+      "dependentRequired": { "per": ["max_count"] }
+    }
+  }
+}

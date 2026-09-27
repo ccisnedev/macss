@@ -1,0 +1,55 @@
+{
+  "spec": "grant-envelope/0.1",
+  "id": "env-2026-0412",
+  "executor": "agent:support-assistant",
+  "basis": {
+    "ref": "policy.yaml@a41c9e2",
+    "digest": "sha256:9b1f0c7d2e4a6b8c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c"
+  },
+  "grantors": {
+    "requester": "person:support-lead",
+    "approver": "person:finance-manager"
+  },
+  "scope": ["ticket:assigned-to/agent:support-assistant/*"],
+  "grants": [
+    {
+      "action": "reply",
+      "resources": ["ticket:assigned-to/agent:support-assistant/*"],
+      "bounds": {
+        "windows": [{ "days": ["mon", "tue", "wed", "thu", "fri"], "from": "08:00", "to": "18:00", "tz": "America/Lima" }]
+      },
+      "reversibility": "irreversible",
+      "compensation": "reply quality is measured weekly against the eval set; a failing week suspends this grant"
+    },
+    {
+      "action": "refund",
+      "resources": ["ticket:assigned-to/agent:support-assistant/*"],
+      "bounds": {
+        "max_value": { "amount": 50, "unit": "USD" },
+        "max_count": 20,
+        "per": "P1D",
+        "windows": [{ "days": ["mon", "tue", "wed", "thu", "fri"], "from": "08:00", "to": "18:00", "tz": "America/Lima" }]
+      },
+      "reversibility": "irreversible",
+      "compensation": "refunds are capped per day; finance reconciles them every morning"
+    }
+  ],
+  "prohibitions": [
+    { "action": "close-account", "reason": "never delegated" },
+    { "action": "change-payment-method", "reason": "never delegated" }
+  ],
+  "validity": {
+    "not_before": "2026-10-01T00:00:00-05:00",
+    "not_after": "2026-12-31T23:59:59-05:00",
+    "revocable_by": ["person:finance-manager", "person:support-lead"]
+  },
+  "escalation": {
+    "to": ["person:support-lead"],
+    "channel": "issue",
+    "timeout": "PT4H"
+  },
+  "signatures": [
+    { "role": "requester", "signer": "person:support-lead", "alg": "ed25519", "sig": "<signature>" },
+    { "role": "approver", "signer": "person:finance-manager", "alg": "ed25519", "sig": "<signature>" }
+  ]
+}

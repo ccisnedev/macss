@@ -1,0 +1,57 @@
+{
+  "spec": "grant-envelope/0.1",
+  "id": "env-2026-0917",
+  "executor": "service:node-reconciler",
+  "basis": {
+    "ref": "pull-request:42",
+    "digest": "sha256:ab12f3e4d5c6b7a8091a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f70"
+  },
+  "grantors": {
+    "requester": "person:platform-engineer",
+    "approver": "person:operations-lead"
+  },
+  "scope": ["node:01", "node:02", "node:03"],
+  "grants": [
+    {
+      "action": "retry-boot",
+      "resources": ["node:01", "node:02", "node:03"],
+      "when": "boot-failed",
+      "bounds": { "max_count": 3, "per": "P1D" },
+      "reversibility": "reversible"
+    },
+    {
+      "action": "power-cycle",
+      "resources": ["node:01", "node:02", "node:03"],
+      "when": "unresponsive",
+      "bounds": { "max_count": 2, "per": "P1D" },
+      "reversibility": "reversible"
+    },
+    {
+      "action": "reprovision",
+      "resources": ["node:01", "node:02", "node:03"],
+      "when": "health-check-failed",
+      "bounds": { "max_count": 2, "per": "P1D" },
+      "reversibility": "irreversible",
+      "compensation": "the node is rebuilt from the approved image; no data lives on it"
+    }
+  ],
+  "prohibitions": [
+    { "action": "wipe-disk", "reason": "destroys data; always a human decision" },
+    { "action": "decommission", "reason": "changes capacity; always a human decision" }
+  ],
+  "validity": {
+    "not_before": "2026-09-19T00:00:00Z",
+    "not_after": "2026-10-19T00:00:00Z",
+    "revocable_by": ["person:operations-lead"]
+  },
+  "in_flight": "complete",
+  "escalation": {
+    "to": ["person:operations-lead"],
+    "channel": "issue",
+    "timeout": "PT4H"
+  },
+  "signatures": [
+    { "role": "requester", "signer": "person:platform-engineer", "alg": "ed25519", "sig": "<signature>" },
+    { "role": "approver", "signer": "person:operations-lead", "alg": "ed25519", "sig": "<signature>" }
+  ]
+}
