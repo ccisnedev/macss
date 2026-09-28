@@ -15,7 +15,6 @@
 /// different problem, and it is not this one.
 library;
 
-
 import 'package:cli_router/cli_router.dart';
 import 'package:modular_cli_sdk/modular_cli_sdk.dart';
 import 'package:path/path.dart' as p;
@@ -41,14 +40,20 @@ class VerificationNewInput extends Input {
   factory VerificationNewInput.fromCliRequest(CliRequest req) =>
       VerificationNewInput(slug: optionalSlug(req.flagString('slug')));
 
-  static final List<CliParam> params = [
-    CliParam.string('slug',
-        description: 'Requisition to open the record for; defaults to the '
-            'active one'),
-  ];
-
-  @override
-  List<CliParam> get schemaFields => params;
+  static final CliContract contract = CliContract(
+    options: [
+      CliParam.string(
+        'slug',
+        abbr: null,
+        required: false,
+        repeatable: false,
+        defaultValue: null,
+        description:
+            'Requisition to open the record for; defaults to the '
+            'active one',
+      ),
+    ],
+  );
 
   @override
   Map<String, dynamic> toJson() => {'slug': slug};
@@ -124,9 +129,12 @@ class VerificationNewCommand
     required this.runProcess,
     SpecificationGate? gate,
     DateTime Function()? now,
-  })  : gate = gate ??
-            SpecificationGate(vocabulary: Vocabularies.fromAssets(resolver.assets)),
-        _now = now ?? DateTime.now;
+  }) : gate =
+           gate ??
+           SpecificationGate(
+             vocabulary: Vocabularies.fromAssets(resolver.assets),
+           ),
+       _now = now ?? DateTime.now;
 
   String? get _dir => resolveRequisitionDir(workingDirectory, input.slug);
 
@@ -189,8 +197,9 @@ class VerificationNewCommand
     );
     if (!contract.ok) {
       throw CommandException(
-        code: 'NO_FROZEN_CONTRACT',
+        id: 'no-frozen-contract',
         message: contract.failure!,
+        exitCode: ExitCode.genericError,
       );
     }
     _criteria = contract.ids;
@@ -226,14 +235,16 @@ class VerificationNewCommand
   /// judged. Written empty on purpose — a walk fills them one at a time, and a
   /// record that arrives pre-filled is a reconstruction.
   String _entries(List<String> criteria) => criteria
-      .map((id) => [
-            '### $id',
-            '',
-            '- **Claim:** <!-- what this criterion says holds -->',
-            '- **Evidence:** <!-- what was run or read, and its result -->',
-            '- **Warrant:** <!-- why that evidence supports the claim -->',
-            '- **Not covered by this:** <!-- what the evidence does not reach -->',
-            '- **Judged:** <!-- not yet judged -->',
-          ].join('\n'))
+      .map(
+        (id) => [
+          '### $id',
+          '',
+          '- **Claim:** <!-- what this criterion says holds -->',
+          '- **Evidence:** <!-- what was run or read, and its result -->',
+          '- **Warrant:** <!-- why that evidence supports the claim -->',
+          '- **Not covered by this:** <!-- what the evidence does not reach -->',
+          '- **Judged:** <!-- not yet judged -->',
+        ].join('\n'),
+      )
       .join('\n\n');
 }

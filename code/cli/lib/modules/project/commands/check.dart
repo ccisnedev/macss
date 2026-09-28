@@ -26,26 +26,30 @@ class ProjectCheckInput extends Input {
   ProjectCheckInput({required this.resolvedPath});
 
   factory ProjectCheckInput.fromCliRequest(CliRequest req) {
-    final raw = req.flagString('path', aliases: const ['p']);
+    final raw = req.flagString('path');
     final cwd = Directory.current.path;
     return ProjectCheckInput(
-      resolvedPath:
-          raw == null ? cwd : (p.isAbsolute(raw) ? raw : p.join(cwd, raw)),
+      resolvedPath: raw == null
+          ? cwd
+          : (p.isAbsolute(raw) ? raw : p.join(cwd, raw)),
     );
   }
 
   /// `--path` defaults to the working directory, so the common case is a bare
   /// `macss project check` inside the project.
-  static final List<CliParam> params = [
-    CliParam.string(
-      'path',
-      abbr: 'p',
-      description: 'Project directory to inspect; defaults to the current one',
-    ),
-  ];
-
-  @override
-  List<CliParam> get schemaFields => params;
+  static final CliContract contract = CliContract(
+    options: [
+      CliParam.string(
+        'path',
+        abbr: 'p',
+        required: false,
+        repeatable: false,
+        defaultValue: null,
+        description:
+            'Project directory to inspect; defaults to the current one',
+      ),
+    ],
+  );
 
   @override
   Map<String, dynamic> toJson() => {'resolvedPath': resolvedPath};
@@ -58,8 +62,7 @@ class ProjectCheckOutput extends Output {
 
   ProjectCheckOutput({required this.checks});
 
-  int get missing =>
-      checks.where((c) => c.status == CheckStatus.error).length;
+  int get missing => checks.where((c) => c.status == CheckStatus.error).length;
 
   int get deviations =>
       checks.where((c) => c.status == CheckStatus.warning).length;

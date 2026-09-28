@@ -36,7 +36,8 @@ void buildProjectModule(
       assets: assets,
     ),
     description: 'Scaffold a new MACSS project',
-    params: CreateInput.params,
+    globals: true,
+    contract: CreateInput.contract,
   );
 
   m.query<ProjectCheckInput, ProjectCheckOutput>(
@@ -44,7 +45,8 @@ void buildProjectModule(
     (req) => ProjectCheckCommand(ProjectCheckInput.fromCliRequest(req)),
     description:
         'Diagnose a project against the MACSS canon — what is missing, what deviates',
-    params: ProjectCheckInput.params,
+    globals: true,
+    contract: ProjectCheckInput.contract,
   );
 
   m.command<ProjectAdoptInput, ProjectAdoptOutput>(
@@ -55,6 +57,7 @@ void buildProjectModule(
     ),
     description:
         'Create what an existing project is missing to follow the canon — --plan or --apply',
-    params: ProjectAdoptInput.params,
+    globals: true,
+    contract: ProjectAdoptInput.contract,
   );
 }

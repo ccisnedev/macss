@@ -22,6 +22,7 @@ void buildDorModule(ModuleBuilder m, {required Assets assets}) {
     ),
     description:
         'Definition of Ready — the request, the contract and a published issue',
-    params: DorCheckInput.params,
+    globals: true,
+    contract: DorCheckInput.contract,
   );
 }

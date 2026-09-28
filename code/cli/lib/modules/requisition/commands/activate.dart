@@ -41,15 +41,15 @@ class RequisitionActivateInput extends Input {
   /// `--plan`, `--apply` and `--autoapprove` are not here: the SDK declares
   /// them on every command, and a second declaration is a second place for the
   /// convention to be got wrong.
-  static final List<CliParam> params = [
-    CliParam.positional(
-      'slug',
-      description: 'The requisition to make active, as `list` shows it',
-    ),
-  ];
-
-  @override
-  List<CliParam> get schemaFields => params;
+  static final CliContract contract = CliContract(
+    positionals: [
+      CliPositional.string(
+        'slug',
+        required: false,
+        description: 'The requisition to make active, as `list` shows it',
+      ),
+    ],
+  );
 
   @override
   Map<String, dynamic> toJson() => {'slug': slug};
@@ -156,7 +156,8 @@ class RequisitionActivateCommand
       ..sort();
   }
 
-  String _iso(DateTime d) => '${d.year.toString().padLeft(4, '0')}-'
+  String _iso(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-'
       '${d.month.toString().padLeft(2, '0')}-'
       '${d.day.toString().padLeft(2, '0')}';
 }

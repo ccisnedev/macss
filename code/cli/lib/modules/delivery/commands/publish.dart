@@ -42,15 +42,26 @@ class DeliveryPublishInput extends Input {
         repo: req.flagString('repo'),
       );
 
-  static final List<CliParam> params = [
-    CliParam.string('slug',
-        description: 'Requisition to publish; defaults to the active one'),
-    CliParam.string('repo',
-        description: 'owner/name; defaults to what gh infers here'),
-  ];
-
-  @override
-  List<CliParam> get schemaFields => params;
+  static final CliContract contract = CliContract(
+    options: [
+      CliParam.string(
+        'slug',
+        abbr: null,
+        required: false,
+        repeatable: false,
+        defaultValue: null,
+        description: 'Requisition to publish; defaults to the active one',
+      ),
+      CliParam.string(
+        'repo',
+        abbr: null,
+        required: false,
+        repeatable: false,
+        defaultValue: null,
+        description: 'owner/name; defaults to what gh infers here',
+      ),
+    ],
+  );
 
   @override
   Map<String, dynamic> toJson() => {'slug': slug, 'repo': repo};
@@ -121,12 +132,17 @@ class DeliveryPublishCommand
     GitRunner? runGit,
     this.deliveryGate = const DeliveryGate(),
     SpecificationGate? specificationGate,
-  })  : publisher = PullRequestPublisher(runProcess: runProcess),
-        specificationGate = specificationGate ??
-            SpecificationGate(vocabulary: Vocabularies.fromAssets(assets)),
-        runGit = runGit ??
-            ((args) => Process.runSync('git', args,
-                workingDirectory: workingDirectory));
+  }) : publisher = PullRequestPublisher(runProcess: runProcess),
+       specificationGate =
+           specificationGate ??
+           SpecificationGate(vocabulary: Vocabularies.fromAssets(assets)),
+       runGit =
+           runGit ??
+           ((args) => Process.runSync(
+             'git',
+             args,
+             workingDirectory: workingDirectory,
+           ));
 
   String? get _dir => resolveRequisitionDir(workingDirectory, input.slug);
 
@@ -177,24 +193,29 @@ class DeliveryPublishCommand
     );
     if (!result.passed) {
       throw CommandException(
-        code: 'DELIVERY_NOT_READY',
+        id: 'delivery-not-ready',
         message: [
           'The delivery is not ready, so there is nothing worth publishing yet:',
           ...result.violations.map((v) => '  - ${v.code}: ${v.message}'),
         ].join('\n'),
+        exitCode: ExitCode.genericError,
       );
     }
 
     final head = _git(['rev-parse', '--abbrev-ref', 'HEAD']);
-    final base = _git(['rev-parse', '--abbrev-ref', 'origin/HEAD'])
-        ?.split('/')
-        .last;
+    final base = _git([
+      'rev-parse',
+      '--abbrev-ref',
+      'origin/HEAD',
+    ])?.split('/').last;
     if (head == null || base == null) {
       throw CommandException(
-        code: 'BRANCHES_UNKNOWN',
-        message: 'Cannot tell which branches this would go between — git '
+        id: 'branches-unknown',
+        message:
+            'Cannot tell which branches this would go between: git '
             'answered for neither HEAD nor origin/HEAD. Run '
             '`macss delivery check` to see which.',
+        exitCode: ExitCode.genericError,
       );
     }
     _base = base;
@@ -207,9 +228,11 @@ class DeliveryPublishCommand
     );
     if (annotated.exceedsLimit) {
       throw CommandException(
-        code: 'BODY_TOO_LONG',
-        message: 'The assembled body is ${annotated.length} characters; GitHub '
+        id: 'body-too-long',
+        message:
+            'The assembled body is ${annotated.length} characters; GitHub '
             'accepts $githubBodyLimit. Shorten ${body.parts.join(' + ')}.',
+        exitCode: ExitCode.genericError,
       );
     }
 

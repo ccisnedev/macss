@@ -74,7 +74,9 @@ void main() {
       await addContract();
 
       expect(
-          file('$folder/requisition.md').readAsStringSync(), 'FILLED BY THE PO');
+        file('$folder/requisition.md').readAsStringSync(),
+        'FILLED BY THE PO',
+      );
     });
 
     test('is written in the language the project declared', () async {
@@ -83,8 +85,10 @@ void main() {
 
       await addContract();
 
-      expect(file('$folder/specification.md').readAsStringSync(),
-          contains('Historias de Usuario'));
+      expect(
+        file('$folder/specification.md').readAsStringSync(),
+        contains('Historias de Usuario'),
+      );
     });
 
     // There is no `--lang` to override it with. A contract written in a
@@ -92,7 +96,7 @@ void main() {
     // and the per-invocation flag was the only way to produce one.
     test('takes no --lang to write against the project with', () {
       expect(
-        specificationNewParams.map((p) => p.name),
+        specificationNewContract.options.map((p) => p.name),
         isNot(contains('lang')),
       );
     });
@@ -116,22 +120,26 @@ void main() {
 
       expect(out.kept, isTrue);
       expect(
-          file('$folder/specification.md').readAsStringSync(), 'WRITTEN BY QA');
+        file('$folder/specification.md').readAsStringSync(),
+        'WRITTEN BY QA',
+      );
     });
 
     // It used to short-circuit before the plan was built, so `--plan` on a
     // requisition that already had a contract said nothing at all. The step
     // answers now, and says `keep`.
-    test('says it would keep an existing contract, rather than staying silent',
-        () async {
-      await openRequisition();
-      await addContract();
+    test(
+      'says it would keep an existing contract, rather than staying silent',
+      () async {
+        await openRequisition();
+        await addContract();
 
-      final previews = await previewCommand(contractCommand());
+        final previews = await previewCommand(contractCommand());
 
-      expect(previews.single.verb, 'keep');
-      expect(previews.single.target, endsWith('specification.md'));
-    });
+        expect(previews.single.verb, 'keep');
+        expect(previews.single.target, endsWith('specification.md'));
+      },
+    );
 
     test('output names the file and the next step', () async {
       await openRequisition();

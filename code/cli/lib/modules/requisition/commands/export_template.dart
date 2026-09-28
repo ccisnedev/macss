@@ -19,6 +19,7 @@ import '../../../templates/template_resolver.dart';
 
 class ExportTemplateInput extends Input {
   final String resolvedPath;
+
   /// Required, and the only place --lang survives: this writes at a path
   /// that need not be a MACSS project, so there is no config to derive it from.
   final String? lang;
@@ -26,39 +27,43 @@ class ExportTemplateInput extends Input {
   ExportTemplateInput({required this.resolvedPath, required this.lang});
 
   factory ExportTemplateInput.fromCliRequest(CliRequest req) {
-    final raw = req.flagString('path', aliases: const ['p']);
+    final raw = req.flagString('path');
     final cwd = Directory.current.path;
     return ExportTemplateInput(
-      resolvedPath:
-          raw == null ? cwd : (p.isAbsolute(raw) ? raw : p.join(cwd, raw)),
+      resolvedPath: raw == null
+          ? cwd
+          : (p.isAbsolute(raw) ? raw : p.join(cwd, raw)),
       lang: req.flagString('lang'),
     );
   }
 
-  static final List<CliParam> params = [
-    CliParam.string(
-      'path',
-      abbr: 'p',
-      description: 'Directory to write the template into; defaults to the current one',
-    ),
-    CliParam.string(
-      'lang',
-      required: true,
-      allowed: ['en', 'es'],
-      description:
-          'Language of the template. This runs where no project need exist, '
-          'so there is nothing to derive it from',
-    ),
-  ];
+  static final CliContract contract = CliContract(
+    options: [
+      CliParam.string(
+        'path',
+        abbr: 'p',
+        required: false,
+        repeatable: false,
+        defaultValue: null,
+        description:
+            'Directory to write the template into; defaults to the current one',
+      ),
+      CliParam.enumeration(
+        'lang',
+        abbr: null,
+        required: true,
+        repeatable: false,
+        values: const ['en', 'es'],
+        defaultValue: null,
+        description:
+            'Language of the template. This runs where no project need exist, '
+            'so there is nothing to derive it from',
+      ),
+    ],
+  );
 
   @override
-  List<CliParam> get schemaFields => params;
-
-  @override
-  Map<String, dynamic> toJson() => {
-        'resolvedPath': resolvedPath,
-        'lang': lang,
-      };
+  Map<String, dynamic> toJson() => {'resolvedPath': resolvedPath, 'lang': lang};
 }
 
 // ─── Output ─────────────────────────────────────────────────────────────────
@@ -143,7 +148,7 @@ class ExportTemplateCommand
     // becoming a validation failure.
     if (target.existsSync()) {
       throw CommandException(
-        code: 'ALREADY_EXISTS',
+        id: 'already-exists',
         message: '${target.path} already exists — not overwritten.',
         exitCode: ExitCode.conflict,
       );
@@ -191,11 +196,8 @@ class WriteTemplate implements Step {
   final String? notice;
 
   @override
-  Preview preview() => Preview(
-    verb: 'create',
-    target: path,
-    detail: [lang, ?notice].join('; '),
-  );
+  Preview preview() =>
+      Preview(verb: 'create', target: path, detail: [lang, ?notice].join('; '));
 
   @override
   Future<Outcome> perform(StepContext context) async {

@@ -32,10 +32,7 @@ class RequisitionListInput extends Input {
       RequisitionListInput();
 
   /// Declares no options: it takes none, and any it is given is rejected.
-  static const List<CliParam> params = [];
-
-  @override
-  List<CliParam> get schemaFields => params;
+  static const CliContract contract = CliContract.none;
 
   @override
   Map<String, dynamic> toJson() => const {};
@@ -97,13 +94,13 @@ class RequisitionEntry {
   String get stage => state?.name ?? 'unreadable';
 
   Map<String, dynamic> toJson() => {
-        'folder': folder,
-        'slug': slug,
-        'active': isActive,
-        'state': stage,
-        if (issue != null) 'issue': issue,
-        if (pr != null) 'pr': pr,
-      };
+    'folder': folder,
+    'slug': slug,
+    'active': isActive,
+    'state': stage,
+    if (issue != null) 'issue': issue,
+    if (pr != null) 'pr': pr,
+  };
 
   /// One row.
   ///
@@ -117,13 +114,13 @@ class RequisitionEntry {
   /// already. It shows the difference exactly where there is one, instead of a
   /// column that repeats the row order everywhere else.
   String toText({int slugWidth = 0, bool disambiguate = false}) => [
-        isActive ? 'active' : '      ',
-        slug.padRight(slugWidth),
-        if (disambiguate) folder,
-        stage,
-        if (issue != null) '#$issue',
-        if (pr != null) '!$pr',
-      ].join('  ').trimRight();
+    isActive ? 'active' : '      ',
+    slug.padRight(slugWidth),
+    if (disambiguate) folder,
+    stage,
+    if (issue != null) '#$issue',
+    if (pr != null) '!$pr',
+  ].join('  ').trimRight();
 }
 
 class RequisitionListOutput extends Output {
@@ -138,9 +135,9 @@ class RequisitionListOutput extends Output {
 
   @override
   Map<String, dynamic> toJson() => {
-        'requisitions': entries.map((e) => e.toJson()).toList(),
-        if (danglingPointer != null) 'danglingPointer': danglingPointer,
-      };
+    'requisitions': entries.map((e) => e.toJson()).toList(),
+    if (danglingPointer != null) 'danglingPointer': danglingPointer,
+  };
 
   @override
   int get exitCode => ExitCode.ok;
@@ -153,7 +150,9 @@ class RequisitionListOutput extends Output {
     }
 
     final width = entries.fold<int>(
-        0, (w, e) => e.slug.length > w ? e.slug.length : w);
+      0,
+      (w, e) => e.slug.length > w ? e.slug.length : w,
+    );
 
     // Slugs that name more than one requisition. Only those rows carry their
     // folder; everywhere else the slug is the identity and nothing else is
@@ -164,10 +163,10 @@ class RequisitionListOutput extends Output {
     };
 
     return [
-      ...entries.map((e) => '  ${e.toText(
-            slugWidth: width,
-            disambiguate: shared.contains(e.slug),
-          )}'),
+      ...entries.map(
+        (e) =>
+            '  ${e.toText(slugWidth: width, disambiguate: shared.contains(e.slug))}',
+      ),
       if (danglingPointer != null)
         '\n  ! the active requisition points at "$danglingPointer", '
             'which is not there',
@@ -199,12 +198,14 @@ class RequisitionListCommand
     final active = resolveRequisitionDir(workingDirectory);
     final activeFolder = active == null ? null : p.basename(active);
 
-    final base = Directory(
-        p.join(workingDirectory, 'docs', 'requisitions'));
+    final base = Directory(p.join(workingDirectory, 'docs', 'requisitions'));
     final folders = base.existsSync()
-        ? (base.listSync().whereType<Directory>().map((d) => p.basename(d.path))
-            .toList()
-          ..sort())
+        ? (base
+              .listSync()
+              .whereType<Directory>()
+              .map((d) => p.basename(d.path))
+              .toList()
+            ..sort())
         : <String>[];
 
     final entries = <RequisitionEntry>[];
@@ -213,15 +214,17 @@ class RequisitionListCommand
       // question, and asking twice invites the two answers to disagree.
       final record = RequisitionRecord.read(p.join(base.path, folder));
 
-      entries.add(RequisitionEntry(
-        folder: folder,
-        slug: _slugOf(folder),
-        isActive: folder == activeFolder,
-        isReadable: record != null,
-        state: record?.state,
-        issue: record?.issue,
-        pr: record?.pr,
-      ));
+      entries.add(
+        RequisitionEntry(
+          folder: folder,
+          slug: _slugOf(folder),
+          isActive: folder == activeFolder,
+          isReadable: record != null,
+          state: record?.state,
+          issue: record?.issue,
+          pr: record?.pr,
+        ),
+      );
     }
 
     // A pointer whose folder is gone resolves to nothing, so no row carries the
@@ -236,5 +239,4 @@ class RequisitionListCommand
     final m = RegExp(r'^\d{8}-(.+)$').firstMatch(folder);
     return m?.group(1) ?? folder;
   }
-
 }

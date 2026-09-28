@@ -16,7 +16,6 @@
 /// a different author. `macss specification new` adds it once the request is in.
 library;
 
-
 import 'package:cli_router/cli_router.dart';
 import 'package:modular_cli_sdk/modular_cli_sdk.dart';
 import 'package:path/path.dart' as p;
@@ -43,12 +42,15 @@ class RequisitionNewInput extends Input {
   /// `.macss/config.yaml`, and this derives it from there: a setting passed per
   /// invocation is one that can differ per invocation, and a project that
   /// answers differently on Tuesday does not have an answer.
-  static final List<CliParam> params = [
-    CliParam.positional('slug', description: 'Short name for the requisition'),
-  ];
-
-  @override
-  List<CliParam> get schemaFields => params;
+  static final CliContract contract = CliContract(
+    positionals: [
+      CliPositional.string(
+        'slug',
+        required: false,
+        description: 'Short name for the requisition',
+      ),
+    ],
+  );
 
   @override
   Map<String, dynamic> toJson() => {'slug': slug};
@@ -181,13 +183,12 @@ class RequisitionNewCommand
   RequisitionNewOutput describe(Execution execution) => RequisitionNewOutput(
     slug: input.slug,
     relDir: requisitionRelDir(datedFolder(input.slug, now())),
-    did: [
-      for (final o in execution.outcomes) (verb: o.verb, target: o.target),
-    ],
+    did: [for (final o in execution.outcomes) (verb: o.verb, target: o.target)],
     notice: _resolution?.notice,
   );
 
-  String _iso(DateTime d) => '${d.year.toString().padLeft(4, '0')}-'
+  String _iso(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-'
       '${d.month.toString().padLeft(2, '0')}-'
       '${d.day.toString().padLeft(2, '0')}';
 }

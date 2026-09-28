@@ -35,13 +35,18 @@ class VerificationCheckInput extends Input {
   factory VerificationCheckInput.fromCliRequest(CliRequest req) =>
       VerificationCheckInput(slug: optionalSlug(req.flagString('slug')));
 
-  static final List<CliParam> params = [
-    CliParam.string('slug',
-        description: 'Requisition to check; defaults to the active one'),
-  ];
-
-  @override
-  List<CliParam> get schemaFields => params;
+  static final CliContract contract = CliContract(
+    options: [
+      CliParam.string(
+        'slug',
+        abbr: null,
+        required: false,
+        repeatable: false,
+        defaultValue: null,
+        description: 'Requisition to check; defaults to the active one',
+      ),
+    ],
+  );
 
   @override
   Map<String, dynamic> toJson() => {'slug': slug};
@@ -59,10 +64,10 @@ class VerificationCheckOutput extends Output {
 
   @override
   Map<String, dynamic> toJson() => {
-        'ready': ready,
-        'requisition': name,
-        'checks': checks.map((c) => c.toJson()).toList(),
-      };
+    'ready': ready,
+    'requisition': name,
+    'checks': checks.map((c) => c.toJson()).toList(),
+  };
 
   @override
   int get exitCode => ready ? ExitCode.ok : ExitCode.validationFailed;
@@ -74,7 +79,7 @@ class VerificationCheckOutput extends Output {
     buffer.writeln(
       ready
           ? 'The record is complete: every criterion judged, and concluded by '
-              'the person who answers for it.'
+                'the person who answers for it.'
           : 'Not complete. Fix what is marked above and re-run.',
     );
     return buffer.toString();
@@ -100,8 +105,9 @@ class VerificationCheckCommand
     required Assets assets,
     this.verificationGate = const VerificationGate(),
     SpecificationGate? specificationGate,
-  }) : specificationGate = specificationGate ??
-            SpecificationGate(vocabulary: Vocabularies.fromAssets(assets));
+  }) : specificationGate =
+           specificationGate ??
+           SpecificationGate(vocabulary: Vocabularies.fromAssets(assets));
 
   String? get _dir => resolveRequisitionDir(workingDirectory, input.slug);
 

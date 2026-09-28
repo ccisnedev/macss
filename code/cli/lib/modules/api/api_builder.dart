@@ -18,11 +18,14 @@ void buildApiModule(
   m.command<GraphqlCompileInput, GraphqlCompileOutput>(
     'graphql compile',
     (req) => GraphqlCompileCommand(
-      GraphqlCompileInput.fromCliRequest(req,
-          workingDirectory: workingDirectory),
+      GraphqlCompileInput.fromCliRequest(
+        req,
+        workingDirectory: workingDirectory,
+      ),
       runner: runner,
     ),
     description: 'Compile GraphQL artifacts for modular_api',
-    params: GraphqlCompileInput.params,
+    globals: true,
+    contract: GraphqlCompileInput.contract,
   );
 }

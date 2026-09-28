@@ -44,26 +44,33 @@ void main() {
   Future<void> openRequisition() {
     // The project declares its language once; every document derives from it.
     writeProjectConfig(tempDir.path, language: 'es');
-    return applyCommand(RequisitionNewCommand(
-      RequisitionNewInput(slug: 'demo'),
-      resolver: resolver,
-      workingDirectory: tempDir.path,
-      now: clock,
-    ));
-  }
-
-  Future<void> addContract() => applyCommand(specificationNewCommand(
-        SpecificationNewInput(),
+    return applyCommand(
+      RequisitionNewCommand(
+        RequisitionNewInput(slug: 'demo'),
         resolver: resolver,
         workingDirectory: tempDir.path,
         now: clock,
-      ));
+      ),
+    );
+  }
+
+  Future<void> addContract() => applyCommand(
+    specificationNewCommand(
+      SpecificationNewInput(),
+      resolver: resolver,
+      workingDirectory: tempDir.path,
+      now: clock,
+    ),
+  );
 
   void fillForm() {
     final form = file('$folder/requisition.md');
-    form.writeAsStringSync(form
-        .readAsStringSync()
-        .replaceAll('<!-- Su respuesta aquí -->', 'Una respuesta real.'));
+    form.writeAsStringSync(
+      form.readAsStringSync().replaceAll(
+        '<!-- Su respuesta aquí -->',
+        'Una respuesta real.',
+      ),
+    );
   }
 
   /// A contract that satisfies every surviving rule.
@@ -107,10 +114,10 @@ void main() {
   }
 
   Future<DorCheckOutput> dor() => DorCheckCommand(
-        DorCheckInput(),
-        workingDirectory: tempDir.path,
-        assets: assets,
-      ).execute();
+    DorCheckInput(),
+    workingDirectory: tempDir.path,
+    assets: assets,
+  ).execute();
 
   DoctorCheck named(DorCheckOutput out, String name) =>
       out.checks.firstWhere((c) => c.name == name);
@@ -151,22 +158,30 @@ void main() {
       expect(specification.remediation, contains('specification check'));
     });
 
-    test('everything written but unpublished still fails on the issue',
-        () async {
-      await openRequisition();
-      fillForm();
-      await addContract();
-      fillContract();
+    test(
+      'everything written but unpublished still fails on the issue',
+      () async {
+        await openRequisition();
+        fillForm();
+        await addContract();
+        fillContract();
 
-      final out = await dor();
+        final out = await dor();
 
-      expect(named(out, 'requisition').status, CheckStatus.ok);
-      expect(named(out, 'specification').status, CheckStatus.ok,
-          reason: named(out, 'specification').detail);
-      expect(named(out, 'issue').status, CheckStatus.error);
-      expect(out.ready, isFalse,
-          reason: 'a requirement with no home cannot be picked up');
-    });
+        expect(named(out, 'requisition').status, CheckStatus.ok);
+        expect(
+          named(out, 'specification').status,
+          CheckStatus.ok,
+          reason: named(out, 'specification').detail,
+        );
+        expect(named(out, 'issue').status, CheckStatus.error);
+        expect(
+          out.ready,
+          isFalse,
+          reason: 'a requirement with no home cannot be picked up',
+        );
+      },
+    );
 
     test('published as well: the Definition of Ready is met', () async {
       await openRequisition();
@@ -210,8 +225,11 @@ void main() {
 
       expect(out.ready, isFalse);
       final dir = p.dirname(file('$folder/x').path);
-      expect(RequisitionRecord.read(dir)!.state, RequisitionState.published,
-          reason: 'a gate that did not pass has established nothing');
+      expect(
+        RequisitionRecord.read(dir)!.state,
+        RequisitionState.published,
+        reason: 'a gate that did not pass has established nothing',
+      );
     });
 
     test('says the body is frozen once ready', () async {
@@ -238,16 +256,17 @@ void main() {
   group('macss dor contract', () {
     test('rejects an undeclared option', () async {
       final stderr = MemorySink();
-      final code = await (ModularCli()
-            ..module('dor', (m) => buildDorModule(m, assets: assets)))
-          .run(
-        ['dor', 'check', '--bogus'],
-        stdout: MemorySink().sink,
-        stderr: stderr.sink,
-      );
+      final code =
+          await (ModularCli(
+            suggestionDistance: 2,
+          )..module('dor', (m) => buildDorModule(m, assets: assets))).run(
+            ['dor', 'check', '--bogus'],
+            stdout: MemorySink().sink,
+            stderr: stderr.sink,
+          );
 
       expect(code, ExitCode.validationFailed);
-      expect(await stderr.text(), contains('unknown option --bogus'));
+      expect(await stderr.text(), contains("unknown option '--bogus'"));
     });
   });
 }

@@ -28,9 +28,11 @@ void buildDeliveryModule(ModuleBuilder m, {required Assets assets}) {
       resolver: resolver,
       workingDirectory: Directory.current.path,
     ),
-    description: 'Open the delivery: what was built, against which contract — '
+    description:
+        'Open the delivery: what was built, against which contract; '
         '--plan or --apply',
-    params: deliveryNewParams,
+    globals: true,
+    contract: deliveryNewContract,
   );
 
   m.query<DeliveryCheckInput, DeliveryCheckOutput>(
@@ -40,9 +42,11 @@ void buildDeliveryModule(ModuleBuilder m, {required Assets assets}) {
       workingDirectory: Directory.current.path,
       assets: assets,
     ),
-    description: 'Verify every acceptance criterion is claimed with its '
+    description:
+        'Verify every acceptance criterion is claimed with its '
         'evidence, and the branch can carry a pull request',
-    params: DeliveryCheckInput.params,
+    globals: true,
+    contract: DeliveryCheckInput.contract,
   );
 
   m.command<DeliveryPublishInput, DeliveryPublishOutput>(
@@ -53,8 +57,10 @@ void buildDeliveryModule(ModuleBuilder m, {required Assets assets}) {
       runProcess: Process.run,
       assets: assets,
     ),
-    description: 'Push the branch and open the pull request from the delivery '
+    description:
+        'Push the branch and open the pull request from the delivery '
         '— --plan or --apply',
-    params: DeliveryPublishInput.params,
+    globals: true,
+    contract: DeliveryPublishInput.contract,
   );
 }
