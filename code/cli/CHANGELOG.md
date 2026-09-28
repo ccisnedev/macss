@@ -5,6 +5,64 @@ All notable changes to this project will be documented in this file.
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.14.0]
+
+### Changed
+
+- **Migrated to `modular_cli_sdk` 0.8.0, `cli_router` 0.2.0, and `datajack`
+  0.2.0.**
+
+- **`upgrade` and `uninstall` are now `modular_cli_sdk`'s own
+  `InstallationPlugin`**, configured with macss's repository, executable
+  name, alias, and per-platform assets, rather than macss's own
+  hand-maintained commands. The plugin was extracted from macss's own
+  implementation, so behavior is intended to match exactly; see "Behavior
+  differences" below for the few places it does not.
+
+- **`doctor` is now a checks plugin contributing to the SDK's shared
+  `DoctorPlugin`** (`MacssDoctorChecksPlugin`, requiring `DoctorPlugin`),
+  instead of macss's own standalone command. Every existing check (shipped
+  asset presence, per-skill presence) and its message is preserved.
+
+### Fixed
+
+- **`lib/src/dictated_commands.dart` read the wrong catalogue shape.** The
+  `help --json` catalogue now reports a route's options and positionals as
+  two separate lists (`options` / `positionals`) instead of one combined
+  `params` list; `parseCatalog` silently produced empty routes under the new
+  SDK until this was fixed. Route-name matching in the same file also
+  stopped recognizing an optional positional's `[<slug>]` form (only
+  `<slug>` was stripped before comparing route names), which broke matching
+  for `requisition new`/`requisition activate` once their routes were
+  updated to the optional-positional syntax the new contract validation
+  requires; fixed to strip either form.
+
+### Behavior differences
+
+Places where the SDK's shared plugins do not, or cannot, reproduce macss's
+former exact behavior:
+
+- **`doctor`'s exit code on failure changed from 1 to 78** (`EX_CONFIG`,
+  the SDK's `DoctorPlugin` convention), and a failing check now throws
+  rather than macss's own command returning a non-zero exit directly.
+- **`doctor --json`'s shape changed**: remediation is folded into each
+  check's entry rather than reported as a separate top-level list.
+- **`doctor`'s `toText()` no longer prefixes each line with a ✓/✗ symbol**;
+  the SDK's own formatting is used instead.
+- **A lone unrecognized flag on the bare root (e.g. `macss --bogus`) now
+  exits 7 (`ExitCode.validationFailed`) with `unknown option '--bogus'`**,
+  instead of exit 64 (`ExitCode.invalidUsage`) with `unknown command`. The
+  empty-string root route macss registers now matches first, and the flag
+  then fails that route's contract, rather than the router reporting no
+  route matched. Confirmed in `test/tui_test.dart`.
+- **The "unknown option" rejection message is now quoted**:
+  `unknown option '--bogus'` instead of `unknown option --bogus`.
+- **`help --json`'s catalogue schema changed**: a route's parameters are now
+  reported as separate `options` and `positionals` lists instead of one
+  combined `params` list. This is an SDK-wide change, not specific to
+  macss, but is noted here since it affects any external consumer of
+  `help --json`.
+
 ## [0.13.0]
 
 ### Removed — breaking
