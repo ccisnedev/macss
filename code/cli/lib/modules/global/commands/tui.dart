@@ -15,10 +15,7 @@ class TuiInput extends Input {
   factory TuiInput.fromCliRequest(CliRequest req) => TuiInput();
 
   /// Empty contract: the root banner takes no option.
-  static const List<CliParam> params = [];
-
-  @override
-  List<CliParam> get schemaFields => params;
+  static const CliContract contract = CliContract.none;
 
   @override
   Map<String, dynamic> toJson() => {};
@@ -48,11 +45,12 @@ class TuiCommand implements Query<TuiInput, TuiOutput> {
   @override
   final TuiInput input;
   final Future<VersionCheckResult> Function({required String currentVersion})?
-      _versionChecker;
+  _versionChecker;
 
-  TuiCommand(this.input, {
+  TuiCommand(
+    this.input, {
     Future<VersionCheckResult> Function({required String currentVersion})?
-        versionChecker,
+    versionChecker,
   }) : _versionChecker = versionChecker;
 
   @override
@@ -63,12 +61,14 @@ class TuiCommand implements Query<TuiInput, TuiOutput> {
     var banner = _buildBanner(macssVersion);
 
     try {
-      final checker = _versionChecker ??
+      final checker =
+          _versionChecker ??
           ({required String currentVersion}) =>
               checkLatestVersion(currentVersion: currentVersion);
       final result = await checker(currentVersion: macssVersion);
       if (result.updateAvailable && result.latestVersion != null) {
-        banner += "\n  Update available: $macssVersion → ${result.latestVersion}"
+        banner +=
+            "\n  Update available: $macssVersion → ${result.latestVersion}"
             " — run 'macss upgrade --apply'";
       }
     } catch (_) {
@@ -112,8 +112,7 @@ String _buildBanner(String version) {
   final logo =
       '\n$_wht   █▀   ▀█$_r'
       '\n$_grn      ●   $_r    $_b${_blu}macss$_r v$version'
-      '\n$_wht   █▄   ▄█$_r    ${_d}Modular Architecture for Comprehensive Software Solutions$_r'
-  ;
+      '\n$_wht   █▄   ▄█$_r    ${_d}Modular Architecture for Comprehensive Software Solutions$_r';
 
   final commands =
       '  ${_d}Commands:$_r\n'
@@ -125,12 +124,9 @@ String _buildBanner(String version) {
       '    ${_cyn}doctor$_r            verify local installation\n'
       '    ${_cyn}upgrade$_r           update to latest version\n'
       '    ${_cyn}uninstall$_r         remove MACSS CLI\n'
-      '    ${_cyn}version$_r           print version'
-  ;
+      '    ${_cyn}version$_r           print version';
 
-  final footer =
-      '  ${_d}Quickstart:$_r  $quickstartCommand'
-  ;
+  final footer = '  ${_d}Quickstart:$_r  $quickstartCommand';
 
   return '$logo\n\n$commands\n\n$footer';
 }
