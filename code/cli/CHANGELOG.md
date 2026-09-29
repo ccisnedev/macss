@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.14.1]
+
+### Changed
+
+- **Migrated to `modular_cli_sdk` 0.8.1 and `cli_router` 0.2.1.** An option
+  may now follow the operand it comes after (GNU permutation) — `macss
+  requisition new demo --apply` is accepted again, alongside `macss
+  requisition new --apply demo`. Strict POSIX order, where an option after
+  an operand is rejected as `misplaced-option`, is preserved as an opt-in:
+  it applies only when the process environment holds `POSIXLY_CORRECT`.
+  `CliInstallationConfig.alias` is now optional and `PlatformOps` is
+  resolved lazily inside `upgrade`/`uninstall`; neither changes this CLI's
+  own behavior, since `_installationConfig` already declares an alias.
+
 ## [0.14.0]
 
 ### Changed
