@@ -37,12 +37,19 @@ class ScaffoldDocumentInput extends Input {
   /// derives from it. A setting passed per invocation is one that can differ
   /// per invocation, and a project that answers differently on Tuesday does not
   /// have an answer.
-  static List<CliParam> paramsFor(String what) => [
-    CliParam.string(
-      'slug',
-      description: 'Requisition to add the $what to; defaults to the active one',
-    ),
-  ];
+  static CliContract contractFor(String what) => CliContract(
+    options: [
+      CliParam.string(
+        'slug',
+        abbr: null,
+        required: false,
+        repeatable: false,
+        defaultValue: null,
+        description:
+            'Requisition to add the $what to; defaults to the active one',
+      ),
+    ],
+  );
 
   @override
   Map<String, dynamic> toJson() => {'slug': slug};
@@ -134,7 +141,7 @@ class ScaffoldDocumentCommand
     final ambiguous = ambiguousRequisitionFailure(workingDirectory, input.slug);
     if (ambiguous != null) return ambiguous;
     if (_dir == null) {
-      return 'No requisition found — run `macss requisition new <slug> --apply` '
+      return 'No requisition found: run `macss requisition new --apply <slug>` '
           'first, or point at one with --slug <slug>.';
     }
     final undeclared = undeclaredLanguageFailure(workingDirectory);

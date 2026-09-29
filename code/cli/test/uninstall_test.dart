@@ -1,14 +1,28 @@
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
+import 'package:modular_cli_sdk/modular_cli_sdk.dart';
 import 'package:modular_cli_sdk/testing.dart';
 import 'package:test/test.dart';
 
 import 'package:macss_cli/macss_cli.dart';
-import 'package:macss_cli/modules/global/commands/uninstall.dart';
-import 'package:macss_cli/targets/platform_ops.dart';
 
 import 'support/memory_sink.dart';
+
+/// `uninstall` is no longer macss's own command: it is
+/// `modular_cli_sdk`'s `InstallationPlugin`, configured with macss's own
+/// repository/executable/alias/assets in `lib/macss_cli.dart`. This tests the
+/// SDK's real `UninstallCommand`/`UninstallInput`/`UninstallOutput`/
+/// `PlatformOps`, configured the way macss configures them.
+const _config = CliInstallationConfig(
+  repository: 'ccisnedev/macss',
+  executable: 'macss',
+  alias: 'ma',
+  assets: {
+    'windows': 'macss-windows-x64.zip',
+    'linux': 'macss-linux-x64.tar.gz',
+  },
+);
 
 /// Fake PlatformOps for testing — records calls without touching the system.
 class FakePlatformOps implements PlatformOps {
@@ -38,15 +52,13 @@ class FakePlatformOps implements PlatformOps {
       calls.add('setEnvVariable($name, $value)');
 
   @override
-  Future<void> selfReplace(
-    String newBinaryPath,
-    String currentBinaryPath,
-  ) async =>
-      calls.add('selfReplace($newBinaryPath, $currentBinaryPath)');
-
-  @override
-  Future<void> runPostInstall(String installDir) async =>
-      calls.add('runPostInstall($installDir)');
+  Future<ProcessResult> runPostInstall(
+    String installDir, {
+    Duration? timeout,
+  }) async {
+    calls.add('runPostInstall($installDir)');
+    return ProcessResult(0, 0, '', '');
+  }
 
   @override
   Future<void> scheduleDeletion(String dir) async =>
@@ -65,9 +77,11 @@ void main() {
   });
 
   group('UninstallCommand', () {
-    // The empty contract rejects the flag before execute() runs, so this never
-    // touches PATH or schedules any deletion.
-    test('rejects an undeclared option (empty params contract)', () async {
+    // `InstallationPlugin.setup()` registers `uninstall` with no explicit
+    // `contract:`, which defaults to `CliContract.none`: an empty contract
+    // still rejects an undeclared option before execute() runs, so this
+    // never touches PATH or schedules any deletion.
+    test('rejects an undeclared option (empty contract)', () async {
       final stdout = MemorySink();
       final stderr = MemorySink();
 
@@ -78,33 +92,42 @@ void main() {
       );
 
       expect(code, 7); // ExitCode.validationFailed
-      expect(await stderr.text(), contains('unknown option --bogus'));
+      expect(await stderr.text(), contains("unknown option '--bogus'"));
     });
 
     test('exits 0', () async {
       final ops = FakePlatformOps();
-      final output = await applyCommand(UninstallCommand(
-        UninstallInput(installDir: tempDir.path),
-        platformOps: ops,
-      ));
+      final output = await applyCommand(
+        UninstallCommand(
+          UninstallInput(installDir: tempDir.path),
+          config: _config,
+          platformOps: ops,
+        ),
+      );
       expect(output.exitCode, 0);
     });
 
     test('message confirms uninstall', () async {
       final ops = FakePlatformOps();
-      final output = await applyCommand(UninstallCommand(
-        UninstallInput(installDir: tempDir.path),
-        platformOps: ops,
-      ));
-      expect(output.toText(), contains('uninstalled'));
+      final output = await applyCommand(
+        UninstallCommand(
+          UninstallInput(installDir: tempDir.path),
+          config: _config,
+          platformOps: ops,
+        ),
+      );
+      expect(output.toText(), contains('Uninstalled'));
     });
 
     test('schedules deletion of install directory', () async {
       final ops = FakePlatformOps();
-      await applyCommand(UninstallCommand(
-        UninstallInput(installDir: tempDir.path),
-        platformOps: ops,
-      ));
+      await applyCommand(
+        UninstallCommand(
+          UninstallInput(installDir: tempDir.path),
+          config: _config,
+          platformOps: ops,
+        ),
+      );
       expect(ops.calls, contains('scheduleDeletion(${tempDir.path})'));
     });
 
@@ -116,10 +139,13 @@ void main() {
       final fakePath = '$otherA$sep$binDir$sep$otherB';
 
       final ops = FakePlatformOps(fakeEnvValue: fakePath);
-      await applyCommand(UninstallCommand(
-        UninstallInput(installDir: tempDir.path),
-        platformOps: ops,
-      ));
+      await applyCommand(
+        UninstallCommand(
+          UninstallInput(installDir: tempDir.path),
+          config: _config,
+          platformOps: ops,
+        ),
+      );
 
       expect(ops.calls, contains('getEnvVariable(PATH)'));
       final expectedNew = '$otherA$sep$otherB';
@@ -132,16 +158,16 @@ void main() {
       final otherB = Platform.isWindows ? r'C:\more' : '/more';
 
       final ops = FakePlatformOps(fakeEnvValue: '$otherA$sep$otherB');
-      await applyCommand(UninstallCommand(
-        UninstallInput(installDir: tempDir.path),
-        platformOps: ops,
-      ));
+      await applyCommand(
+        UninstallCommand(
+          UninstallInput(installDir: tempDir.path),
+          config: _config,
+          platformOps: ops,
+        ),
+      );
 
       expect(ops.calls, contains('getEnvVariable(PATH)'));
-      expect(
-        ops.calls.where((c) => c.startsWith('setEnvVariable')),
-        isEmpty,
-      );
+      expect(ops.calls.where((c) => c.startsWith('setEnvVariable')), isEmpty);
     });
   });
 }

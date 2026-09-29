@@ -15,11 +15,9 @@ class VersionInput extends Input {
   factory VersionInput.fromCliRequest(CliRequest req) => VersionInput();
 
   /// Declares an EMPTY contract: `version` accepts no option, so any option
-  /// passed to it is rejected. Omitting `params` would leave it unchecked.
-  static const List<CliParam> params = [];
-
-  @override
-  List<CliParam> get schemaFields => params;
+  /// passed to it is rejected. Omitting the contract would leave it
+  /// unchecked.
+  static const CliContract contract = CliContract.none;
 
   @override
   Map<String, dynamic> toJson() => {};
@@ -54,6 +52,5 @@ class VersionCommand implements Query<VersionInput, VersionOutput> {
   String? validate() => null;
 
   @override
-  Future<VersionOutput> execute() async =>
-      VersionOutput(version: macssVersion);
+  Future<VersionOutput> execute() async => VersionOutput(version: macssVersion);
 }

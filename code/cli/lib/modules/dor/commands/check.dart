@@ -35,15 +35,18 @@ class DorCheckInput extends Input {
   factory DorCheckInput.fromCliRequest(CliRequest req) =>
       DorCheckInput(slug: optionalSlug(req.flagString('slug')));
 
-  static final List<CliParam> params = [
-    CliParam.string(
-      'slug',
-      description: 'Requisition to check; defaults to the active one',
-    ),
-  ];
-
-  @override
-  List<CliParam> get schemaFields => params;
+  static final CliContract contract = CliContract(
+    options: [
+      CliParam.string(
+        'slug',
+        abbr: null,
+        required: false,
+        repeatable: false,
+        defaultValue: null,
+        description: 'Requisition to check; defaults to the active one',
+      ),
+    ],
+  );
 
   @override
   Map<String, dynamic> toJson() => {'slug': slug};
@@ -61,10 +64,10 @@ class DorCheckOutput extends Output {
 
   @override
   Map<String, dynamic> toJson() => {
-        'ready': ready,
-        'requisition': name,
-        'checks': checks.map((c) => c.toJson()).toList(),
-      };
+    'ready': ready,
+    'requisition': name,
+    'checks': checks.map((c) => c.toJson()).toList(),
+  };
 
   @override
   int get exitCode => ready ? ExitCode.ok : ExitCode.validationFailed;
@@ -76,7 +79,7 @@ class DorCheckOutput extends Output {
     buffer.writeln(
       ready
           ? 'Definition of Ready met. From here the issue body is frozen: a '
-              'change of scope opens a new requisition.'
+                'change of scope opens a new requisition.'
           : 'Not ready. Fix what is marked above and re-run.',
     );
     return buffer.toString();
@@ -99,8 +102,9 @@ class DorCheckCommand implements Query<DorCheckInput, DorCheckOutput> {
     required Assets assets,
     this.requisitionGate = const RequisitionGate(),
     SpecificationGate? specificationGate,
-  }) : specificationGate = specificationGate ??
-            SpecificationGate(vocabulary: Vocabularies.fromAssets(assets));
+  }) : specificationGate =
+           specificationGate ??
+           SpecificationGate(vocabulary: Vocabularies.fromAssets(assets));
 
   String? get _dir => resolveRequisitionDir(workingDirectory, input.slug);
 
@@ -110,7 +114,7 @@ class DorCheckCommand implements Query<DorCheckInput, DorCheckOutput> {
     final ambiguous = ambiguousRequisitionFailure(workingDirectory, input.slug);
     if (ambiguous != null) return ambiguous;
     if (_dir == null) {
-      return 'No requisition found — run `macss requisition new <slug> --apply` '
+      return 'No requisition found: run `macss requisition new --apply <slug>` '
           'first, '
           'or point at one with --slug <slug>.';
     }
@@ -185,8 +189,7 @@ class DorCheckCommand implements Query<DorCheckInput, DorCheckOutput> {
       name: 'issue',
       status: published ? CheckStatus.ok : CheckStatus.error,
       detail: published ? 'published as #${meta.issue}' : 'not published',
-      remediation:
-          published ? null : 'Run: macss requisition publish --apply',
+      remediation: published ? null : 'Run: macss requisition publish --apply',
     );
   }
 

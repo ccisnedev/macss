@@ -52,7 +52,8 @@ class DictatedVerdict {
   bool get accepted => rejection == null;
 
   @override
-  String toString() => '${command.file}:${command.line}\n'
+  String toString() =>
+      '${command.file}:${command.line}\n'
       '  dictates  ${command.invocation}\n'
       '  rejected  $rejection';
 }
@@ -64,8 +65,10 @@ class DictatedVerdict {
 ///
 /// Deliberately generous. A false positive is a line somebody has to look at; a
 /// false negative is the defect surviving, which is what happened three times.
-final _invocation = RegExp(r'macss((?:\s+(?:<[a-z|]+>|--?[a-z][\w-]*(?:=\S+)?|'
-    r'[a-z][\w./|-]*))+)');
+final _invocation = RegExp(
+  r'macss((?:\s+(?:<[a-z|]+>|--?[a-z][\w-]*(?:=\S+)?|'
+  r'[a-z][\w./|-]*))+)',
+);
 
 /// True for a line that only a maintainer reads — doc comments and `//` notes.
 ///
@@ -90,7 +93,10 @@ List<DictatedCommand> dictatedIn(File file, {required String relativeTo}) {
 
     for (final m in _invocation.allMatches(line)) {
       // Trailing punctuation belongs to the sentence, not the command.
-      final invocation = 'macss${m.group(1)!}'.replaceAll(RegExp(r'[.,:;]$'), '');
+      final invocation = 'macss${m.group(1)!}'.replaceAll(
+        RegExp(r'[.,:;]$'),
+        '',
+      );
       found.add(
         DictatedCommand(file: rel, line: i + 1, invocation: invocation),
       );
@@ -133,31 +139,33 @@ class CliRoute {
 }
 
 /// Parses the catalogue the CLI emits for `help --json`.
+///
+/// A route's options and positionals are separate lists in the catalogue
+/// (`options` / `positionals`, each entry still carrying its own `kind`),
+/// not one combined `params` list as an older catalogue shape had it.
 List<CliRoute> parseCatalog(String helpJson) {
   final doc = jsonDecode(helpJson) as Map<String, dynamic>;
   return [
     for (final c in (doc['commands'] as List).cast<Map<String, dynamic>>())
-      CliRoute(
-        c['route'] as String,
-        {
-          for (final param in (c['params'] as List).cast<Map<String, dynamic>>())
-            param['name'] as String,
-        },
-        {
-          for (final param in (c['params'] as List).cast<Map<String, dynamic>>())
-            if (param['required'] == true && param['kind'] == 'option')
-              param['name'] as String,
-        },
-        (c['params'] as List)
-            .cast<Map<String, dynamic>>()
-            .where((param) => param['kind'] == 'positional')
-            .length,
-        {
-          for (final param in (c['params'] as List).cast<Map<String, dynamic>>())
-            if (param['kind'] == 'option') param['name'] as String,
-        },
-      ),
+      _routeFrom(c),
   ];
+}
+
+CliRoute _routeFrom(Map<String, dynamic> c) {
+  final options = (c['options'] as List).cast<Map<String, dynamic>>();
+  final positionals = (c['positionals'] as List).cast<Map<String, dynamic>>();
+  return CliRoute(
+    c['route'] as String,
+    {
+      for (final param in [...options, ...positionals]) param['name'] as String,
+    },
+    {
+      for (final param in options)
+        if (param['required'] == true) param['name'] as String,
+    },
+    positionals.length,
+    {for (final param in options) param['name'] as String},
+  );
 }
 
 // ─── Judgement ──────────────────────────────────────────────────────────────
@@ -181,10 +189,14 @@ DictatedVerdict judge(DictatedCommand command, List<CliRoute> catalog) {
   CliRoute? matched;
   var matchedLength = 0;
   for (final candidate in catalog) {
-    // A route's own positional (`requisition new <slug>`) is supplied by the
-    // reader, so it is not part of what identifies the route.
-    final base =
-        candidate.route.split(' ').where((w) => !w.startsWith('<')).toList();
+    // A route's own positional (`requisition new <slug>`, or, when optional,
+    // `requisition new [<slug>]`) is supplied by the reader, so it is not
+    // part of what identifies the route. `contains`, not `startsWith`: an
+    // optional positional's `[` sits before the `<`.
+    final base = candidate.route
+        .split(' ')
+        .where((w) => !w.contains('<'))
+        .toList();
     if (base.isEmpty || base.length > leading.length) continue;
     if (!_startsWith(leading, base)) continue;
     if (base.length > matchedLength) {
@@ -234,7 +246,7 @@ DictatedVerdict judge(DictatedCommand command, List<CliRoute> catalog) {
       matched.positionals == 0
           ? '"${matched.route}" takes no argument after the command'
           : '"${matched.route}" takes ${matched.positionals} argument(s), '
-              'not $arguments',
+                'not $arguments',
     );
   }
 
@@ -242,7 +254,7 @@ DictatedVerdict judge(DictatedCommand command, List<CliRoute> catalog) {
     return DictatedVerdict(
       command,
       '"${matched.route}" changes things and refuses to choose: '
-          'it needs --plan or --apply',
+      'it needs --plan or --apply',
     );
   }
 

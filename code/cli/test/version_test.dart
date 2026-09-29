@@ -18,7 +18,7 @@ void main() {
       );
 
       expect(code, 7); // ExitCode.validationFailed
-      expect(await stderr.text(), contains('unknown option --bogus'));
+      expect(await stderr.text(), contains("unknown option '--bogus'"));
     });
 
     test('returns current version string', () async {

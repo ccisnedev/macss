@@ -122,7 +122,7 @@ Examples:
 ```text
 macss project create --path=. --apply
 macss project check
-macss requisition new <slug> --apply
+macss requisition new --apply <slug>
 macss requisition publish --plan
 macss requisition publish --apply
 macss specification check

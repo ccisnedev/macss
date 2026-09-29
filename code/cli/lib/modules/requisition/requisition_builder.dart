@@ -27,11 +27,12 @@ void buildRequisitionModule(ModuleBuilder m, {required Assets assets}) {
       artifact: 'requisition',
     ),
     description: 'Write the blank requisition form, to fill or to hand over',
-    params: ExportTemplateInput.params,
+    globals: true,
+    contract: ExportTemplateInput.contract,
   );
 
   m.command<RequisitionNewInput, RequisitionNewOutput>(
-    'new <slug>',
+    'new [<slug>]',
     (req) => RequisitionNewCommand(
       RequisitionNewInput.fromCliRequest(req),
       resolver: resolver,
@@ -39,7 +40,8 @@ void buildRequisitionModule(ModuleBuilder m, {required Assets assets}) {
     ),
     description:
         'Open a requisition: the form, its issue metadata, and the active pointer',
-    params: RequisitionNewInput.params,
+    globals: true,
+    contract: RequisitionNewInput.contract,
   );
 
   m.command<RequisitionPublishInput, RequisitionPublishOutput>(
@@ -51,7 +53,8 @@ void buildRequisitionModule(ModuleBuilder m, {required Assets assets}) {
     ),
     description:
         'Create or update the issue from the requisition — --plan or --apply',
-    params: RequisitionPublishInput.params,
+    globals: true,
+    contract: RequisitionPublishInput.contract,
   );
 
   m.query<RequisitionListInput, RequisitionListOutput>(
@@ -61,18 +64,20 @@ void buildRequisitionModule(ModuleBuilder m, {required Assets assets}) {
       workingDirectory: Directory.current.path,
     ),
     description: 'Show every requisition in this project, and which is active',
-    params: RequisitionListInput.params,
+    globals: true,
+    contract: RequisitionListInput.contract,
   );
 
   m.command<RequisitionActivateInput, RequisitionActivateOutput>(
-    'activate <slug>',
+    'activate [<slug>]',
     (req) => RequisitionActivateCommand(
       RequisitionActivateInput.fromCliRequest(req),
       workingDirectory: Directory.current.path,
     ),
     description:
         'Choose the requisition the following commands act on — --plan or --apply',
-    params: RequisitionActivateInput.params,
+    globals: true,
+    contract: RequisitionActivateInput.contract,
   );
 
   m.command<RequisitionPruneInput, RequisitionPruneOutput>(
@@ -81,9 +86,11 @@ void buildRequisitionModule(ModuleBuilder m, {required Assets assets}) {
       RequisitionPruneInput.fromCliRequest(req),
       workingDirectory: Directory.current.path,
     ),
-    description: 'Remove the requisitions whose work is done or discarded '
+    description:
+        'Remove the requisitions whose work is done or discarded '
         '— --plan or --apply',
-    params: RequisitionPruneInput.params,
+    globals: true,
+    contract: RequisitionPruneInput.contract,
   );
 
   m.query<RequisitionCheckInput, RequisitionCheckOutput>(
@@ -93,6 +100,7 @@ void buildRequisitionModule(ModuleBuilder m, {required Assets assets}) {
       workingDirectory: Directory.current.path,
     ),
     description: 'Verify every section of the form is answered',
-    params: RequisitionCheckInput.params,
+    globals: true,
+    contract: RequisitionCheckInput.contract,
   );
 }

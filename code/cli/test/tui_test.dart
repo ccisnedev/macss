@@ -64,21 +64,26 @@ TuiCommand _makeTui() => TuiCommand(
 
 void main() {
   group('TUI Command', () {
-    test('root command rejects an unknown flag as invalid usage', () async {
-      // A lone flag on the bare root never routes to the banner: the router
-      // treats it as an unknown command (exit 64), not a contract violation.
-      final stdout = MemorySink();
-      final stderr = MemorySink();
+    test(
+      'root command rejects an unknown flag as a contract violation',
+      () async {
+        // A lone flag on the bare root matches the root route (the empty
+        // positional segment), so it is a contract violation on that route
+        // (exit 7), not an unknown command (exit 64); the router only reports
+        // "unknown command" when no route matches at all.
+        final stdout = MemorySink();
+        final stderr = MemorySink();
 
-      final code = await runMacss(
-        const ['--bogus'],
-        stdout: stdout.sink,
-        stderr: stderr.sink,
-      );
+        final code = await runMacss(
+          const ['--bogus'],
+          stdout: stdout.sink,
+          stderr: stderr.sink,
+        );
 
-      expect(code, 64); // ExitCode.invalidUsage
-      expect(await stderr.text(), contains('unknown command'));
-    });
+        expect(code, 7); // ExitCode.validationFailed
+        expect(await stderr.text(), contains("unknown option '--bogus'"));
+      },
+    );
 
     test('TuiInput.fromCliRequest returns TuiInput', () {
       expect(TuiInput(), isA<TuiInput>());
@@ -202,6 +207,7 @@ void main() {
       var asked = false;
       final code =
           await (ModularCli(
+                suggestionDistance: 2,
                 // The approval belongs to the CLI now, not to a module: the SDK
                 // takes it for every command, so standing in for the human is
                 // done once here rather than per builder.
@@ -216,8 +222,11 @@ void main() {
               .run(args, stdout: MemorySink().sink, stderr: MemorySink().sink);
 
       expect(code, ExitCode.ok, reason: 'quickstart was: $quickstartCommand');
-      expect(asked, isTrue,
-          reason: 'the quickstart must show what it will do before doing it');
+      expect(
+        asked,
+        isTrue,
+        reason: 'the quickstart must show what it will do before doing it',
+      );
       expect(File(p.join(dest, 'README.md')).existsSync(), isTrue);
     });
 

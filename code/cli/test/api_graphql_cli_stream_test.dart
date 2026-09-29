@@ -32,7 +32,7 @@ void main() {
       );
 
       expect(exitCode, 7); // ExitCode.validationFailed
-      expect(await stderr.text(), contains('unknown option --bogus'));
+      expect(await stderr.text(), contains("unknown option '--bogus'"));
     });
 
     test('compile help text is routed to stderr in text mode', () async {
@@ -71,20 +71,23 @@ void main() {
       expect(await stderr.text(), isEmpty);
     });
 
-    test('compile validation failures are routed to stderr in text mode', () async {
-      final stdout = MemorySink();
-      final stderr = MemorySink();
+    test(
+      'compile validation failures are routed to stderr in text mode',
+      () async {
+        final stdout = MemorySink();
+        final stderr = MemorySink();
 
-      final exitCode = await runMacss(
-        ['api', 'graphql', 'compile', '--apply', '--autoapprove'],
-        workingDirectory: tempDir.path,
-        stdout: stdout.sink,
-        stderr: stderr.sink,
-      );
+        final exitCode = await runMacss(
+          ['api', 'graphql', 'compile', '--apply', '--autoapprove'],
+          workingDirectory: tempDir.path,
+          stdout: stdout.sink,
+          stderr: stderr.sink,
+        );
 
-      expect(exitCode, 3);
-      expect(await stdout.text(), isEmpty);
-      expect(await stderr.text(), contains('sourceRoot'));
-    });
+        expect(exitCode, 3);
+        expect(await stdout.text(), isEmpty);
+        expect(await stderr.text(), contains('sourceRoot'));
+      },
+    );
   });
 }

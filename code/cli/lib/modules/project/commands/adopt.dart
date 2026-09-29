@@ -66,41 +66,44 @@ class ProjectAdoptInput extends Input {
     String? workingDirectory,
   }) {
     final cwd = workingDirectory ?? Directory.current.path;
-    final raw = req.flagString('path', aliases: const ['p']);
+    final raw = req.flagString('path');
     return ProjectAdoptInput(
-      resolvedPath:
-          raw == null ? cwd : (p.isAbsolute(raw) ? raw : p.join(cwd, raw)),
+      resolvedPath: raw == null
+          ? cwd
+          : (p.isAbsolute(raw) ? raw : p.join(cwd, raw)),
       workingDirectory: cwd,
       lang: req.flagString('lang'),
     );
   }
 
-  static final List<CliParam> params = [
-    CliParam.string(
-      'path',
-      abbr: 'p',
-      description: 'Project directory to adopt; defaults to the current one',
-    ),
-    // Adopting the canon includes adopting the decision about language, and
-    // the declaration says so where a machine can read it.
-    CliParam.string(
-      'lang',
-      required: true,
-      allowed: ['en', 'es'],
-      description:
-          'Language of this project documents. There is no default: a fallback '
-          'would be a choice nobody made',
-    ),
-  ];
+  static final CliContract contract = CliContract(
+    options: [
+      CliParam.string(
+        'path',
+        abbr: 'p',
+        required: false,
+        repeatable: false,
+        defaultValue: null,
+        description: 'Project directory to adopt; defaults to the current one',
+      ),
+      // Adopting the canon includes adopting the decision about language, and
+      // the declaration says so where a machine can read it.
+      CliParam.enumeration(
+        'lang',
+        abbr: null,
+        required: true,
+        repeatable: false,
+        values: const ['en', 'es'],
+        defaultValue: null,
+        description:
+            'Language of this project documents. There is no default: a '
+            'fallback would be a choice nobody made',
+      ),
+    ],
+  );
 
   @override
-  List<CliParam> get schemaFields => params;
-
-  @override
-  Map<String, dynamic> toJson() => {
-        'resolvedPath': resolvedPath,
-        'lang': lang,
-      };
+  Map<String, dynamic> toJson() => {'resolvedPath': resolvedPath, 'lang': lang};
 }
 
 // ─── Output ─────────────────────────────────────────────────────────────────
@@ -165,8 +168,8 @@ class ProjectAdoptCommand
     required this.assets,
     Approver? approver,
     DateTime Function()? now,
-  })  : approver = approver ?? ConsoleApprover().call,
-        now = now ?? DateTime.now;
+  }) : approver = approver ?? ConsoleApprover().call,
+       now = now ?? DateTime.now;
 
   @override
   String? validate() {
@@ -236,7 +239,8 @@ class RetireGitignoreEntry implements Step {
   Preview preview() => Preview(
     verb: 'retire',
     target: entry,
-    detail: 'from $root/.gitignore — the workspace carries its own now, and '
+    detail:
+        'from $root/.gitignore: the workspace carries its own now, and '
         'git does not descend into an excluded directory',
   );
 

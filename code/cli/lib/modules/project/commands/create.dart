@@ -45,7 +45,7 @@ class CreateInput extends Input {
     CliRequest req, {
     String? workingDirectory,
   }) {
-    final rawPath = req.flagString('path', aliases: const ['p']);
+    final rawPath = req.flagString('path');
     workingDirectory ??= Directory.current.path;
 
     return CreateInput(
@@ -62,35 +62,40 @@ class CreateInput extends Input {
   /// Declared contract: `--path` / `-p`, plus the convention's three flags.
   /// Declaring them rejects any other flag at parse time and publishes the
   /// options in help.
-  static final List<CliParam> params = [
-    // Declared required rather than checked in `validate`. The declaration is
-    // the contract this CLI publishes, and a rule enforced only in prose is one
-    // `help --json` reports the opposite of — to the machine that reads it.
-    CliParam.string(
-      'path',
-      abbr: 'p',
-      required: true,
-      description: 'Directory to scaffold the MACSS project into',
-    ),
-    CliParam.string(
-      'lang',
-      required: true,
-      allowed: ['en', 'es'],
-      description:
-          'Language of this project documents. There is no default: a fallback '
-          'would be a choice nobody made',
-    ),
-  ];
-
-  @override
-  List<CliParam> get schemaFields => params;
+  static final CliContract contract = CliContract(
+    options: [
+      // Declared required rather than checked in `validate`. The declaration
+      // is the contract this CLI publishes, and a rule enforced only in prose
+      // is one `help --json` reports the opposite of, to the machine that
+      // reads it.
+      CliParam.string(
+        'path',
+        abbr: 'p',
+        required: true,
+        repeatable: false,
+        defaultValue: null,
+        description: 'Directory to scaffold the MACSS project into',
+      ),
+      CliParam.enumeration(
+        'lang',
+        abbr: null,
+        required: true,
+        repeatable: false,
+        values: const ['en', 'es'],
+        defaultValue: null,
+        description:
+            'Language of this project documents. There is no default: a '
+            'fallback would be a choice nobody made',
+      ),
+    ],
+  );
 
   @override
   Map<String, dynamic> toJson() => {
-        'resolvedPath': resolvedPath,
-        'workingDirectory': workingDirectory,
-        'lang': lang,
-      };
+    'resolvedPath': resolvedPath,
+    'workingDirectory': workingDirectory,
+    'lang': lang,
+  };
 }
 
 // ─── Output ─────────────────────────────────────────────────────────────────
@@ -154,7 +159,7 @@ class CreateCommand implements Command<CreateInput, CreateOutput> {
 
     if (File(root).existsSync()) {
       throw CommandException(
-        code: 'PATH_IS_A_FILE',
+        id: 'path-is-a-file',
         message: 'Error: "$root" is an existing file, not a directory.',
         exitCode: 2,
       );
@@ -179,9 +184,7 @@ class CreateCommand implements Command<CreateInput, CreateOutput> {
   @override
   CreateOutput describe(Execution execution) => CreateOutput(
     root: input.resolvedPath!,
-    did: [
-      for (final o in execution.outcomes) (verb: o.verb, target: o.target),
-    ],
+    did: [for (final o in execution.outcomes) (verb: o.verb, target: o.target)],
   );
 }
 

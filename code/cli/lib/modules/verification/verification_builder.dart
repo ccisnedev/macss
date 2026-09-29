@@ -27,9 +27,11 @@ void buildVerificationModule(ModuleBuilder m, {required Assets assets}) {
       workingDirectory: Directory.current.path,
       runProcess: Process.run,
     ),
-    description: 'Open the record: every criterion of the frozen contract, '
+    description:
+        'Open the record: every criterion of the frozen contract, '
         'unjudged — --plan or --apply',
-    params: VerificationNewInput.params,
+    globals: true,
+    contract: VerificationNewInput.contract,
   );
 
   m.query<VerificationCheckInput, VerificationCheckOutput>(
@@ -41,7 +43,8 @@ void buildVerificationModule(ModuleBuilder m, {required Assets assets}) {
       assets: assets,
     ),
     description: 'Verify every criterion is judged and the human concluded',
-    params: VerificationCheckInput.params,
+    globals: true,
+    contract: VerificationCheckInput.contract,
   );
 
   m.command<VerificationPublishInput, VerificationPublishOutput>(
@@ -52,8 +55,10 @@ void buildVerificationModule(ModuleBuilder m, {required Assets assets}) {
       runProcess: Process.run,
       assets: assets,
     ),
-    description: 'Add the evidence to the pull request the delivery opened '
+    description:
+        'Add the evidence to the pull request the delivery opened '
         '— --plan or --apply',
-    params: VerificationPublishInput.params,
+    globals: true,
+    contract: VerificationPublishInput.contract,
   );
 }

@@ -37,20 +37,27 @@ class RequisitionPublishInput extends Input {
         repo: req.flagString('repo'),
       );
 
-  static final List<CliParam> params = [
-    CliParam.string(
-      'slug',
-      description: 'Requisition to publish; defaults to the active one',
-    ),
-    CliParam.string(
-      'repo',
-      description:
-          'Target repository; by default gh infers it from this directory',
-    ),
-  ];
-
-  @override
-  List<CliParam> get schemaFields => params;
+  static final CliContract contract = CliContract(
+    options: [
+      CliParam.string(
+        'slug',
+        abbr: null,
+        required: false,
+        repeatable: false,
+        defaultValue: null,
+        description: 'Requisition to publish; defaults to the active one',
+      ),
+      CliParam.string(
+        'repo',
+        abbr: null,
+        required: false,
+        repeatable: false,
+        defaultValue: null,
+        description:
+            'Target repository; by default gh infers it from this directory',
+      ),
+    ],
+  );
 
   @override
   Map<String, dynamic> toJson() => {'slug': slug, 'repo': repo};
@@ -162,7 +169,7 @@ class RequisitionPublishCommand
     if (ambiguous != null) return ambiguous;
     final dir = _dir;
     if (dir == null) {
-      return 'No requisition found — run `macss requisition new <slug> --apply` '
+      return 'No requisition found: run `macss requisition new --apply <slug>` '
           'first, '
           'or point at one with --slug <slug>.';
     }
@@ -194,12 +201,13 @@ class RequisitionPublishCommand
       final result = gate.evaluate(form.readAsStringSync());
       if (!result.passed) {
         throw CommandException(
-          code: 'REQUISITION_INCOMPLETE',
+          id: 'requisition-incomplete',
           message: [
             'The requisition is not complete, so there is nothing worth '
                 'publishing yet:',
             ...result.violations.map((v) => '  - ${v.code}: ${v.message}'),
           ].join('\n'),
+          exitCode: ExitCode.genericError,
         );
       }
     }
@@ -207,11 +215,12 @@ class RequisitionPublishCommand
     final body = assembleBody(dir);
     if (body.exceedsLimit) {
       throw CommandException(
-        code: 'BODY_TOO_LONG',
+        id: 'body-too-long',
         message:
             'The assembled body is ${body.length} characters; GitHub '
             'accepts $githubBodyLimit. Shorten ${body.parts.join(' + ')}, or '
             'split the requisition into smaller ones.',
+        exitCode: ExitCode.genericError,
       );
     }
 

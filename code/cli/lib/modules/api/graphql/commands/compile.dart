@@ -40,27 +40,43 @@ class GraphqlCompileInput extends Input {
 
   /// Declared contract: the four compile options. Declaring them rejects any
   /// other flag at parse time and publishes them in help.
-  static final List<CliParam> params = [
-    CliParam.string(
-      'source-root',
-      description: 'GraphQL source root. Default: code/db',
-    ),
-    CliParam.string(
-      'metadata',
-      description: 'Metadata file. Default: <source-root>/graphql.metadata.jsonc',
-    ),
-    CliParam.string(
-      'output',
-      description: 'Artifact directory. Default: .modular_api/graphql',
-    ),
-    CliParam.string(
-      'engine',
-      description: 'GraphQL engine. Supported: sqlserver',
-    ),
-  ];
-
-  @override
-  List<CliParam> get schemaFields => params;
+  static final CliContract contract = CliContract(
+    options: [
+      CliParam.string(
+        'source-root',
+        abbr: null,
+        required: false,
+        repeatable: false,
+        defaultValue: null,
+        description: 'GraphQL source root. Default: code/db',
+      ),
+      CliParam.string(
+        'metadata',
+        abbr: null,
+        required: false,
+        repeatable: false,
+        defaultValue: null,
+        description:
+            'Metadata file. Default: <source-root>/graphql.metadata.jsonc',
+      ),
+      CliParam.string(
+        'output',
+        abbr: null,
+        required: false,
+        repeatable: false,
+        defaultValue: null,
+        description: 'Artifact directory. Default: .modular_api/graphql',
+      ),
+      CliParam.string(
+        'engine',
+        abbr: null,
+        required: false,
+        repeatable: false,
+        defaultValue: null,
+        description: 'GraphQL engine. Supported: sqlserver',
+      ),
+    ],
+  );
 
   @override
   Map<String, dynamic> toJson() => {
@@ -141,10 +157,12 @@ class GraphqlCompileCommand
     this.input, {
     GraphqlCompileConfigResolver? configResolver,
     GraphqlCompileRunner? runner,
-  }) : configResolver = configResolver ??
-            GraphqlCompileConfigResolver(environment: Platform.environment),
-       runner = runner ??
-            ModularApiGraphqlCompileRunner(environment: Platform.environment);
+  }) : configResolver =
+           configResolver ??
+           GraphqlCompileConfigResolver(environment: Platform.environment),
+       runner =
+           runner ??
+           ModularApiGraphqlCompileRunner(environment: Platform.environment);
 
   @override
   String? validate() => null;
@@ -166,13 +184,13 @@ class GraphqlCompileCommand
       validateGraphqlCompileConfig(resolved);
     } on GraphqlCompileUsageError catch (error) {
       throw CommandException(
-        code: 'GRAPHQL_COMPILE_USAGE',
+        id: 'graphql-compile-usage',
         message: error.message,
         exitCode: 2,
       );
     } on GraphqlCompileConfigError catch (error) {
       throw CommandException(
-        code: 'GRAPHQL_COMPILE_CONFIG',
+        id: 'graphql-compile-config',
         message: error.message,
         exitCode: 3,
       );
@@ -186,14 +204,14 @@ class GraphqlCompileCommand
     final failure = execution.failure?.error;
     if (failure is GraphqlCompileExecutionError) {
       throw CommandException(
-        code: 'GRAPHQL_COMPILE_FAILED',
+        id: 'graphql-compile-failed',
         message: failure.message,
         exitCode: failure.hasBlockingDiagnostics ? 4 : 5,
       );
     }
     if (failure != null) {
       throw CommandException(
-        code: 'GRAPHQL_COMPILE_FAILED',
+        id: 'graphql-compile-failed',
         message: 'Unexpected GraphQL compile failure: $failure',
         exitCode: 5,
       );

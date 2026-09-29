@@ -17,8 +17,10 @@ void buildDodModule(ModuleBuilder m, {required Assets assets}) {
       runProcess: Process.run,
       assets: assets,
     ),
-    description: 'Compose the delivery and verification gates, and the pull '
+    description:
+        'Compose the delivery and verification gates, and the pull '
         'request that carries them',
-    params: DodCheckInput.params,
+    globals: true,
+    contract: DodCheckInput.contract,
   );
 }

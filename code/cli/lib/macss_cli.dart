@@ -12,15 +12,33 @@ import 'package:path/path.dart' as p;
 
 import 'assets.dart';
 import 'src/api/graphql/compile_runner.dart';
+import 'src/version.dart';
 import 'modules/api/api_builder.dart';
 import 'modules/delivery/delivery_builder.dart';
 import 'modules/dod/dod_builder.dart';
 import 'modules/dor/dor_builder.dart';
 import 'modules/global/global_builder.dart';
+import 'modules/global/macss_doctor_checks_plugin.dart';
 import 'modules/project/project_builder.dart';
 import 'modules/requisition/requisition_builder.dart';
 import 'modules/specification/specification_builder.dart';
 import 'modules/verification/verification_builder.dart';
+
+/// The release this CLI upgrades/uninstalls itself against, and the alias
+/// `install.ps1` / `install.sh` put on `PATH` alongside the full name.
+///
+/// `assets` names the archive `install.ps1` / `install.sh` and the release
+/// workflow already publish; this only has to agree with them, never define
+/// them, so this migration does not touch either script or the workflow.
+const _installationConfig = CliInstallationConfig(
+  repository: 'ccisnedev/macss',
+  executable: 'macss',
+  alias: 'ma',
+  assets: {
+    'windows': 'macss-windows-x64.zip',
+    'linux': 'macss-linux-x64.tar.gz',
+  },
+);
 
 /// The name this CLI writes into every ledger row it creates, and the name the
 /// other consumers see in a `block` when they meet one of its artifacts.
@@ -50,7 +68,11 @@ Future<int> runMacss(
   GraphqlCompileRunner? graphqlCompileRunner,
   String? workingDirectory,
 }) async {
-  final cli = ModularCli();
+  final cli = ModularCli(
+    suggestionDistance: 2,
+    name: macssConsumerName,
+    version: macssVersion,
+  );
   final normalizedArgs = normalizeMacssArgs(args);
   final output = stdout ?? io.stdout;
   final error = stderr ?? io.stderr;
@@ -58,7 +80,12 @@ Future<int> runMacss(
   final assetsRoot = p.dirname(p.dirname(io.Platform.resolvedExecutable));
   final assets = Assets(root: assetsRoot);
 
-  cli.module('', (m) => buildGlobalModule(m, assets: assets));
+  cli
+    ..plugin(const DoctorPlugin())
+    ..plugin(MacssDoctorChecksPlugin(assets: assets))
+    ..plugin(InstallationPlugin(config: _installationConfig));
+
+  cli.module('', (m) => buildGlobalModule(m));
   cli.module(
     'api',
     (m) => buildApiModule(
@@ -74,10 +101,7 @@ Future<int> runMacss(
   cli.module('dor', (m) => buildDorModule(m, assets: assets));
   cli.module('dod', (m) => buildDodModule(m, assets: assets));
   cli.module('delivery', (m) => buildDeliveryModule(m, assets: assets));
-  cli.module(
-    'verification',
-    (m) => buildVerificationModule(m, assets: assets),
-  );
+  cli.module('verification', (m) => buildVerificationModule(m, assets: assets));
   // R12.1 — the same `skill` module every consumer mounts, from `datajack`.
   // `consumer` is what makes a shared machine work: every ledger row this CLI
   // writes says `macss`, so `inquiry` and `skillwire_cli` meeting one of these
@@ -94,18 +118,17 @@ Future<int> runMacss(
       workspace: workspace,
       catalogue: Catalogue.read(
         workspace.assetsRoot,
-        validator: SkillValidator(reservedNames: workspace.matrix.reservedNames),
+        validator: SkillValidator(
+          reservedNames: workspace.matrix.reservedNames,
+        ),
       ),
     ),
   );
   cli.module('project', (m) => buildProjectModule(m, assets: assets));
-  cli.module(
-    'requisition',
-    (m) => buildRequisitionModule(m, assets: assets),
-  );
+  cli.module('requisition', (m) => buildRequisitionModule(m, assets: assets));
 
-  final routeStdout = _isApiGraphqlCompileRoute(normalizedArgs) &&
-          !_isJsonMode(normalizedArgs)
+  final routeStdout =
+      _isApiGraphqlCompileRoute(normalizedArgs) && !_isJsonMode(normalizedArgs)
       ? error
       : output;
 

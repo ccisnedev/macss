@@ -29,7 +29,9 @@ void main() {
     // `adopt` can stamp every one of them.
     final assetsDir = Directory(p.join(tempRoot.path, '_assets'));
     for (final file in createFiles) {
-      final f = File(p.join(assetsDir.path, 'assets', p.joinAll(file.template.split('/'))));
+      final f = File(
+        p.join(assetsDir.path, 'assets', p.joinAll(file.template.split('/'))),
+      );
       f.createSync(recursive: true);
       f.writeAsStringSync('# ${file.path}\n');
     }
@@ -69,9 +71,9 @@ void main() {
   Future<List<Preview>> plan({String? lang = 'en'}) =>
       previewCommand(adoptCommand(lang: lang));
 
-  void mkdirs(String relative) =>
-      Directory(p.join(dest, p.joinAll(relative.split('/'))))
-          .createSync(recursive: true);
+  void mkdirs(String relative) => Directory(
+    p.join(dest, p.joinAll(relative.split('/'))),
+  ).createSync(recursive: true);
 
   group('the canon is one definition', () {
     // The defect this module exists to prevent: the book once required a root
@@ -98,15 +100,18 @@ void main() {
 
     // A project that already keeps one is left alone: `check` must not report
     // a file it no longer has an opinion about, and `adopt` removes nothing.
-    test('a project that keeps its own root CHANGELOG still conforms', () async {
-      await scaffold();
-      File(p.join(dest, 'CHANGELOG.md')).writeAsStringSync('# Changelog\n');
+    test(
+      'a project that keeps its own root CHANGELOG still conforms',
+      () async {
+        await scaffold();
+        File(p.join(dest, 'CHANGELOG.md')).writeAsStringSync('# Changelog\n');
 
-      final out = await check();
+        final out = await check();
 
-      expect(out.missing, 0, reason: out.toText());
-      expect(out.exitCode, ExitCode.ok);
-    });
+        expect(out.missing, 0, reason: out.toText());
+        expect(out.exitCode, ExitCode.ok);
+      },
+    );
   });
 
   // `create` writes more than `check` requires, which is the reverse of the
@@ -139,22 +144,24 @@ void main() {
       expect(out.exitCode, ExitCode.ok, reason: out.toText());
     });
 
-    test('a project whose code/ is a cli and a site conforms, silently',
-        () async {
-      // inquiry's shape: no api, no db, and directories the old canon called
-      // strays. Neither is a finding any more.
-      await scaffold();
-      Directory(p.join(dest, 'code')).deleteSync(recursive: true);
-      mkdirs('code/cli');
-      mkdirs('code/site');
-      mkdirs('code/vscode');
+    test(
+      'a project whose code/ is a cli and a site conforms, silently',
+      () async {
+        // inquiry's shape: no api, no db, and directories the old canon called
+        // strays. Neither is a finding any more.
+        await scaffold();
+        Directory(p.join(dest, 'code')).deleteSync(recursive: true);
+        mkdirs('code/cli');
+        mkdirs('code/site');
+        mkdirs('code/vscode');
 
-      final out = await check();
+        final out = await check();
 
-      expect(out.missing, 0, reason: out.toText());
-      expect(out.deviations, 0, reason: out.toText());
-      expect(out.toText(), isNot(contains('not a canonical layer')));
-    });
+        expect(out.missing, 0, reason: out.toText());
+        expect(out.deviations, 0, reason: out.toText());
+        expect(out.toText(), isNot(contains('not a canonical layer')));
+      },
+    );
 
     test('adopt does not put the layers back', () async {
       // The reason this matters: a project that deliberately removed api/db/app
@@ -198,34 +205,40 @@ void main() {
   });
 
   group('macss project check', () {
-    test('reports every canonical file missing from an empty directory',
-        () async {
-      Directory(dest).createSync(recursive: true);
+    test(
+      'reports every canonical file missing from an empty directory',
+      () async {
+        Directory(dest).createSync(recursive: true);
 
-      final out = await check();
+        final out = await check();
 
-      expect(out.missing, canonFiles.length);
-      expect(out.exitCode, 1);
-      // With `--lang`: #24 made it required, which silently invalidated the
-      // very message this method started from. This assertion passed
-      // throughout, because it pinned the prefix rather than the invocation.
-      expect(out.toText(),
-          contains('macss project adopt --lang <en|es> --plan'));
-    });
+        expect(out.missing, canonFiles.length);
+        expect(out.exitCode, 1);
+        // With `--lang`: #24 made it required, which silently invalidated the
+        // very message this method started from. This assertion passed
+        // throughout, because it pinned the prefix rather than the invocation.
+        expect(
+          out.toText(),
+          contains('macss project adopt --lang <en|es> --plan'),
+        );
+      },
+    );
 
-    test('an api module with no db module is a warning, not an error',
-        () async {
-      await scaffold();
-      mkdirs('code/api/modules/sales');
+    test(
+      'an api module with no db module is a warning, not an error',
+      () async {
+        await scaffold();
+        mkdirs('code/api/modules/sales');
 
-      final out = await check();
+        final out = await check();
 
-      expect(out.missing, 0);
-      expect(out.deviations, 1);
-      // A deviation never fails the command: it needs judgement, not a fix.
-      expect(out.exitCode, ExitCode.ok);
-      expect(out.toText(), contains('db/modules/sales'));
-    });
+        expect(out.missing, 0);
+        expect(out.deviations, 1);
+        // A deviation never fails the command: it needs judgement, not a fix.
+        expect(out.exitCode, ExitCode.ok);
+        expect(out.toText(), contains('db/modules/sales'));
+      },
+    );
 
     test('a mirrored api/db module pair is clean', () async {
       await scaffold();
@@ -235,18 +248,20 @@ void main() {
       expect((await check()).deviations, 0);
     });
 
-    test('a client module with no backend module of the same name warns',
-        () async {
-      await scaffold();
-      mkdirs('code/api/modules/sales');
-      mkdirs('code/db/modules/sales');
-      mkdirs('code/app/modules/reporting');
+    test(
+      'a client module with no backend module of the same name warns',
+      () async {
+        await scaffold();
+        mkdirs('code/api/modules/sales');
+        mkdirs('code/db/modules/sales');
+        mkdirs('code/app/modules/reporting');
 
-      final out = await check();
+        final out = await check();
 
-      expect(out.deviations, 1);
-      expect(out.toText(), contains('code/app/modules/reporting'));
-    });
+        expect(out.deviations, 1);
+        expect(out.toText(), contains('code/app/modules/reporting'));
+      },
+    );
 
     // `a stray directory under code/ warns` and `code/cli is not a stray` both
     // went with the rule they described. There are no strays under `code/` any
@@ -288,15 +303,18 @@ void main() {
 
     test('names the retirement before doing it', () async {
       await scaffold();
-      File(p.join(dest, '.gitignore')).writeAsStringSync(
-          '# MACSS — local workspace (git-ignored)\n.macss/\n');
+      File(
+        p.join(dest, '.gitignore'),
+      ).writeAsStringSync('# MACSS — local workspace (git-ignored)\n.macss/\n');
 
       final previews = await plan();
 
       expect(previews.map((p) => p.verb), contains('retire'));
-      expect(File(p.join(dest, '.gitignore')).readAsStringSync(),
-          contains('.macss/'),
-          reason: 'asking changes nothing');
+      expect(
+        File(p.join(dest, '.gitignore')).readAsStringSync(),
+        contains('.macss/'),
+        reason: 'asking changes nothing',
+      );
     });
 
     test('a conforming, declared project would do nothing at all', () async {
@@ -349,19 +367,24 @@ void main() {
     test('retires the obsolete workspace entry MACSS itself wrote', () async {
       await scaffold();
       final gitignore = File(p.join(dest, '.gitignore'));
-      gitignore.writeAsStringSync('node_modules/\n'
-          '\n'
-          '# MACSS — local workspace (git-ignored)\n'
-          '.macss/\n'
-          'docs/requisitions/\n');
+      gitignore.writeAsStringSync(
+        'node_modules/\n'
+        '\n'
+        '# MACSS — local workspace (git-ignored)\n'
+        '.macss/\n'
+        'docs/requisitions/\n',
+      );
 
       final out = await adopt();
 
       final after = gitignore.readAsStringSync();
       expect(after, isNot(contains('.macss/')));
       expect(after, contains('docs/requisitions/'));
-      expect(after, contains('node_modules/'),
-          reason: 'what the project wrote is not ours to remove');
+      expect(
+        after,
+        contains('node_modules/'),
+        reason: 'what the project wrote is not ours to remove',
+      );
       expect(out.retired, isNotEmpty);
     });
 
@@ -377,16 +400,18 @@ void main() {
       expect(projectLanguage(dest), 'es');
     });
 
-    test('a project already conforming but undeclared is not a no-op',
-        () async {
-      await scaffold();
-      File(p.join(dest, '.macss', 'config.yaml')).deleteSync();
+    test(
+      'a project already conforming but undeclared is not a no-op',
+      () async {
+        await scaffold();
+        File(p.join(dest, '.macss', 'config.yaml')).deleteSync();
 
-      final out = await adopt(lang: 'en');
+        final out = await adopt(lang: 'en');
 
-      expect(out.applied, isTrue);
-      expect(projectLanguage(dest), 'en');
-    });
+        expect(out.applied, isTrue);
+        expect(projectLanguage(dest), 'en');
+      },
+    );
 
     test('the declaration is named before it is written', () async {
       await scaffold();
@@ -394,21 +419,26 @@ void main() {
 
       final previews = await plan(lang: 'es');
 
-      expect(previews.firstWhere((p) => p.verb == 'declare').detail,
-          contains('language: es'));
+      expect(
+        previews.firstWhere((p) => p.verb == 'declare').detail,
+        contains('language: es'),
+      );
       expect(projectLanguage(dest), isNull, reason: 'asking changes nothing');
     });
 
-    test('a project with nothing missing but a stale entry is not a no-op',
-        () async {
-      await scaffold();
-      File(p.join(dest, '.gitignore')).writeAsStringSync(
-          '# MACSS — local workspace (git-ignored)\n.macss/\n');
+    test(
+      'a project with nothing missing but a stale entry is not a no-op',
+      () async {
+        await scaffold();
+        File(p.join(dest, '.gitignore')).writeAsStringSync(
+          '# MACSS — local workspace (git-ignored)\n.macss/\n',
+        );
 
-      final out = await adopt();
+        final out = await adopt();
 
-      expect(out.applied, isTrue);
-    });
+        expect(out.applied, isTrue);
+      },
+    );
 
     test('nothing to adopt builds no steps at all', () async {
       await scaffold();
@@ -423,15 +453,15 @@ void main() {
     // Adopting the canon includes adopting the decision about language, and
     // the refusal is the SDK enforcing the declared contract — so it is
     // exercised here, through a real CLI, and not against `validate()`.
-    ModularCli makeCli({String? workingDirectory}) => ModularCli()
-      ..module(
-        'project',
-        (m) => buildProjectModule(
-          m,
-          assets: assets,
-          workingDirectory: workingDirectory,
-        ),
-      );
+    ModularCli makeCli({String? workingDirectory}) =>
+        ModularCli(suggestionDistance: 2)..module(
+          'project',
+          (m) => buildProjectModule(
+            m,
+            assets: assets,
+            workingDirectory: workingDirectory,
+          ),
+        );
 
     test('check rejects an undeclared option', () async {
       final stderr = MemorySink();
@@ -442,7 +472,7 @@ void main() {
       );
 
       expect(code, ExitCode.validationFailed);
-      expect(await stderr.text(), contains('unknown option --bogus'));
+      expect(await stderr.text(), contains("unknown option '--bogus'"));
     });
 
     test('without --lang it refuses, and adopts nothing', () async {
@@ -508,12 +538,22 @@ void main() {
       expect(File(p.join(dest, 'CHANGELOG.md')).existsSync(), isFalse);
       expect(Directory(p.join(dest, '.macss')).existsSync(), isFalse);
       expect(
-          Directory(p.join(invokedFrom.path, '.macss')).existsSync(), isFalse);
+        Directory(p.join(invokedFrom.path, '.macss')).existsSync(),
+        isFalse,
+      );
     });
 
     test('create is reachable under the project module', () async {
       final code = await makeCli().run(
-        ['project', 'create', '--path=$dest', '--lang', 'en', '--apply', '--autoapprove'],
+        [
+          'project',
+          'create',
+          '--path=$dest',
+          '--lang',
+          'en',
+          '--apply',
+          '--autoapprove',
+        ],
         stdout: MemorySink().sink,
         stderr: MemorySink().sink,
       );

@@ -59,22 +59,26 @@ void main() {
       File(p.join(tempDir.path, p.joinAll(relative.split('/'))));
 
   group('macss requisition new', () {
-    test('writes the form, the lifecycle record and the active pointer',
-        () async {
-      await open();
+    test(
+      'writes the form, the lifecycle record and the active pointer',
+      () async {
+        await open();
 
-      expect(file('$folder/requisition.md').existsSync(), isTrue);
-      expect(file('$folder/state.yaml').existsSync(), isTrue);
-      expect(file('.macss/active_requisition.yaml').existsSync(), isTrue);
-      expect(file('$folder/issue.yaml').existsSync(), isFalse,
-          reason: 'issue.yaml is replaced, not written alongside');
-    });
+        expect(file('$folder/requisition.md').existsSync(), isTrue);
+        expect(file('$folder/state.yaml').existsSync(), isTrue);
+        expect(file('.macss/active_requisition.yaml').existsSync(), isTrue);
+        expect(
+          file('$folder/issue.yaml').existsSync(),
+          isFalse,
+          reason: 'issue.yaml is replaced, not written alongside',
+        );
+      },
+    );
 
     test('the requisition starts at the first state of the ladder', () async {
       await open();
 
-      final record =
-          RequisitionRecord.read(p.dirname(file('$folder/x').path))!;
+      final record = RequisitionRecord.read(p.dirname(file('$folder/x').path))!;
       expect(record.state, RequisitionState.opened);
       expect(record.issue, isNull);
     });
@@ -88,8 +92,10 @@ void main() {
     test('keeps the authoring workspace out of version control', () async {
       await open();
 
-      expect(file('.gitignore').readAsStringSync(),
-          contains('docs/requisitions/'));
+      expect(
+        file('.gitignore').readAsStringSync(),
+        contains('docs/requisitions/'),
+      );
     });
 
     // `.macss/` is deliberately absent from the root. It carries its own
@@ -105,15 +111,21 @@ void main() {
 
     // A copy of the declaration is a second answer waiting to disagree with the
     // first. `.macss/config.yaml` says it once; nothing downstream repeats it.
-    test('copies the language into neither state.yaml nor the pointer',
-        () async {
-      await open(lang: 'es');
+    test(
+      'copies the language into neither state.yaml nor the pointer',
+      () async {
+        await open(lang: 'es');
 
-      expect(file('$folder/state.yaml').readAsStringSync(),
-          isNot(contains('lang')));
-      expect(file('.macss/active_requisition.yaml').readAsStringSync(),
-          isNot(contains('lang')));
-    });
+        expect(
+          file('$folder/state.yaml').readAsStringSync(),
+          isNot(contains('lang')),
+        );
+        expect(
+          file('.macss/active_requisition.yaml').readAsStringSync(),
+          isNot(contains('lang')),
+        );
+      },
+    );
 
     test('is idempotent — a second run keeps what is there', () async {
       await open();
@@ -122,25 +134,33 @@ void main() {
       final out = await open();
 
       expect(out.did.map((s) => s.verb), contains('keep'));
-      expect(file('$folder/requisition.md').readAsStringSync(),
-          'EDITED BY THE PO');
+      expect(
+        file('$folder/requisition.md').readAsStringSync(),
+        'EDITED BY THE PO',
+      );
     });
 
     test('the form is in the language the project declared', () async {
       await open(lang: 'es');
-      expect(file('$folder/requisition.md').readAsStringSync(),
-          contains('Situación actual'));
+      expect(
+        file('$folder/requisition.md').readAsStringSync(),
+        contains('Situación actual'),
+      );
     });
 
     // The document travels: it is sent as PDF or DOCX to a Product Owner who
     // has no repository to consult. So it says what language it is in, on its
     // own face, rather than only in the configuration that produced it.
-    test('the form declares its own language, for when it travels alone',
-        () async {
-      await open(lang: 'es');
-      expect(file('$folder/requisition.md').readAsStringSync(),
-          contains('macss:lang=es'));
-    });
+    test(
+      'the form declares its own language, for when it travels alone',
+      () async {
+        await open(lang: 'es');
+        expect(
+          file('$folder/requisition.md').readAsStringSync(),
+          contains('macss:lang=es'),
+        );
+      },
+    );
 
     // No default: a project that never said which language it speaks is
     // stopped and told how to say it, not assumed to be English.
@@ -190,16 +210,18 @@ void main() {
   group('state.yaml', () {
     test('carries no repo — gh infers it from the directory', () async {
       await open();
-      expect(file('$folder/state.yaml').readAsStringSync(),
-          isNot(contains('repo:')));
+      expect(
+        file('$folder/state.yaml').readAsStringSync(),
+        isNot(contains('repo:')),
+      );
     });
   });
 
   group('macss requisition check', () {
     Future<RequisitionCheckOutput> check() => RequisitionCheckCommand(
-          RequisitionCheckInput(),
-          workingDirectory: tempDir.path,
-        ).execute();
+      RequisitionCheckInput(),
+      workingDirectory: tempDir.path,
+    ).execute();
 
     test('a blank form fails, naming what is unanswered', () async {
       await open();
@@ -214,9 +236,12 @@ void main() {
     test('a filled form passes', () async {
       await open();
       final form = file('$folder/requisition.md');
-      form.writeAsStringSync(form
-          .readAsStringSync()
-          .replaceAll('<!-- Su respuesta aquí -->', 'Una respuesta real.'));
+      form.writeAsStringSync(
+        form.readAsStringSync().replaceAll(
+          '<!-- Su respuesta aquí -->',
+          'Una respuesta real.',
+        ),
+      );
 
       final out = await check();
 
@@ -282,15 +307,17 @@ void main() {
       expect(file('.macss').existsSync(), isFalse);
     });
 
-    test('carries the template it resolved, not a promise to resolve it later',
-        () async {
-      // The contents are settled when the step is built. Deriving them again
-      // inside perform is how a preview comes to describe a different change
-      // from the one that happens.
-      final previews = await previewCommand(exporter());
+    test(
+      'carries the template it resolved, not a promise to resolve it later',
+      () async {
+        // The contents are settled when the step is built. Deriving them again
+        // inside perform is how a preview comes to describe a different change
+        // from the one that happens.
+        final previews = await previewCommand(exporter());
 
-      expect(previews.single.detail, isNotNull);
-    });
+        expect(previews.single.detail, isNotNull);
+      },
+    );
 
     test('refuses to overwrite an existing file', () async {
       await export();
@@ -351,9 +378,12 @@ void main() {
 
     Future<void> fillForm() async {
       final form = file('$folder/requisition.md');
-      form.writeAsStringSync(form
-          .readAsStringSync()
-          .replaceAll('<!-- Su respuesta aquí -->', 'Una respuesta real.'));
+      form.writeAsStringSync(
+        form.readAsStringSync().replaceAll(
+          '<!-- Su respuesta aquí -->',
+          'Una respuesta real.',
+        ),
+      );
     }
 
     test('refuses to publish an unanswered form', () async {
@@ -416,25 +446,32 @@ void main() {
       final dir = p.dirname(file('$folder/x').path);
       final record = RequisitionRecord.read(dir)!;
       expect(record.issue, 42);
-      expect(record.state, RequisitionState.published,
-          reason: 'the number and the state it justifies are written together');
+      expect(
+        record.state,
+        RequisitionState.published,
+        reason: 'the number and the state it justifies are written together',
+      );
     });
 
     // The number is read from the step that produced it, not asked of GitHub a
     // second time — a second question could answer differently.
-    test('the recording step reads the number from the publishing one',
-        () async {
-      await open();
-      await fillForm();
+    test(
+      'the recording step reads the number from the publishing one',
+      () async {
+        await open();
+        await fillForm();
 
-      final execution = await runCommand(
-        publishCommand(run: runner(stdout: 'https://github.com/o/r/issues/42')),
-      );
+        final execution = await runCommand(
+          publishCommand(
+            run: runner(stdout: 'https://github.com/o/r/issues/42'),
+          ),
+        );
 
-      expect(execution.isFaithful, isTrue);
-      expect(execution.outcomes.last.values['issue'], 42);
-      expect(calls, hasLength(1), reason: 'gh is asked once, not twice');
-    });
+        expect(execution.isFaithful, isTrue);
+        expect(execution.outcomes.last.values['issue'], 42);
+        expect(calls, hasLength(1), reason: 'gh is asked once, not twice');
+      },
+    );
 
     test('a second publish edits the issue it already created', () async {
       await open();
@@ -494,8 +531,11 @@ void main() {
       expect(calls.single, containsAllInOrder(['issue', 'edit', '42']));
       expect(calls.single, containsAllInOrder(['--add-label', 'bug']));
       expect(calls.single, containsAllInOrder(['--add-label', 'app']));
-      expect(calls.single, isNot(contains('--label')),
-          reason: 'gh issue edit rejects --label');
+      expect(
+        calls.single,
+        isNot(contains('--label')),
+        reason: 'gh issue edit rejects --label',
+      );
     });
 
     test('the body grows when the specification appears', () async {
@@ -503,7 +543,9 @@ void main() {
       await fillForm();
       final before = (await plan()).first.detail!;
 
-      file('$folder/specification.md').writeAsStringSync('# Contrato\n\nTexto.');
+      file(
+        '$folder/specification.md',
+      ).writeAsStringSync('# Contrato\n\nTexto.');
       final after = (await plan()).first.detail!;
 
       expect(before, contains('requisition.md'));
@@ -523,8 +565,9 @@ void main() {
     test('a body over the GitHub limit fails before reaching gh', () async {
       await open();
       await fillForm();
-      file('$folder/specification.md')
-          .writeAsStringSync('x' * (githubBodyLimit + 1));
+      file(
+        '$folder/specification.md',
+      ).writeAsStringSync('x' * (githubBodyLimit + 1));
 
       await expectLater(
         publish(),
@@ -556,7 +599,7 @@ void main() {
   });
 
   group('macss requisition contract', () {
-    ModularCli makeCli() => ModularCli()
+    ModularCli makeCli() => ModularCli(suggestionDistance: 2)
       ..module('requisition', (m) => buildRequisitionModule(m, assets: assets));
 
     test('rejects an undeclared option', () async {
@@ -568,7 +611,7 @@ void main() {
       );
 
       expect(code, ExitCode.validationFailed);
-      expect(await stderr.text(), contains('unknown option --bogus'));
+      expect(await stderr.text(), contains("unknown option '--bogus'"));
     });
 
     // The one command that keeps --lang is the one that requires it: it writes
@@ -578,8 +621,13 @@ void main() {
       final stderr = MemorySink();
 
       final code = await makeCli().run(
-        ['requisition', 'export-template', '--path=${tempDir.path}',
-          '--apply', '--autoapprove'],
+        [
+          'requisition',
+          'export-template',
+          '--path=${tempDir.path}',
+          '--apply',
+          '--autoapprove',
+        ],
         stdout: MemorySink().sink,
         stderr: stderr.sink,
       );

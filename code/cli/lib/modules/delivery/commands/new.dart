@@ -26,8 +26,9 @@ typedef DeliveryNewInput = ScaffoldDocumentInput;
 typedef DeliveryNewOutput = ScaffoldDocumentOutput;
 
 /// The contract's parameters, named where a reader of this module looks.
-final List<CliParam> deliveryNewParams =
-    ScaffoldDocumentInput.paramsFor('delivery');
+final CliContract deliveryNewContract = ScaffoldDocumentInput.contractFor(
+  'delivery',
+);
 
 /// `macss delivery new`.
 ScaffoldDocumentCommand deliveryNewCommand(

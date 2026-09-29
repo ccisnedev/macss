@@ -37,16 +37,27 @@ class SpecificationPublishInput extends Input {
         repo: req.flagString('repo'),
       );
 
-  static final List<CliParam> params = [
-    CliParam.string('slug',
-        description: 'Requisition to publish; defaults to the active one'),
-    CliParam.string('repo',
+  static final CliContract contract = CliContract(
+    options: [
+      CliParam.string(
+        'slug',
+        abbr: null,
+        required: false,
+        repeatable: false,
+        defaultValue: null,
+        description: 'Requisition to publish; defaults to the active one',
+      ),
+      CliParam.string(
+        'repo',
+        abbr: null,
+        required: false,
+        repeatable: false,
+        defaultValue: null,
         description:
-            'Target repository; by default gh infers it from this directory'),
-  ];
-
-  @override
-  List<CliParam> get schemaFields => params;
+            'Target repository; by default gh infers it from this directory',
+      ),
+    ],
+  );
 
   @override
   Map<String, dynamic> toJson() => {'slug': slug, 'repo': repo};
@@ -76,8 +87,7 @@ class SpecificationPublishOutput extends Output {
 // ─── Command ────────────────────────────────────────────────────────────────
 
 class SpecificationPublishCommand
-    implements
-        Command<SpecificationPublishInput, SpecificationPublishOutput> {
+    implements Command<SpecificationPublishInput, SpecificationPublishOutput> {
   @override
   final SpecificationPublishInput input;
 
@@ -93,9 +103,10 @@ class SpecificationPublishCommand
     required ProcessRunner runProcess,
     required Assets assets,
     SpecificationGate? gate,
-  })  : publisher = IssuePublisher(runProcess: runProcess),
-        gate = gate ??
-            SpecificationGate(vocabulary: Vocabularies.fromAssets(assets));
+  }) : publisher = IssuePublisher(runProcess: runProcess),
+       gate =
+           gate ??
+           SpecificationGate(vocabulary: Vocabularies.fromAssets(assets));
 
   String? get _dir => resolveRequisitionDir(workingDirectory, input.slug);
 
@@ -106,8 +117,8 @@ class SpecificationPublishCommand
     if (ambiguous != null) return ambiguous;
     final dir = _dir;
     if (dir == null) {
-      return 'No requisition found — run '
-          '`macss requisition new <slug> --apply` first.';
+      return 'No requisition found: run '
+          '`macss requisition new --apply <slug>` first.';
     }
     if (!File(p.join(dir, 'specification.md')).existsSync()) {
       return 'No specification.md — run `macss specification new --apply` '
@@ -139,21 +150,24 @@ class SpecificationPublishCommand
     );
     if (!result.passed) {
       throw CommandException(
-        code: 'SPECIFICATION_NOT_READY',
+        id: 'specification-not-ready',
         message: [
           'The contract is not ready, so there is nothing worth publishing yet:',
           ...result.violations.map((v) => '  - ${v.code}: ${v.message}'),
         ].join('\n'),
+        exitCode: ExitCode.genericError,
       );
     }
 
     final body = assembleBody(dir);
     if (body.exceedsLimit) {
       throw CommandException(
-        code: 'BODY_TOO_LONG',
-        message: 'The assembled body is ${body.length} characters; GitHub '
+        id: 'body-too-long',
+        message:
+            'The assembled body is ${body.length} characters; GitHub '
             'accepts $githubBodyLimit. Shorten ${body.parts.join(' + ')}, or '
             'split the requisition into smaller ones.',
+        exitCode: ExitCode.genericError,
       );
     }
 

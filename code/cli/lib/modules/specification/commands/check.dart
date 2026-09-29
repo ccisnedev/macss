@@ -29,18 +29,21 @@ class SpecificationCheckInput extends Input {
 
   SpecificationCheckInput({this.slug});
 
-  static final List<CliParam> params = [
-    CliParam.string(
-      'slug',
-      description: 'Requisition to check; defaults to the active one',
-    ),
-  ];
+  static final CliContract contract = CliContract(
+    options: [
+      CliParam.string(
+        'slug',
+        abbr: null,
+        required: false,
+        repeatable: false,
+        defaultValue: null,
+        description: 'Requisition to check; defaults to the active one',
+      ),
+    ],
+  );
 
   factory SpecificationCheckInput.fromCliRequest(CliRequest req) =>
       SpecificationCheckInput(slug: optionalSlug(req.flagString('slug')));
-
-  @override
-  List<CliParam> get schemaFields => params;
 
   @override
   Map<String, dynamic> toJson() => {'slug': slug};
@@ -79,8 +82,9 @@ class SpecificationCheckCommand
     required this.workingDirectory,
     required Assets assets,
     SpecificationGate? gate,
-  }) : gate = gate ??
-            SpecificationGate(vocabulary: Vocabularies.fromAssets(assets));
+  }) : gate =
+           gate ??
+           SpecificationGate(vocabulary: Vocabularies.fromAssets(assets));
 
   String? get _dir => resolveRequisitionDir(workingDirectory, input.slug);
 
@@ -117,7 +121,8 @@ class SpecificationCheckCommand
     if (result.passed) {
       return SpecificationCheckOutput(
         ready: true,
-        message: 'specification "$_name" is ready — '
+        message:
+            'specification "$_name" is ready: '
             'every rule of the specification_ready gate passes.',
       );
     }
@@ -128,5 +133,4 @@ class SpecificationCheckCommand
     ];
     return SpecificationCheckOutput(ready: false, message: lines.join('\n'));
   }
-
 }

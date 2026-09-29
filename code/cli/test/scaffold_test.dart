@@ -5,11 +5,13 @@ import 'package:test/test.dart';
 void main() {
   group('CLI scaffold', () {
     test('responds to a registered command with exit code 0', () async {
-      final cli = ModularCli();
+      final cli = ModularCli(suggestionDistance: 2);
       cli.query<PingInput, PingOutput>(
         'ping',
         (req) => PingQuery(PingInput.fromCliRequest(req)),
         description: 'Ping test',
+        globals: true,
+        contract: CliContract.none,
       );
 
       final code = await cli.run(['ping']);
@@ -17,7 +19,7 @@ void main() {
     });
 
     test('returns non-zero exit code for unknown command', () async {
-      final cli = ModularCli();
+      final cli = ModularCli(suggestionDistance: 2);
       final code = await cli.run(['nonexistent']);
       expect(code, isNot(ExitCode.ok));
     });

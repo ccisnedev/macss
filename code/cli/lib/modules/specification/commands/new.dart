@@ -23,8 +23,9 @@ typedef SpecificationNewInput = ScaffoldDocumentInput;
 typedef SpecificationNewOutput = ScaffoldDocumentOutput;
 
 /// The contract's parameters, named where a reader of this module looks.
-final List<CliParam> specificationNewParams =
-    ScaffoldDocumentInput.paramsFor('contract');
+final CliContract specificationNewContract = ScaffoldDocumentInput.contractFor(
+  'contract',
+);
 
 /// `macss specification new`.
 ScaffoldDocumentCommand specificationNewCommand(

@@ -26,15 +26,18 @@ class RequisitionCheckInput extends Input {
   factory RequisitionCheckInput.fromCliRequest(CliRequest req) =>
       RequisitionCheckInput(slug: optionalSlug(req.flagString('slug')));
 
-  static final List<CliParam> params = [
-    CliParam.string(
-      'slug',
-      description: 'Requisition to check; defaults to the active one',
-    ),
-  ];
-
-  @override
-  List<CliParam> get schemaFields => params;
+  static final CliContract contract = CliContract(
+    options: [
+      CliParam.string(
+        'slug',
+        abbr: null,
+        required: false,
+        repeatable: false,
+        defaultValue: null,
+        description: 'Requisition to check; defaults to the active one',
+      ),
+    ],
+  );
 
   @override
   Map<String, dynamic> toJson() => {'slug': slug};
@@ -52,12 +55,12 @@ class RequisitionCheckOutput extends Output {
 
   @override
   Map<String, dynamic> toJson() => {
-        'passed': passed,
-        'message': message,
-        'violations': violations
-            .map((v) => {'code': v.code, 'message': v.message})
-            .toList(),
-      };
+    'passed': passed,
+    'message': message,
+    'violations': violations
+        .map((v) => {'code': v.code, 'message': v.message})
+        .toList(),
+  };
 
   @override
   int get exitCode => passed ? ExitCode.ok : ExitCode.validationFailed;
@@ -91,7 +94,7 @@ class RequisitionCheckCommand
     if (ambiguous != null) return ambiguous;
     final dir = _dir;
     if (dir == null) {
-      return 'No requisition found — run `macss requisition new <slug> --apply` '
+      return 'No requisition found: run `macss requisition new --apply <slug>` '
           'first, '
           'or point at one with --slug <slug>.';
     }

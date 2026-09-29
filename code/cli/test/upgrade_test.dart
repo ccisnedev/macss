@@ -5,12 +5,18 @@ import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
 import 'package:macss_cli/macss_cli.dart';
-import 'package:macss_cli/modules/global/commands/upgrade.dart';
-import 'package:macss_cli/modules/global/commands/version.dart';
-import 'package:macss_cli/targets/platform_ops.dart';
+import 'package:macss_cli/src/version.dart';
 
 import 'support/memory_sink.dart';
 
+/// `upgrade` is no longer macss's own command: it is
+/// `modular_cli_sdk`'s `InstallationPlugin`, configured with macss's own
+/// repository/executable/alias/assets in `lib/macss_cli.dart`. What used to
+/// be macss's own `UpgradeCommand`/`UpgradeInput`/`UpgradeOutput`/
+/// `ReplaceInstallation`/`PlatformOps` now come from
+/// `package:modular_cli_sdk/modular_cli_sdk.dart`; this file tests the SDK's
+/// real classes, configured the way macss configures them, rather than
+/// reimplementing macss's own deleted ones.
 void main() {
   // Replacing an installation takes seconds and several megabytes. The plan
   // says what *will* happen; this is the only thing that says it *is*
@@ -22,10 +28,12 @@ void main() {
   group('macss upgrade says what it is doing while it does it', () {
     late Directory root;
     late MemorySink progress;
+    late _RecordingOps ops;
 
     setUp(() {
       root = Directory.systemTemp.createTempSync('macss_upgrade_progress_');
       progress = MemorySink();
+      ops = _RecordingOps();
     });
 
     tearDown(() {
@@ -47,13 +55,13 @@ void main() {
         ..writeAsStringSync('the outgoing binary');
 
       await ReplaceInstallation(
-        platformOps: _RecordingOps(),
+        platformOps: ops,
         installDir: p.join(root.path, 'install'),
         from: '0.10.0',
         to: '0.11.0',
         asset: 'macss-windows-x64.zip',
         downloadUrl: 'https://example.invalid/macss-windows-x64.zip',
-        download: (url, destination) async =>
+        downloader: (url, destination) async =>
             File(destination).writeAsStringSync('an archive'),
         progress: progress.sink,
         runningExecutable: fakeBinary,
@@ -76,7 +84,10 @@ void main() {
       expect(said, contains(p.join(root.path, 'install')));
     });
 
-    test('says when it verifies', () async {
+    // macss's own `ReplaceInstallation` verifies the freshly extracted
+    // binary inline, hard-fail, right after extraction: this is
+    // `verifyAfterInstall: true`, the SDK's default, matching macss exactly.
+    test('says when it verifies, by default (matching macss)', () async {
       expect(await replace(), contains('Verifying installation'));
     });
 
@@ -87,16 +98,43 @@ void main() {
       expect(said.indexOf('Extracting'), lessThan(said.indexOf('Verifying')));
     });
 
+    test('calls runPostInstall with the install directory', () async {
+      await replace();
+
+      expect(
+        ops.calls,
+        contains('runPostInstall(${p.join(root.path, 'install')})'),
+      );
+    });
+
+    // macss's own `runPostInstall` never inspects the child's exit code, but
+    // nothing catches a failure to even launch it (a missing binary throws),
+    // which is what makes the check a hard failure in practice.
+    test(
+      'a failed verification fails the upgrade, hard-fail like macss',
+      () async {
+        ops = _RecordingOps(runPostInstallError: Exception('no such file'));
+
+        expect(() => replace(), throwsA(isA<Exception>()));
+      },
+    );
+
     // On Windows the outgoing binary cannot be overwritten in place, so it is
     // moved aside and cleaned up afterwards. The step acts on the executable it
     // was *given* — anything else, in a test, is the Dart VM.
     test('moves the outgoing binary aside and cleans it up', () async {
       await replace();
 
-      expect(File(fakeBinary).existsSync(), isFalse,
-          reason: 'it was moved aside to make room for the new one');
-      expect(File('$fakeBinary.bak').existsSync(), isFalse,
-          reason: 'and the backup is not left behind');
+      expect(
+        File(fakeBinary).existsSync(),
+        isFalse,
+        reason: 'it was moved aside to make room for the new one',
+      );
+      expect(
+        File('$fakeBinary.bak').existsSync(),
+        isFalse,
+        reason: 'and the backup is not left behind',
+      );
     }, testOn: 'windows');
 
     // stderr, not stdout: `--json` has to stay machine-readable, and a progress
@@ -115,9 +153,10 @@ void main() {
   });
 
   group('macss upgrade', () {
-    // The empty contract rejects the flag before execute() runs, so this never
-    // touches the network or the install directory.
-    test('rejects an undeclared option (empty params contract)', () async {
+    // `InstallationPlugin.setup()` registers `upgrade` with no explicit
+    // `contract:`, which defaults to `CliContract.none`: an empty contract
+    // still rejects an undeclared option before execute() runs.
+    test('rejects an undeclared option (empty contract)', () async {
       final stdout = MemorySink();
       final stderr = MemorySink();
 
@@ -128,7 +167,7 @@ void main() {
       );
 
       expect(code, 7); // ExitCode.validationFailed
-      expect(await stderr.text(), contains('unknown option --bogus'));
+      expect(await stderr.text(), contains("unknown option '--bogus'"));
     });
 
     test('UpgradeInput serializes correctly', () {
@@ -188,8 +227,15 @@ void main() {
 }
 
 /// A [PlatformOps] that does nothing but remember it was asked.
+///
+/// Matches the SDK's own `FakePlatformOps` shape
+/// (`modular_cli_sdk` `test/plugins/installation_doubles.dart`): a calls list
+/// a test asserts against, rather than a mock framework.
 class _RecordingOps implements PlatformOps {
+  _RecordingOps({this.runPostInstallError});
+
   final List<String> calls = [];
+  final Object? runPostInstallError;
 
   @override
   String get binaryName => 'macss.exe';
@@ -199,7 +245,7 @@ class _RecordingOps implements PlatformOps {
 
   @override
   Future<void> expandArchive(String archivePath, String destDir) async =>
-      calls.add('expandArchive');
+      calls.add('expandArchive($archivePath, $destDir)');
 
   @override
   String? getEnvVariable(String name) => null;
@@ -208,11 +254,14 @@ class _RecordingOps implements PlatformOps {
   Future<void> setEnvVariable(String name, String value) async {}
 
   @override
-  Future<void> selfReplace(String a, String b) async {}
-
-  @override
-  Future<void> runPostInstall(String installDir) async =>
-      calls.add('runPostInstall');
+  Future<ProcessResult> runPostInstall(
+    String installDir, {
+    Duration? timeout,
+  }) async {
+    calls.add('runPostInstall($installDir)');
+    if (runPostInstallError != null) throw runPostInstallError!;
+    return ProcessResult(0, 0, '', '');
+  }
 
   @override
   Future<void> scheduleDeletion(String dir) async {}

@@ -39,15 +39,18 @@ class DeliveryCheckInput extends Input {
   factory DeliveryCheckInput.fromCliRequest(CliRequest req) =>
       DeliveryCheckInput(slug: optionalSlug(req.flagString('slug')));
 
-  static final List<CliParam> params = [
-    CliParam.string(
-      'slug',
-      description: 'Requisition to check; defaults to the active one',
-    ),
-  ];
-
-  @override
-  List<CliParam> get schemaFields => params;
+  static final CliContract contract = CliContract(
+    options: [
+      CliParam.string(
+        'slug',
+        abbr: null,
+        required: false,
+        repeatable: false,
+        defaultValue: null,
+        description: 'Requisition to check; defaults to the active one',
+      ),
+    ],
+  );
 
   @override
   Map<String, dynamic> toJson() => {'slug': slug};
@@ -65,10 +68,10 @@ class DeliveryCheckOutput extends Output {
 
   @override
   Map<String, dynamic> toJson() => {
-        'ready': ready,
-        'requisition': name,
-        'checks': checks.map((c) => c.toJson()).toList(),
-      };
+    'ready': ready,
+    'requisition': name,
+    'checks': checks.map((c) => c.toJson()).toList(),
+  };
 
   @override
   int get exitCode => ready ? ExitCode.ok : ExitCode.validationFailed;
@@ -105,11 +108,16 @@ class DeliveryCheckCommand
     this.deliveryGate = const DeliveryGate(),
     SpecificationGate? specificationGate,
     GitRunner? runGit,
-  })  : specificationGate = specificationGate ??
-            SpecificationGate(vocabulary: Vocabularies.fromAssets(assets)),
-        runGit = runGit ??
-            ((args) => Process.runSync('git', args,
-                workingDirectory: workingDirectory));
+  }) : specificationGate =
+           specificationGate ??
+           SpecificationGate(vocabulary: Vocabularies.fromAssets(assets)),
+       runGit =
+           runGit ??
+           ((args) => Process.runSync(
+             'git',
+             args,
+             workingDirectory: workingDirectory,
+           ));
 
   String? get _dir => resolveRequisitionDir(workingDirectory, input.slug);
 
@@ -118,7 +126,7 @@ class DeliveryCheckCommand
     final ambiguous = ambiguousRequisitionFailure(workingDirectory, input.slug);
     if (ambiguous != null) return ambiguous;
     if (_dir == null) {
-      return 'No requisition found — run `macss requisition new <slug> --apply` '
+      return 'No requisition found: run `macss requisition new --apply <slug>` '
           'first, or point at one with --slug <slug>.';
     }
     return null;
@@ -130,10 +138,7 @@ class DeliveryCheckCommand
 
     return DeliveryCheckOutput(
       name: p.basename(dir),
-      checks: [
-        _documentCheck(dir),
-        _branchCheck(),
-      ],
+      checks: [_documentCheck(dir), _branchCheck()],
     );
   }
 
@@ -205,7 +210,8 @@ class DeliveryCheckCommand
       return DoctorCheck(
         name: 'branch',
         status: CheckStatus.warning,
-        detail: 'on "$head"; origin/HEAD is not set, so the default branch is '
+        detail:
+            'on "$head"; origin/HEAD is not set, so the default branch is '
             'unknown',
         remediation: 'Run: git remote set-head origin --auto',
       );
@@ -218,7 +224,8 @@ class DeliveryCheckCommand
         name: 'branch',
         status: CheckStatus.error,
         detail: 'on "$head", which is the default branch',
-        remediation: 'A pull request cannot be opened from the branch it would '
+        remediation:
+            'A pull request cannot be opened from the branch it would '
             'merge into. Move the work onto a branch of its own.',
       );
     }

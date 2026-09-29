@@ -47,10 +47,7 @@ class RequisitionPruneInput extends Input {
 
   /// Declares no options of its own: it takes none, and any it is given is
   /// rejected. The three change flags are the SDK's.
-  static const List<CliParam> params = [];
-
-  @override
-  List<CliParam> get schemaFields => params;
+  static const CliContract contract = CliContract.none;
 
   @override
   Map<String, dynamic> toJson() => const {};
@@ -221,10 +218,7 @@ class RequisitionPruneCommand
 
     return [
       for (final folder in finished)
-        RemoveRequisition(
-          path: p.join(base.path, folder),
-          shownAs: folder,
-        ),
+        RemoveRequisition(path: p.join(base.path, folder), shownAs: folder),
       if (pointerIsDoomed)
         ClearActiveRequisition(
           p.join(workingDirectory, workspaceDirName, activeRequisitionFileName),

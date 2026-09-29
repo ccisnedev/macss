@@ -1,4 +1,4 @@
-/// `macss requisition activate <slug> --plan|--apply` — choose the requisition
+/// `macss requisition activate --plan|--apply <slug>` - choose the requisition
 /// the following commands act on.
 ///
 /// The pointer lives in `.macss/active_requisition.yaml` and was, until now, changed by
@@ -41,15 +41,15 @@ class RequisitionActivateInput extends Input {
   /// `--plan`, `--apply` and `--autoapprove` are not here: the SDK declares
   /// them on every command, and a second declaration is a second place for the
   /// convention to be got wrong.
-  static final List<CliParam> params = [
-    CliParam.positional(
-      'slug',
-      description: 'The requisition to make active, as `list` shows it',
-    ),
-  ];
-
-  @override
-  List<CliParam> get schemaFields => params;
+  static final CliContract contract = CliContract(
+    positionals: [
+      CliPositional.string(
+        'slug',
+        required: false,
+        description: 'The requisition to make active, as `list` shows it',
+      ),
+    ],
+  );
 
   @override
   Map<String, dynamic> toJson() => {'slug': slug};
@@ -97,7 +97,7 @@ class RequisitionActivateCommand
   String? validate() {
     if (input.slug == null || input.slug!.isEmpty) {
       return 'Which requisition? '
-          'Usage: macss requisition activate <slug> --apply\n'
+          'Usage: macss requisition activate --apply <slug>\n'
           'Run `macss requisition list` to see them.';
     }
 
@@ -110,8 +110,8 @@ class RequisitionActivateCommand
       return [
         'No requisition named "${input.slug}".',
         if (existing.isEmpty)
-          'This project has none yet — open one with '
-              '`macss requisition new <slug> --apply`.'
+          'This project has none yet: open one with '
+              '`macss requisition new --apply <slug>`.'
         else ...[
           'These exist:',
           ...existing.map((s) => '  $s'),
@@ -156,7 +156,8 @@ class RequisitionActivateCommand
       ..sort();
   }
 
-  String _iso(DateTime d) => '${d.year.toString().padLeft(4, '0')}-'
+  String _iso(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-'
       '${d.month.toString().padLeft(2, '0')}-'
       '${d.day.toString().padLeft(2, '0')}';
 }

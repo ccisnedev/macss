@@ -108,7 +108,7 @@ void main() {
   // rejection) is exercised through the registration that actually ships —
   // rather than a local copy of it that could drift.
   ModularCli makeCli() =>
-      ModularCli()
+      ModularCli(suggestionDistance: 2)
         ..module('project', (m) => buildProjectModule(m, assets: assets));
 
   group('macss project create contract', () {
@@ -123,7 +123,7 @@ void main() {
       );
 
       expect(code, 7); // ExitCode.validationFailed
-      expect(await stderr.text(), contains('unknown option --bogus'));
+      expect(await stderr.text(), contains("unknown option '--bogus'"));
       expect(Directory(dest).existsSync(), isFalse); // never scaffolded
     });
 
@@ -131,7 +131,16 @@ void main() {
       final dest = p.join(tempRoot.path, 'abbr-proj');
 
       final code = await makeCli().run(
-        ['project', 'create', '-p', dest, '--lang', 'en', '--apply', '--autoapprove'],
+        [
+          'project',
+          'create',
+          '-p',
+          dest,
+          '--lang',
+          'en',
+          '--apply',
+          '--autoapprove',
+        ],
         stdout: MemorySink().sink,
         stderr: MemorySink().sink,
       );
@@ -144,7 +153,15 @@ void main() {
       final dest = p.join(tempRoot.path, 'long-proj');
 
       final code = await makeCli().run(
-        ['project', 'create', '--path=$dest', '--lang', 'en', '--apply', '--autoapprove'],
+        [
+          'project',
+          'create',
+          '--path=$dest',
+          '--lang',
+          'en',
+          '--apply',
+          '--autoapprove',
+        ],
         stdout: MemorySink().sink,
         stderr: MemorySink().sink,
       );
@@ -207,23 +224,25 @@ void main() {
       expect(projectLanguage(dest), 'es');
     });
 
-    test('a language outside the shipped set is rejected, naming them',
-        () async {
-      final dest = p.join(tempRoot.path, 'fr-proj');
-      final stderr = MemorySink();
+    test(
+      'a language outside the shipped set is rejected, naming them',
+      () async {
+        final dest = p.join(tempRoot.path, 'fr-proj');
+        final stderr = MemorySink();
 
-      final code = await makeCli().run(
-        ['project', 'create', '--path=$dest', '--lang', 'fr', '--apply'],
-        stdout: MemorySink().sink,
-        stderr: stderr.sink,
-      );
+        final code = await makeCli().run(
+          ['project', 'create', '--path=$dest', '--lang', 'fr', '--apply'],
+          stdout: MemorySink().sink,
+          stderr: stderr.sink,
+        );
 
-      expect(code, isNot(0));
-      final text = await stderr.text();
-      expect(text, contains('en'));
-      expect(text, contains('es'));
-      expect(Directory(dest).existsSync(), isFalse);
-    });
+        expect(code, isNot(0));
+        final text = await stderr.text();
+        expect(text, contains('en'));
+        expect(text, contains('es'));
+        expect(Directory(dest).existsSync(), isFalse);
+      },
+    );
 
     test('the declaration is named in the plan before it is written', () async {
       final dest = p.join(tempRoot.path, 'planned-lang-proj');
@@ -342,8 +361,9 @@ void main() {
 
       await expectLater(
         create(filePath),
-        throwsA(isA<CommandException>()
-            .having((e) => e.exitCode, 'exitCode', 2)),
+        throwsA(
+          isA<CommandException>().having((e) => e.exitCode, 'exitCode', 2),
+        ),
       );
     });
 

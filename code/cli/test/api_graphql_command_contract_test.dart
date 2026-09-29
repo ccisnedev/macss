@@ -7,10 +7,12 @@ import 'support/memory_sink.dart';
 void main() {
   group('api graphql command contract', () {
     test('validate() maps to validationFailed and writes to stderr', () async {
-      final cli = ModularCli()
+      final cli = ModularCli(suggestionDistance: 2)
         ..query<_ProbeInput, _ProbeOutput>(
           'probe',
           (req) => _InvalidProbeQuery(_ProbeInput.fromCliRequest(req)),
+          globals: true,
+          contract: CliContract.none,
         );
 
       final stdout = MemorySink();
@@ -23,40 +25,46 @@ void main() {
 
       expect(code, ExitCode.validationFailed);
       expect(await stdout.text(), isEmpty);
-      expect(await stderr.text(), contains('VALIDATION_FAILED'));
+      expect(await stderr.text(), contains('validation-failed'));
     });
 
-    test('custom output exit code is preserved and toText goes to stdout',
-        () async {
-      final cli = ModularCli()
-        ..query<_ProbeInput, _ProbeOutput>(
-          'probe',
-          (req) => _CustomExitProbeQuery(_ProbeInput.fromCliRequest(req)),
+    test(
+      'custom output exit code is preserved and toText goes to stdout',
+      () async {
+        final cli = ModularCli(suggestionDistance: 2)
+          ..query<_ProbeInput, _ProbeOutput>(
+            'probe',
+            (req) => _CustomExitProbeQuery(_ProbeInput.fromCliRequest(req)),
+            globals: true,
+            contract: CliContract.none,
+          );
+
+        final stdout = MemorySink();
+        final stderr = MemorySink();
+        final code = await cli.run(
+          ['probe'],
+          stdout: stdout.sink,
+          stderr: stderr.sink,
         );
 
-      final stdout = MemorySink();
-      final stderr = MemorySink();
-      final code = await cli.run(
-        ['probe'],
-        stdout: stdout.sink,
-        stderr: stderr.sink,
-      );
-
-      expect(code, 5);
-      expect(await stdout.text(), equals('probe ok\n'));
-      expect(await stderr.text(), isEmpty);
-    });
+        expect(code, 5);
+        expect(await stdout.text(), equals('probe ok\n'));
+        expect(await stderr.text(), isEmpty);
+      },
+    );
 
     test('matched commands get contextual help from the contract', () async {
       // Since modular_cli_sdk 0.3.3 the framework answers `--help` itself,
       // rendering the command's declared contract before the command body runs.
-      final cli = ModularCli()
+      final cli = ModularCli(suggestionDistance: 2)
         ..query<_ProbeInput, _ProbeOutput>(
           'probe',
           (req) => _HelpFlagProbeQuery(
             _ProbeInput.fromCliRequest(req),
             helpRequested: req.flagBool('help'),
           ),
+          globals: true,
+          contract: CliContract.none,
         );
 
       final stdout = MemorySink();

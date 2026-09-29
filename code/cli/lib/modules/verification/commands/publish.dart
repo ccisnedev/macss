@@ -45,15 +45,26 @@ class VerificationPublishInput extends Input {
         repo: req.flagString('repo'),
       );
 
-  static final List<CliParam> params = [
-    CliParam.string('slug',
-        description: 'Requisition to publish; defaults to the active one'),
-    CliParam.string('repo',
-        description: 'owner/name; defaults to what gh infers here'),
-  ];
-
-  @override
-  List<CliParam> get schemaFields => params;
+  static final CliContract contract = CliContract(
+    options: [
+      CliParam.string(
+        'slug',
+        abbr: null,
+        required: false,
+        repeatable: false,
+        defaultValue: null,
+        description: 'Requisition to publish; defaults to the active one',
+      ),
+      CliParam.string(
+        'repo',
+        abbr: null,
+        required: false,
+        repeatable: false,
+        defaultValue: null,
+        description: 'owner/name; defaults to what gh infers here',
+      ),
+    ],
+  );
 
   @override
   Map<String, dynamic> toJson() => {'slug': slug, 'repo': repo};
@@ -107,12 +118,17 @@ class VerificationPublishCommand
     GitRunner? runGit,
     this.verificationGate = const VerificationGate(),
     SpecificationGate? specificationGate,
-  })  : publisher = PullRequestPublisher(runProcess: runProcess),
-        specificationGate = specificationGate ??
-            SpecificationGate(vocabulary: Vocabularies.fromAssets(assets)),
-        runGit = runGit ??
-            ((args) => Process.runSync('git', args,
-                workingDirectory: workingDirectory));
+  }) : publisher = PullRequestPublisher(runProcess: runProcess),
+       specificationGate =
+           specificationGate ??
+           SpecificationGate(vocabulary: Vocabularies.fromAssets(assets)),
+       runGit =
+           runGit ??
+           ((args) => Process.runSync(
+             'git',
+             args,
+             workingDirectory: workingDirectory,
+           ));
 
   String? get _dir => resolveRequisitionDir(workingDirectory, input.slug);
 
@@ -122,7 +138,7 @@ class VerificationPublishCommand
     if (ambiguous != null) return ambiguous;
     final dir = _dir;
     if (dir == null) {
-      return 'No requisition found — run `macss requisition new <slug> --apply` '
+      return 'No requisition found: run `macss requisition new --apply <slug>` '
           'first, or point at one with --slug <slug>.';
     }
     final record = RequisitionRecord.read(dir);
@@ -161,8 +177,9 @@ class VerificationPublishCommand
     );
     if (!contract.ok) {
       throw CommandException(
-        code: 'NO_FROZEN_CONTRACT',
+        id: 'no-frozen-contract',
         message: contract.failure!,
+        exitCode: ExitCode.genericError,
       );
     }
 
@@ -172,12 +189,13 @@ class VerificationPublishCommand
     );
     if (!result.passed) {
       throw CommandException(
-        code: 'VERIFICATION_INCOMPLETE',
+        id: 'verification-incomplete',
         message: [
           'The record is not complete, so there is nothing worth publishing '
               'yet:',
           ...result.violations.map((v) => '  - ${v.code}: ${v.message}'),
         ].join('\n'),
+        exitCode: ExitCode.genericError,
       );
     }
 
@@ -188,9 +206,11 @@ class VerificationPublishCommand
     );
     if (annotated.exceedsLimit) {
       throw CommandException(
-        code: 'BODY_TOO_LONG',
-        message: 'The assembled body is ${annotated.length} characters; GitHub '
+        id: 'body-too-long',
+        message:
+            'The assembled body is ${annotated.length} characters; GitHub '
             'accepts $githubBodyLimit. Shorten ${body.parts.join(' + ')}.',
+        exitCode: ExitCode.genericError,
       );
     }
 

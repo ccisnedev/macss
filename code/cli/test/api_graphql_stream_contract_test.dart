@@ -7,10 +7,12 @@ import 'support/memory_sink.dart';
 void main() {
   group('api graphql stream contract', () {
     test('text mode writes command text to stdout', () async {
-      final cli = ModularCli()
+      final cli = ModularCli(suggestionDistance: 2)
         ..query<_StreamInput, _StreamOutput>(
           'probe',
           (req) => _StreamProbeQuery(_StreamInput.fromCliRequest(req)),
+          globals: true,
+          contract: CliContract.none,
         );
 
       final stdout = MemorySink();
@@ -27,10 +29,12 @@ void main() {
     });
 
     test('command exceptions are written to stderr', () async {
-      final cli = ModularCli()
+      final cli = ModularCli(suggestionDistance: 2)
         ..query<_StreamInput, _StreamOutput>(
           'probe',
           (req) => _ExceptionProbeQuery(_StreamInput.fromCliRequest(req)),
+          globals: true,
+          contract: CliContract.none,
         );
 
       final stdout = MemorySink();
@@ -46,27 +50,31 @@ void main() {
       expect(await stderr.text(), contains('probe failed'));
     });
 
-    test('json mode ignores toText and writes structured output to stdout',
-        () async {
-      final cli = ModularCli()
-        ..query<_StreamInput, _StreamOutput>(
-          'probe',
-          (req) => _StreamProbeQuery(_StreamInput.fromCliRequest(req)),
+    test(
+      'json mode ignores toText and writes structured output to stdout',
+      () async {
+        final cli = ModularCli(suggestionDistance: 2)
+          ..query<_StreamInput, _StreamOutput>(
+            'probe',
+            (req) => _StreamProbeQuery(_StreamInput.fromCliRequest(req)),
+            globals: true,
+            contract: CliContract.none,
+          );
+
+        final stdout = MemorySink();
+        final stderr = MemorySink();
+        final code = await cli.run(
+          ['probe', '--json'],
+          stdout: stdout.sink,
+          stderr: stderr.sink,
         );
 
-      final stdout = MemorySink();
-      final stderr = MemorySink();
-      final code = await cli.run(
-        ['probe', '--json'],
-        stdout: stdout.sink,
-        stderr: stderr.sink,
-      );
-
-      expect(code, ExitCode.ok);
-      expect(await stdout.text(), contains('"message": "human text"'));
-      expect(await stdout.text(), isNot(contains('human text\n')));
-      expect(await stderr.text(), isEmpty);
-    });
+        expect(code, ExitCode.ok);
+        expect(await stdout.text(), contains('"message": "human text"'));
+        expect(await stdout.text(), isNot(contains('human text\n')));
+        expect(await stderr.text(), isEmpty);
+      },
+    );
   });
 }
 
@@ -104,8 +112,7 @@ class _StreamProbeQuery implements Query<_StreamInput, _StreamOutput> {
   String? validate() => null;
 
   @override
-  Future<_StreamOutput> execute() async =>
-      _StreamOutput(message: 'human text');
+  Future<_StreamOutput> execute() async => _StreamOutput(message: 'human text');
 }
 
 class _ExceptionProbeQuery implements Query<_StreamInput, _StreamOutput> {
@@ -120,7 +127,7 @@ class _ExceptionProbeQuery implements Query<_StreamInput, _StreamOutput> {
   @override
   Future<_StreamOutput> execute() async {
     throw CommandException(
-      code: 'PROBE_FAILED',
+      id: 'probe-failed',
       message: 'probe failed',
       exitCode: 5,
     );

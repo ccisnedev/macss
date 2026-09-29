@@ -43,13 +43,18 @@ class DodCheckInput extends Input {
   factory DodCheckInput.fromCliRequest(CliRequest req) =>
       DodCheckInput(slug: optionalSlug(req.flagString('slug')));
 
-  static final List<CliParam> params = [
-    CliParam.string('slug',
-        description: 'Requisition to check; defaults to the active one'),
-  ];
-
-  @override
-  List<CliParam> get schemaFields => params;
+  static final CliContract contract = CliContract(
+    options: [
+      CliParam.string(
+        'slug',
+        abbr: null,
+        required: false,
+        repeatable: false,
+        defaultValue: null,
+        description: 'Requisition to check; defaults to the active one',
+      ),
+    ],
+  );
 
   @override
   Map<String, dynamic> toJson() => {'slug': slug};
@@ -67,10 +72,10 @@ class DodCheckOutput extends Output {
 
   @override
   Map<String, dynamic> toJson() => {
-        'done': done,
-        'requisition': name,
-        'checks': checks.map((c) => c.toJson()).toList(),
-      };
+    'done': done,
+    'requisition': name,
+    'checks': checks.map((c) => c.toJson()).toList(),
+  };
 
   @override
   int get exitCode => done ? ExitCode.ok : ExitCode.validationFailed;
@@ -82,8 +87,8 @@ class DodCheckOutput extends Output {
     buffer.writeln(
       done
           ? 'Definition of Done met. From here the pull-request body is frozen: '
-              'a change after this opens new work rather than editing the '
-              'record of what was delivered.'
+                'a change after this opens new work rather than editing the '
+                'record of what was delivered.'
           : 'Not done. Fix what is marked above and re-run.',
     );
     return buffer.toString();
@@ -110,8 +115,9 @@ class DodCheckCommand implements Query<DodCheckInput, DodCheckOutput> {
     this.deliveryGate = const DeliveryGate(),
     this.verificationGate = const VerificationGate(),
     SpecificationGate? specificationGate,
-  }) : specificationGate = specificationGate ??
-            SpecificationGate(vocabulary: Vocabularies.fromAssets(assets));
+  }) : specificationGate =
+           specificationGate ??
+           SpecificationGate(vocabulary: Vocabularies.fromAssets(assets));
 
   String? get _dir => resolveRequisitionDir(workingDirectory, input.slug);
 
@@ -120,7 +126,7 @@ class DodCheckCommand implements Query<DodCheckInput, DodCheckOutput> {
     final ambiguous = ambiguousRequisitionFailure(workingDirectory, input.slug);
     if (ambiguous != null) return ambiguous;
     if (_dir == null) {
-      return 'No requisition found — run `macss requisition new <slug> --apply` '
+      return 'No requisition found: run `macss requisition new --apply <slug>` '
           'first, or point at one with --slug <slug>.';
     }
     return null;
@@ -145,11 +151,15 @@ class DodCheckCommand implements Query<DodCheckInput, DodCheckOutput> {
     }
 
     final contract = record.isPublished
-        ? await criteriaFromPlatform(record,
-            runProcess: runProcess, gate: specificationGate)
+        ? await criteriaFromPlatform(
+            record,
+            runProcess: runProcess,
+            gate: specificationGate,
+          )
         : const ContractCriteria.unavailable(
             'The requisition was never published, so there is no frozen '
-            'contract to judge against.');
+            'contract to judge against.',
+          );
 
     final output = DodCheckOutput(
       name: p.basename(dir),
@@ -231,8 +241,10 @@ class DodCheckCommand implements Query<DodCheckInput, DodCheckOutput> {
       );
     }
 
-    final result =
-        verificationGate.evaluate(file.readAsStringSync(), criteria: contract.ids);
+    final result = verificationGate.evaluate(
+      file.readAsStringSync(),
+      criteria: contract.ids,
+    );
     return result.passed
         ? const DoctorCheck(
             name: 'verification',
@@ -254,12 +266,13 @@ class DodCheckCommand implements Query<DodCheckInput, DodCheckOutput> {
   /// whether its own answer is true would be a second answer to a question that
   /// already has one.
   DoctorCheck _pullRequestCheck(RequisitionRecord record) => DoctorCheck(
-        name: 'pull request',
-        status: record.isDelivered ? CheckStatus.ok : CheckStatus.error,
-        detail: record.isDelivered
-            ? 'opened as #${record.pr} (${record.head} → ${record.base})'
-            : 'not opened',
-        remediation:
-            record.isDelivered ? null : 'Run: macss delivery publish --apply',
-      );
+    name: 'pull request',
+    status: record.isDelivered ? CheckStatus.ok : CheckStatus.error,
+    detail: record.isDelivered
+        ? 'opened as #${record.pr} (${record.head} → ${record.base})'
+        : 'not opened',
+    remediation: record.isDelivered
+        ? null
+        : 'Run: macss delivery publish --apply',
+  );
 }

@@ -25,9 +25,9 @@ void buildSpecificationModule(ModuleBuilder m, {required Assets assets}) {
       resolver: resolver,
       workingDirectory: Directory.current.path,
     ),
-    description:
-        'Write the contract template into the active requisition',
-    params: specificationNewParams,
+    description: 'Write the contract template into the active requisition',
+    globals: true,
+    contract: specificationNewContract,
   );
 
   // No specification export-template. Of the four documents, the requisition
@@ -44,7 +44,8 @@ void buildSpecificationModule(ModuleBuilder m, {required Assets assets}) {
       assets: assets,
     ),
     description: 'Add the contract to the issue — --plan or --apply',
-    params: SpecificationPublishInput.params,
+    globals: true,
+    contract: SpecificationPublishInput.contract,
   );
 
   m.query<SpecificationCheckInput, SpecificationCheckOutput>(
@@ -57,6 +58,7 @@ void buildSpecificationModule(ModuleBuilder m, {required Assets assets}) {
     description:
         'Run the specification_ready gate over the active requisition — '
         'exits 0 only when the spec is healthy',
-    params: SpecificationCheckInput.params,
+    globals: true,
+    contract: SpecificationCheckInput.contract,
   );
 }
