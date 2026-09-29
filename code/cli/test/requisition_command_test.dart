@@ -648,5 +648,38 @@ void main() {
 
       expect(code, ExitCode.validationFailed);
     });
+
+    // `cli_router` 0.2.1: an option may follow the operand it comes after
+    // (GNU permutation) unless the environment holds `POSIXLY_CORRECT`, which
+    // restores the strict order 0.2.0 always enforced. `requisition new
+    // [<slug>]` is the CLI's own example of an operand plus an option, so it
+    // is what exercises both modes here rather than a synthetic route.
+    test('accepts an option after the operand by default, and rejects it as '
+        'misplaced-option under POSIXLY_CORRECT', () async {
+      final args = ['requisition', 'new', 'demo', '--apply'];
+
+      final permissiveErr = MemorySink();
+      await makeCli().run(
+        args,
+        stdout: MemorySink().sink,
+        stderr: permissiveErr.sink,
+        environment: const {},
+      );
+      expect(
+        await permissiveErr.text(),
+        isNot(contains('misplaced-option')),
+        reason: 'GNU permutation accepts an option after an operand by default',
+      );
+
+      final strictErr = MemorySink();
+      final strictCode = await makeCli().run(
+        args,
+        stdout: MemorySink().sink,
+        stderr: strictErr.sink,
+        environment: const {'POSIXLY_CORRECT': '1'},
+      );
+      expect(strictCode, ExitCode.validationFailed);
+      expect(await strictErr.text(), contains('misplaced-option'));
+    });
   });
 }
