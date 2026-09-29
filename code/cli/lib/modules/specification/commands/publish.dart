@@ -117,8 +117,8 @@ class SpecificationPublishCommand
     if (ambiguous != null) return ambiguous;
     final dir = _dir;
     if (dir == null) {
-      return 'No requisition found — run '
-          '`macss requisition new <slug> --apply` first.';
+      return 'No requisition found: run '
+          '`macss requisition new --apply <slug>` first.';
     }
     if (!File(p.join(dir, 'specification.md')).existsSync()) {
       return 'No specification.md — run `macss specification new --apply` '

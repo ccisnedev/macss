@@ -146,7 +146,7 @@ class RequisitionListOutput extends Output {
   String? toText() {
     if (entries.isEmpty && danglingPointer == null) {
       return 'No requisitions in this project. Open one with '
-          '`macss requisition new <slug> --apply`.';
+          '`macss requisition new --apply <slug>`.';
     }
 
     final width = entries.fold<int>(
@@ -172,7 +172,7 @@ class RequisitionListOutput extends Output {
             'which is not there',
       if (danglingPointer == null && !entries.any((e) => e.isActive))
         '\n  none is active — select one with '
-            '`macss requisition activate <slug> --apply`',
+            '`macss requisition activate --apply <slug>`',
     ].join('\n');
   }
 }

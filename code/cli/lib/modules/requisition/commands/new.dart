@@ -1,4 +1,4 @@
-/// `macss requisition new <slug> --plan|--apply` — opens a requisition.
+/// `macss requisition new --plan|--apply <slug>` - opens a requisition.
 ///
 /// It takes no `--lang`: the project declared its language once, and this
 /// derives it. A project that has not declared one is stopped rather than
@@ -118,7 +118,7 @@ class RequisitionNewCommand
   @override
   String? validate() {
     if (input.slug.isEmpty) {
-      return 'A <slug> is required: macss requisition new <slug> --apply';
+      return 'A <slug> is required: macss requisition new --apply <slug>';
     }
     // The form is a localized template, so the project must have said which
     // language it speaks. There is no default to fall back on.

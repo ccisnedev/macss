@@ -1,4 +1,4 @@
-/// `macss requisition activate <slug> --plan|--apply` — choose the requisition
+/// `macss requisition activate --plan|--apply <slug>` - choose the requisition
 /// the following commands act on.
 ///
 /// The pointer lives in `.macss/active_requisition.yaml` and was, until now, changed by
@@ -97,7 +97,7 @@ class RequisitionActivateCommand
   String? validate() {
     if (input.slug == null || input.slug!.isEmpty) {
       return 'Which requisition? '
-          'Usage: macss requisition activate <slug> --apply\n'
+          'Usage: macss requisition activate --apply <slug>\n'
           'Run `macss requisition list` to see them.';
     }
 
@@ -110,8 +110,8 @@ class RequisitionActivateCommand
       return [
         'No requisition named "${input.slug}".',
         if (existing.isEmpty)
-          'This project has none yet — open one with '
-              '`macss requisition new <slug> --apply`.'
+          'This project has none yet: open one with '
+              '`macss requisition new --apply <slug>`.'
         else ...[
           'These exist:',
           ...existing.map((s) => '  $s'),

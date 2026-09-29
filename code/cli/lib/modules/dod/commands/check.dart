@@ -126,7 +126,7 @@ class DodCheckCommand implements Query<DodCheckInput, DodCheckOutput> {
     final ambiguous = ambiguousRequisitionFailure(workingDirectory, input.slug);
     if (ambiguous != null) return ambiguous;
     if (_dir == null) {
-      return 'No requisition found — run `macss requisition new <slug> --apply` '
+      return 'No requisition found: run `macss requisition new --apply <slug>` '
           'first, or point at one with --slug <slug>.';
     }
     return null;

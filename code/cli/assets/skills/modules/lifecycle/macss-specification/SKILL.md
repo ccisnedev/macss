@@ -211,7 +211,7 @@ and **you have no terminal to answer from**, so every `--apply` below carries
 `--autoapprove`. Show the plan to the authorizing agent and get their word
 before you pass it.
 
-1. `macss requisition new <slug> --apply --autoapprove` — scaffolds the folder
+1. `macss requisition new --apply --autoapprove <slug>` - scaffolds the folder
    with the form and its issue metadata, and records it as the active
    requisition. Documents are written in the language the project declared in
    `.macss/config.yaml`; if none is declared, it is the authorizing agent who

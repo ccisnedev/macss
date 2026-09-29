@@ -166,7 +166,7 @@ Examples:
 
 - `macss project create --path=. --apply`
 - `macss project check`
-- `macss requisition new <slug> --apply`
+- `macss requisition new --apply <slug>`
 - `macss requisition publish --apply`
 - `macss specification check`
 - `macss dor check`
