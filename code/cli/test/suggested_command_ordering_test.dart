@@ -5,80 +5,108 @@ import 'package:test/test.dart';
 
 import 'package:macss_cli/macss_cli.dart';
 
+import 'support/command_extraction.dart';
 import 'support/memory_sink.dart';
 
 /// Every `macss ...` invocation this repository suggests to a person or an
-/// agent, whether in a hint string a failed command prints, a doc comment, or
-/// a shipped asset (a skill, a README, an architecture doc), must be one
-/// `cli_router` 0.2.0 actually accepts.
+/// agent — a hint string a failed command prints, a doc comment, a shipped
+/// asset (a skill, a README, an architecture doc) — must be one `cli_router`
+/// 0.2.0 actually accepts.
 ///
-/// `cli_router` 0.2.0 rejects an option that follows a positional operand
-/// (`misplaced-option`): `macss requisition new demo --apply` no longer
-/// works, only `macss requisition new --apply demo` does. That rule is
-/// accepted as-is (see CHANGELOG.md); what is not acceptable is this
-/// repository still telling people and agents to type the invalid order.
+/// `cli_router` 0.2.0 structurally rejects five shapes before any command
+/// runs: an option that follows a positional operand
+/// (`misplaced-option`, e.g. `requisition new demo --apply` instead of
+/// `requisition new --apply demo`), a value an option does not accept
+/// (`unexpected-value`), an option repeated (`repeated-option`), an option
+/// the route does not declare (`unknown-option`), and a route that does not
+/// exist at all (`unknown-command`).
 ///
-/// This scans the CLI's own source and shipped docs for suggested command
-/// lines, and for every one whose positional comes before an option, runs it
-/// (with its placeholder filled in) through the real router and asserts it
-/// is not rejected as a parse error. A line that fails for an unrelated,
-/// expected reason (no active requisition, not inside a project) is fine:
-/// this only guards against the CLI training its own users to type something
-/// the parser refuses outright.
+/// This scans every source this repository ships for suggested command
+/// lines — every Dart string literal under `lib/`, every shipped asset
+/// (skills, templates), `README.md`, and the whole `docs/` tree — extracts
+/// every `macss ...` invocation found there (see
+/// `support/command_extraction.dart` for exactly how and what is excluded,
+/// each exclusion documented against its own source), fills in its
+/// placeholders with a sample value, and runs it, unconditionally and with
+/// no pre-filtering, through `runMacss` — the CLI's own production entry
+/// point, with every real module mounted. For any of the five rejection
+/// kinds above, `ModularCli.run` short-circuits before dispatching to a
+/// command, so this exercises exactly the same resolve-and-reject step a
+/// direct call to `cli_router`'s `resolve` would.
+///
+/// A suggestion failing for an unrelated, expected reason (no active
+/// requisition, not inside a project, an unknown `--host`) is fine: this
+/// only guards against the CLI training its own users to type something the
+/// parser refuses outright.
 void main() {
   test(
-    'every suggested requisition command puts its options before its slug',
+    'every suggested macss command is accepted by the real router',
     () async {
       final root = _repoRoot();
-      final suggestions = _suggestedCommands(root);
+      final suggestions = collectSuggestedCommands(root);
 
       expect(
         suggestions,
         isNotEmpty,
-        reason:
-            'found no `macss requisition new/activate ...` suggestion at '
-            'all; the scan itself is broken',
+        reason: 'found no `macss ...` suggestion at all; the scan is broken',
       );
-
-      final misplaced = <String>[
-        for (final line in suggestions)
-          if (_positionalPrecedesOption(line)) line,
-      ];
-
-      final workspace = Directory.systemTemp.createTempSync(
-        'macss_ordering_probe_',
-      );
-      addTearDown(() {
-        if (workspace.existsSync()) workspace.deleteSync(recursive: true);
-      });
 
       final rejectedByTheParser = <String>[];
-      for (final suggestion in misplaced) {
-        final args = _toArgs(suggestion);
-        final stdout = MemorySink();
-        final stderr = MemorySink();
+      var routerCalls = 0;
 
-        await runMacss(
-          args,
-          stdout: stdout.sink,
-          stderr: stderr.sink,
-          workingDirectory: workspace.path,
+      for (final suggestion in suggestions) {
+        final workspace = Directory.systemTemp.createTempSync(
+          'macss_suggestion_probe_',
         );
+        final args = toArgs(suggestion.raw);
+        final stderrSink = MemorySink();
+        var thrown = '';
 
-        final said = await stderr.text();
+        try {
+          await runMacss(
+            args,
+            stdout: MemorySink().sink,
+            stderr: stderrSink.sink,
+            workingDirectory: workspace.path,
+          );
+        } on Object catch (e) {
+          // A command can fail past the router for reasons this suite does
+          // not care about — e.g. `project create` reading a template asset
+          // that only exists next to an installed build, not in this test
+          // run. That is a real, separate failure mode, but not one of the
+          // five structural rejections below, so it must not abort the
+          // whole scan; its text is still checked, in case a rejection ever
+          // surfaces as a thrown error instead of stderr output.
+          thrown = e.toString();
+        } finally {
+          routerCalls++;
+          if (workspace.existsSync()) workspace.deleteSync(recursive: true);
+        }
+
+        final said = '${await stderrSink.text()}\n$thrown';
         if (said.contains('misplaced-option') ||
             said.contains('unexpected-value') ||
-            said.contains('repeated-option')) {
+            said.contains('repeated-option') ||
+            said.contains('unknown-option') ||
+            said.contains('unknown-command')) {
           rejectedByTheParser.add('$suggestion  =>  $said');
         }
       }
+
+      // Guards against exactly the failure mode that made an earlier
+      // version of this test hollow: a pre-filter that discarded every
+      // candidate before the router ever ran, leaving zero router calls
+      // behind a passing test. Every extracted suggestion must reach the
+      // router, with no filtering in between.
+      expect(routerCalls, greaterThan(0));
+      expect(routerCalls, greaterThanOrEqualTo(suggestions.length));
 
       expect(
         rejectedByTheParser,
         isEmpty,
         reason:
             'these suggestions are rejected by the real parser before the '
-            'command it names ever runs:\n${rejectedByTheParser.join('\n')}',
+            'command they name ever runs:\n${rejectedByTheParser.join('\n')}',
       );
     },
   );
@@ -86,92 +114,3 @@ void main() {
 
 /// `code/cli` is two directories under the repository root.
 String _repoRoot() => p.normalize(p.join(Directory.current.path, '..', '..'));
-
-/// Files a person or an agent might actually read and copy a command out of.
-///
-/// `CHANGELOG.md` is deliberately excluded: its entries are the historical
-/// record of what was true in the release they describe, not a live
-/// suggestion, and rewriting one to match today's rules would misrepresent
-/// what that past release actually accepted.
-List<File> _sourcesToScan(String root) {
-  final files = <File>[];
-
-  void addDartFilesUnder(String dir) {
-    final d = Directory(p.join(root, dir));
-    if (!d.existsSync()) return;
-    for (final entry in d.listSync(recursive: true)) {
-      if (entry is File && entry.path.endsWith('.dart')) files.add(entry);
-    }
-  }
-
-  addDartFilesUnder(p.join('code', 'cli', 'lib'));
-
-  final skill = File(
-    p.join(
-      root,
-      'code',
-      'cli',
-      'assets',
-      'skills',
-      'modules',
-      'lifecycle',
-      'macss-specification',
-      'SKILL.md',
-    ),
-  );
-  if (skill.existsSync()) files.add(skill);
-
-  for (final relative in ['README.md', p.join('docs', 'architecture.md')]) {
-    final f = File(p.join(root, relative));
-    if (f.existsSync()) files.add(f);
-  }
-
-  return files;
-}
-
-/// A suggested `macss requisition new/activate ...` line, exactly as
-/// written, wherever it appears in the scanned files.
-///
-/// Scoped to `requisition new`/`requisition activate`: they are the only two
-/// routes in this CLI that declare a positional at all
-/// (`requisition_builder.dart`'s `new [<slug>]` / `activate [<slug>]`), so
-/// they are the only commands an ordering rule like this one can possibly
-/// affect.
-final _suggestionPattern = RegExp(
-  r'macss requisition (?:new|activate)(?: [\w<>\[\]=-]+)*',
-);
-
-List<String> _suggestedCommands(String root) {
-  final found = <String>{};
-  for (final file in _sourcesToScan(root)) {
-    for (final match in _suggestionPattern.allMatches(
-      file.readAsStringSync(),
-    )) {
-      found.add(match.group(0)!.trim());
-    }
-  }
-  return found.toList()..sort();
-}
-
-/// True when a positional-looking token (`<slug>` or `[<slug>]`) is followed,
-/// anywhere later in the line, by a token that looks like an option.
-bool _positionalPrecedesOption(String suggestion) {
-  final tokens = suggestion.split(' ');
-  var sawPositional = false;
-  for (final token in tokens) {
-    final isPositional = token.contains('<') && token.contains('>');
-    final isOption = token.startsWith('-');
-    if (isOption && sawPositional) return true;
-    if (isPositional) sawPositional = true;
-  }
-  return false;
-}
-
-/// Turns a suggested line into real argv: drops the leading `macss`, and
-/// fills the `<slug>`/`[<slug>]` placeholder with a sample value so the
-/// router has an actual operand to parse.
-List<String> _toArgs(String suggestion) => suggestion
-    .split(' ')
-    .skip(1)
-    .map((t) => t == '<slug>' || t == '[<slug>]' ? 'demo' : t)
-    .toList();
