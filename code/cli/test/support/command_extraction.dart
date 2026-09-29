@@ -108,18 +108,31 @@ List<File> sourceFilesToScan(String repoRoot) {
   return files;
 }
 
-/// A single bare word after `macss` (`macss project`, `macss doctor`,
-/// `macss CLI`) cannot exhibit any of the five failures this suite checks
-/// for — `misplaced-option`, `unexpected-value` and `repeated-option` all
-/// require at least one option in the line, and a lone module/command noun
-/// is exactly how this repository's own docs *name* a module or product in
-/// running prose (inside backticks, e.g. "the `macss project` module"), not
-/// how they *suggest* an invocation. `docs/roadmap.md` in particular names
-/// dozens of shipped, planned and deliberately-nonexistent modules this way
-/// ("There is no `macss issue` module."). Requiring at least two tokens
-/// keeps every genuine multi-token suggestion while dropping that noise.
-bool _looksLikeAnInvocation(String command) =>
-    command.split(RegExp('[ \\t]+')).length >= 3;
+/// Module nouns that `docs/` and `README.md` name in running prose
+/// (`macss issue`, `macss agent`, ...) for modules that are planned,
+/// superseded or explicitly nonexistent. A bare `macss <word>` mention is
+/// skipped only when `<word>` is in this list; every other bare mention,
+/// such as `macss doctor` or `macss version` in the project-base template,
+/// is a live suggestion and goes through the router like any other.
+const Set<String> _plannedOrAbsentModuleNouns = {
+  'agent',
+  'ai',
+  'app',
+  'db',
+  'deploy',
+  'diagnosis',
+  'fsm',
+  'implementation',
+  'issue',
+  'plan',
+  'pr',
+  'review',
+};
+
+bool _isProseModuleNoun(String command) {
+  final tokens = command.trim().split(RegExp('[ \t]+'));
+  return tokens.length == 2 && _plannedOrAbsentModuleNouns.contains(tokens[1]);
+}
 
 /// Extracted text that is a historical, superseded, or explicitly
 /// not-yet-built citation rather than a live suggestion, each excluded for
@@ -187,7 +200,7 @@ List<ExtractedCommand> collectSuggestedCommands(String repoRoot) {
         ? extractCommandsFromDart(text)
         : extractCommandsFromProse(text);
     for (final command in raw) {
-      if (!_looksLikeAnInvocation(command)) continue;
+      if (_isProseModuleNoun(command)) continue;
       if (_knownNonSuggestions.contains(command)) continue;
       if (_isRootLevelCreate(command)) continue;
       found.add(ExtractedCommand(relative, command));

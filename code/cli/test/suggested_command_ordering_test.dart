@@ -58,7 +58,7 @@ void main() {
         final workspace = Directory.systemTemp.createTempSync(
           'macss_suggestion_probe_',
         );
-        final args = toArgs(suggestion.raw);
+        final args = _neverInstall(toArgs(suggestion.raw));
         final stderrSink = MemorySink();
         var thrown = '';
 
@@ -114,3 +114,17 @@ void main() {
 
 /// `code/cli` is two directories under the repository root.
 String _repoRoot() => p.normalize(p.join(Directory.current.path, '..', '..'));
+
+/// `upgrade` and `uninstall` act on the install directory of the running
+/// executable, which under `dart test` is the Dart SDK itself. Their
+/// suggestions are still parsed by the real router, but always in plan
+/// mode: `--apply` becomes `--plan` and `--autoapprove` is dropped, so this
+/// suite can never replace or delete anything outside its temp workspace.
+List<String> _neverInstall(List<String> args) {
+  final route = args.firstWhere((a) => !a.startsWith('-'), orElse: () => '');
+  if (route != 'upgrade' && route != 'uninstall') return args;
+  return [
+    for (final a in args)
+      if (a == '--apply') '--plan' else if (a != '--autoapprove') a,
+  ];
+}
