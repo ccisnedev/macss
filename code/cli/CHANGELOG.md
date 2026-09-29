@@ -37,6 +37,15 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
   updated to the optional-positional syntax the new contract validation
   requires; fixed to strip either form.
 
+- **Every hint string, doc comment, usage line, the shipped SKILL.md, the
+  root README, and `docs/architecture.md` that suggested
+  `macss requisition new <slug> --apply` or
+  `macss requisition activate <slug> --apply` now suggest
+  `macss requisition new --apply <slug>` / `macss requisition activate
+  --apply <slug>` instead.** `cli_router` 0.2.0 rejects the old order (see
+  "Behavior differences" below); this CLI was still telling people and
+  agents to type it.
+
 ### Behavior differences
 
 Places where the SDK's shared plugins do not, or cannot, reproduce macss's
@@ -62,6 +71,26 @@ former exact behavior:
   combined `params` list. This is an SDK-wide change, not specific to
   macss, but is noted here since it affects any external consumer of
   `help --json`.
+- **An option can no longer follow a positional operand on the command
+  line.** Before: `macss requisition new <slug> --apply --autoapprove`
+  worked. After: the same line now exits 7 with `options go before the
+  program: an option cannot follow an operand [misplaced-option]`; write
+  `macss requisition new --apply --autoapprove <slug>` instead. This is the
+  only place in the CLI a positional argument exists at all (`requisition
+  new` and `requisition activate`), and every suggestion of it in this
+  repository was rewritten to the new order (see "Fixed" above).
+- **A boolean/global flag no longer takes a value.** Before: `macss version
+  --json=true` worked. After: it exits 7 with `--json takes no value
+  [unexpected-value]`; use the bare `--json` instead.
+- **An option can no longer be repeated.** Before: `macss project check
+  --path . --path .` worked, keeping the last value. After: it exits 7
+  with `-p (--path) was already given [repeated-option]`.
+- **A command's JSON error envelope changed shape.** Before: a flat
+  `{"error": "GRAPHQL_COMPILE_USAGE", "message": ..., "exitCode": 2,
+  "isRetryable": false}`. After: a nested `{"error": {"id":
+  "graphql-compile-usage", "message": ..., "exitCode": 2}}`; `isRetryable`
+  is no longer emitted at all. `CommandException`'s constructor parameter
+  also renamed `code:` to `id:`, matching the new `error.id` field.
 
 ## [0.13.0]
 
