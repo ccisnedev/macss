@@ -1,17 +1,17 @@
 name: macss_cli
 description: >
   CLI for MACSS — Modular Architecture for Comprehensive Software Solutions.
-version: 0.14.0
+version: 0.14.1
 publish_to: none
 
 environment:
   sdk: ^3.8.1
 
 dependencies:
-  cli_router: ^0.2.0
+  cli_router: ^0.2.1
   modular_api: ^0.6.1
   modular_api_sqlserver: ^0.6.0
-  modular_cli_sdk: ^0.8.0
+  modular_cli_sdk: ^0.8.1
   path: ^1.9.1
   datajack: ^0.2.0
   skillwire: ^0.2.0

@@ -648,5 +648,45 @@ void main() {
 
       expect(code, ExitCode.validationFailed);
     });
+
+    // `cli_router` 0.2.1: an option may follow the operand it comes after
+    // (GNU permutation) unless the environment holds `POSIXLY_CORRECT`, which
+    // restores the strict order 0.2.0 always enforced. `requisition new
+    // [<slug>]` is the CLI's own example of an operand plus an option, so it
+    // is what exercises both modes here rather than a synthetic route.
+    // `--plan` changes nothing, so the command may run for real: in default
+    // mode, the permuted order must reach the command and get exactly the
+    // outcome the canonical order gets.
+    test('accepts an option after the operand by default, and rejects it as '
+        'misplaced-option under POSIXLY_CORRECT', () async {
+      Future<({int code, String stdout, String stderr})> run(
+        List<String> args,
+        Map<String, String> environment,
+      ) async {
+        final out = MemorySink();
+        final err = MemorySink();
+        final code = await makeCli().run(
+          args,
+          stdout: out.sink,
+          stderr: err.sink,
+          environment: environment,
+        );
+        return (code: code, stdout: await out.text(), stderr: await err.text());
+      }
+
+      final permuted = ['requisition', 'new', 'demo', '--plan', '--json'];
+      final canonical = ['requisition', 'new', '--plan', '--json', 'demo'];
+
+      final gnu = await run(permuted, const {});
+      final reference = await run(canonical, const {});
+      expect(gnu.code, reference.code);
+      expect(gnu.stdout, reference.stdout);
+      expect(gnu.stderr, reference.stderr);
+      expect(gnu.stderr, isNot(contains('misplaced-option')));
+
+      final strict = await run(permuted, const {'POSIXLY_CORRECT': '1'});
+      expect(strict.code, ExitCode.validationFailed);
+      expect(strict.stderr, contains('misplaced-option'));
+    });
   });
 }
