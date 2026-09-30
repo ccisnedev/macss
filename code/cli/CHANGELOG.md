@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.14.2]
+
+### Fixed
+
+- **Migrated to `modular_cli_sdk` 0.8.3.** `HttpCliReleaseSource` now closes
+  its `http.Client` after use, so `doctor`, `upgrade`, and `uninstall` exit
+  as soon as they print their result instead of lingering for the HTTP
+  client's idle timeout ([modular_cli_sdk#44](https://github.com/ccisnedev/modular_cli_sdk/issues/44)).
+
 ## [0.14.1]
 
 ### Changed
