@@ -110,7 +110,7 @@ class MacssDoctorChecksPlugin implements CliPlugin {
     final exists = _assets.fileExists(relativePath);
     return CliCheckResult(
       status: exists ? CliCheckStatus.ok : CliCheckStatus.error,
-      message: exists ? 'found' : 'missing. Run: macss upgrade --apply',
+      message: exists ? 'found' : 'missing. Reinstall MACSS CLI',
     );
   }
 

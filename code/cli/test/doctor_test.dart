@@ -246,7 +246,14 @@ void main() {
         expect(results[name]!.status, CliCheckStatus.error, reason: name);
         expect(
           results[name]!.message,
-          contains('Run: macss upgrade --apply'),
+          contains('Reinstall MACSS CLI'),
+          reason: name,
+        );
+        // An upgrade cannot restore an asset the installed release lacks, and
+        // from a source tree it would replace the real installation (#53).
+        expect(
+          results[name]!.message,
+          isNot(contains('upgrade --apply')),
           reason: name,
         );
       }
