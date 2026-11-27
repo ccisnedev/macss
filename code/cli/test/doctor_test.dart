@@ -32,7 +32,6 @@ const _allTemplates = [
   'templates/project-base/docs/adr/0001-record-architecture-decisions.md',
   'templates/project-base/docs/architecture.md',
   'templates/project-base/docs/roadmap.md',
-  'templates/project-base/CHANGELOG.md',
   'vocabulary/en.yaml',
   'vocabulary/es.yaml',
   'artifacts/requisition.template.en.md',
@@ -48,7 +47,6 @@ const _allTemplateCheckNames = [
   'template: 0001-record-architecture-decisions.md',
   'template: architecture.md',
   'template: roadmap.md',
-  'template: CHANGELOG.md',
   'vocabulary: en',
   'vocabulary: es',
   'artifact: requisition',
@@ -250,6 +248,18 @@ void main() {
           results[name]!.message,
           contains('Run: macss upgrade --apply'),
           reason: name,
+        );
+      }
+    });
+
+    test('every asset doctor requires ships under assets/', () {
+      // Tests run from code/cli. A retired asset whose check stays would make
+      // a clean install fail `doctor` (#86).
+      for (final rel in _allTemplates) {
+        expect(
+          File(p.join('assets', rel)).existsSync(),
+          isTrue,
+          reason: '$rel is required by doctor but is not under code/cli/assets/',
         );
       }
     });
