@@ -66,8 +66,8 @@ void main() {
           hasLength(1),
           reason: 'Found ${found.length} copies of $name: $found. '
               'The release installer belongs in code/site/web/, which is the '
-              'only place it is served from. Development scripts are '
-              'dev-install.*.',
+              'only place it is served from. For development, build with '
+              'code/cli/scripts/build.* and run dist/bin/macss.',
         );
       });
 
@@ -110,5 +110,33 @@ void main() {
           File(p.join('..', 'site', 'web', 'install.sh')).readAsStringSync();
       expect(script, contains(r'ln -sf "$BIN_DIR/macss" "$BIN_DIR/ma"'));
     });
+  });
+
+  group('the dev build is separate from the installation', () {
+    // `scripts/dev-install.*` copied a build of the working tree over the real
+    // installation, where `upgrade` and `uninstall` treat it as legitimate and
+    // nothing says it is not (#53). The dev build is `dist/`, and nothing under
+    // scripts/ may write anywhere else.
+    final scripts = Directory(p.join('scripts'))
+        .listSync()
+        .whereType<File>()
+        .toList();
+
+    test('no dev-install script exists', () {
+      expect(
+        scripts.map((f) => p.basename(f.path)).where((n) => n.startsWith('dev-install')),
+        isEmpty,
+      );
+    });
+
+    for (final script in scripts) {
+      test('${p.basename(script.path)} never touches the installer directory',
+          () {
+        final text = script.readAsStringSync();
+        expect(text, isNot(contains('LOCALAPPDATA')));
+        expect(text, isNot(contains(r'$HOME/.macss')));
+        expect(text, isNot(contains('~/.macss')));
+      });
+    }
   });
 }
