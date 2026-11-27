@@ -82,7 +82,6 @@ class MacssDoctorChecksPlugin implements CliPlugin {
         'templates/project-base/docs/adr/0001-record-architecture-decisions.md',
     'template: architecture.md': 'templates/project-base/docs/architecture.md',
     'template: roadmap.md': 'templates/project-base/docs/roadmap.md',
-    'template: CHANGELOG.md': 'templates/project-base/CHANGELOG.md',
     'vocabulary: en': 'vocabulary/en.yaml',
     'vocabulary: es': 'vocabulary/es.yaml',
     'artifact: requisition': 'artifacts/requisition.template.en.md',
@@ -111,7 +110,7 @@ class MacssDoctorChecksPlugin implements CliPlugin {
     final exists = _assets.fileExists(relativePath);
     return CliCheckResult(
       status: exists ? CliCheckStatus.ok : CliCheckStatus.error,
-      message: exists ? 'found' : 'missing. Run: macss upgrade --apply',
+      message: exists ? 'found' : 'missing. Reinstall MACSS CLI',
     );
   }
 

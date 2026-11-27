@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.14.3]
+
+### Fixed
+
+- **`doctor` no longer requires the retired `CHANGELOG.md` template**, so a
+  clean install passes it. A test now fails if `doctor` requires an asset the
+  source does not ship (#86).
+- **A missing asset's remedy is reinstalling**, not `macss upgrade --apply`,
+  which cannot restore a file the installed release lacks (#53).
+- **Running from source is refused.** `dart run bin/main.dart` resolved assets
+  relative to the Dart VM and reported a broken installation; it now exits 78
+  and points at the dev build (#53).
+
+### Removed
+
+- `scripts/dev-install.ps1` and `scripts/dev-install.sh`, which overwrote the
+  real installation with a build of the working tree. The dev build is
+  `scripts/build.*` into `dist/`, documented in `code/cli/README.md` (#53).
+
 ## [0.14.2]
 
 ### Fixed
